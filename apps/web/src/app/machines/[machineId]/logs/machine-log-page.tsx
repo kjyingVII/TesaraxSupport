@@ -310,7 +310,7 @@ export function MachineLogPage({ machineId }: { machineId: string }) {
             className="field-button-primary"
             href={`/machines/${machineId}/logs/new`}
           >
-            Add Service / Upgrade Log
+            Add Machine Log
           </a>
         </div>
 

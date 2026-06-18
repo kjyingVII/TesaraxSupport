@@ -29,9 +29,16 @@ type SettingsResponse = {
   data: AttachmentLimitSettings;
 };
 
+type ActivityType =
+  | "CORRECTIVE_SERVICE"
+  | "MACHINE_MAINTENANCE"
+  | "COMPONENT_REPLACEMENT"
+  | "INSPECTION_DIAGNOSIS"
+  | "UPGRADE"
+  | "OTHER";
+
 type LogForm = {
-  logType: "SERVICE" | "UPGRADE";
-  serviceType: "CORRECTIVE_SERVICE" | "MACHINE_MAINTENANCE" | "COMPONENT_REPLACEMENT" | "INSPECTION_DIAGNOSIS" | "OTHER";
+  activityType: ActivityType;
   workDate: string;
   workSummary: string;
   partsUsed: string;
@@ -45,8 +52,7 @@ type LogForm = {
 };
 
 const defaultLogForm: LogForm = {
-  logType: "SERVICE",
-  serviceType: "CORRECTIVE_SERVICE",
+  activityType: "CORRECTIVE_SERVICE",
   workDate: "",
   workSummary: "",
   partsUsed: "",
@@ -123,14 +129,14 @@ export function NewMachineLogPage({ machineId }: { machineId: string }) {
       await apiRequest(`/api/machines/${machineId}/logs`, {
         method: "POST",
         body: JSON.stringify({
-          logType: form.logType,
-          serviceType: form.logType === "SERVICE" ? form.serviceType : undefined,
+          logType: logTypeFromActivity(form.activityType),
+          serviceType: serviceTypeFromActivity(form.activityType),
           workDate: new Date(form.workDate).toISOString(),
           workSummary: form.workSummary,
           partsUsed: form.partsUsed,
-          upgradeVersion: form.logType === "UPGRADE" ? form.upgradeVersion : undefined,
-          upgradeDescription: form.logType === "UPGRADE" ? form.upgradeDescription : undefined,
-          nextServiceDueOverrideAt: form.logType === "SERVICE" && form.serviceType === "MACHINE_MAINTENANCE" && form.nextServiceDueOverrideAt
+          upgradeVersion: form.activityType === "UPGRADE" ? form.upgradeVersion : undefined,
+          upgradeDescription: form.activityType === "UPGRADE" ? form.upgradeDescription : undefined,
+          nextServiceDueOverrideAt: form.activityType === "MACHINE_MAINTENANCE" && form.nextServiceDueOverrideAt
             ? new Date(form.nextServiceDueOverrideAt).toISOString()
             : undefined,
           requesterConfirmedName: form.requesterConfirmedName,
@@ -140,11 +146,10 @@ export function NewMachineLogPage({ machineId }: { machineId: string }) {
           attachments: preparedAttachments
         })
       });
-      setMessage(`${form.logType === "SERVICE" ? serviceTypeLabel(form.serviceType) : "Upgrade"} log created.`);
+      setMessage(`${activityTypeLabel(form.activityType)} log created.`);
       setForm({
         ...defaultLogForm,
-        logType: form.logType,
-        serviceType: form.serviceType,
+        activityType: form.activityType,
         workDate: toDateTimeLocal(new Date().toISOString())
       });
       setAttachments([]);
@@ -173,7 +178,7 @@ export function NewMachineLogPage({ machineId }: { machineId: string }) {
         <header className="field-header">
           <div>
             <p className="field-eyebrow">Machine History</p>
-            <h1 className="field-title">Add Service / Upgrade Log</h1>
+            <h1 className="field-title">Add Machine Log</h1>
           </div>
           <ThemeToggle />
         </header>
@@ -215,42 +220,30 @@ export function NewMachineLogPage({ machineId }: { machineId: string }) {
               <span className="field-label">Type</span>
               <select
                 className="field-input h-11"
-                value={form.logType}
-                onChange={(event) => updateForm("logType", event.target.value as LogForm["logType"])}
+                value={form.activityType}
+                onChange={(event) => updateForm("activityType", event.target.value as ActivityType)}
               >
-                <option value="SERVICE">Service</option>
+                <option value="CORRECTIVE_SERVICE">Corrective Service</option>
+                <option value="MACHINE_MAINTENANCE">Machine Maintenance</option>
+                <option value="COMPONENT_REPLACEMENT">Component Replacement</option>
+                <option value="INSPECTION_DIAGNOSIS">Inspection / Diagnosis</option>
                 <option value="UPGRADE">Upgrade</option>
+                <option value="OTHER">Other</option>
               </select>
+              <p className="field-muted mt-2">
+                Only Machine Maintenance updates the machine maintenance schedule. Other log types are saved as activity history only.
+              </p>
             </label>
-            {form.logType === "SERVICE" ? (
-              <label className="block">
-                <span className="field-label">Service Purpose</span>
-                <select
-                  className="field-input h-11"
-                  value={form.serviceType}
-                  onChange={(event) => updateForm("serviceType", event.target.value as LogForm["serviceType"])}
-                >
-                  <option value="CORRECTIVE_SERVICE">Corrective Service</option>
-                  <option value="MACHINE_MAINTENANCE">Machine Maintenance</option>
-                  <option value="COMPONENT_REPLACEMENT">Component Replacement</option>
-                  <option value="INSPECTION_DIAGNOSIS">Inspection / Diagnosis</option>
-                  <option value="OTHER">Other</option>
-                </select>
-                <p className="field-muted mt-2">
-                  Only Machine Maintenance updates the machine maintenance schedule. Other service logs are saved as activity history only.
-                </p>
-              </label>
-            ) : null}
             <TextInput label="Work Date" type="datetime-local" value={form.workDate} required onChange={(value) => updateForm("workDate", value)} />
             <TextAreaInput label="Work Summary" value={form.workSummary} required onChange={(value) => updateForm("workSummary", value)} />
             <TextInput label="Parts Used" value={form.partsUsed} onChange={(value) => updateForm("partsUsed", value)} />
-            {form.logType === "UPGRADE" ? (
+            {form.activityType === "UPGRADE" ? (
               <>
                 <TextInput label="Upgrade Version" value={form.upgradeVersion} onChange={(value) => updateForm("upgradeVersion", value)} />
                 <TextAreaInput label="Upgrade Description" value={form.upgradeDescription} onChange={(value) => updateForm("upgradeDescription", value)} />
               </>
             ) : null}
-            {form.logType === "SERVICE" && form.serviceType === "MACHINE_MAINTENANCE" ? (
+            {form.activityType === "MACHINE_MAINTENANCE" ? (
               <TextInput
                 label="Next Machine Maintenance Override"
                 type="datetime-local"
@@ -385,7 +378,15 @@ function toDateTimeLocal(value: string) {
   return new Date(date.getTime() - offsetMs).toISOString().slice(0, 16);
 }
 
-function serviceTypeLabel(value: LogForm["serviceType"]) {
+function logTypeFromActivity(value: ActivityType) {
+  return value === "UPGRADE" ? "UPGRADE" : "SERVICE";
+}
+
+function serviceTypeFromActivity(value: ActivityType) {
+  return value === "UPGRADE" ? undefined : value;
+}
+
+function activityTypeLabel(value: ActivityType) {
   switch (value) {
     case "MACHINE_MAINTENANCE":
       return "Machine Maintenance";
@@ -394,7 +395,9 @@ function serviceTypeLabel(value: LogForm["serviceType"]) {
     case "INSPECTION_DIAGNOSIS":
       return "Inspection / Diagnosis";
     case "OTHER":
-      return "Service";
+      return "Other";
+    case "UPGRADE":
+      return "Upgrade";
     case "CORRECTIVE_SERVICE":
     default:
       return "Corrective Service";

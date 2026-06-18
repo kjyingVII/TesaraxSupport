@@ -1137,3 +1137,8 @@ This file records meaningful project updates, decisions, and implementation step
 - Changed machine maintenance scheduling so only service logs marked as `MACHINE_MAINTENANCE` update `lastServiceAt` and `nextServiceDueAt`.
 - Updated add-log UI to explain that ordinary service/component work does not move the machine maintenance schedule.
 - Renamed user-facing planned maintenance wording from service reminder/next service to machine maintenance where applicable.
+
+## 2026-06-19 - Unified Machine Log Type Selector
+
+- Simplified the add machine log form to use one Type dropdown: Corrective Service, Machine Maintenance, Component Replacement, Inspection / Diagnosis, Upgrade, and Other.
+- Kept Upgrade mapped to the existing upgrade log behavior while ordinary service types remain activity-only unless Machine Maintenance is selected.
