@@ -178,13 +178,13 @@ export function AdminDashboard() {
           <Metric label="Open Tickets" value={loading ? "..." : openTicketTotal} />
           <Metric label="Pending Ack" value={loading ? "..." : pendingAcknowledgementTotal} />
           <Metric label="Follow Up" value={loading ? "..." : followUpTotal} />
-          <Metric label="Service Due Soon" value={loading ? "..." : dueSoonMachines.length} />
+          <Metric label="Maintenance Due Soon" value={loading ? "..." : dueSoonMachines.length} />
         </section>
 
         <section className="mt-5 grid gap-4 md:grid-cols-2 lg:grid-cols-6">
           <AdminLink href="/admin/customers" title="Customers" description="Create and update customer records." />
           <AdminLink href="/admin/machines" title="Machines" description="Create machines, reminders, and QR links." />
-          <AdminLink href="/admin/reminders" title="Reminders" description="Track upcoming, due, and overdue service." />
+          <AdminLink href="/admin/reminders" title="Reminders" description="Track upcoming, due, and overdue machine maintenance." />
           <AdminLink href="/admin/users" title="Users" description="Manage admin, supervisor, and technician accounts." />
           <AdminLink href="/technician/tickets" title="Ticket Workbench" description="Review open tickets and service reports." />
           <AdminLink href="/admin/audit-logs" title="Audit Logs" description="Review important changes and actors." />
@@ -228,7 +228,7 @@ export function AdminDashboard() {
 
           <section className="field-panel p-0">
             <div className="border-b border-[#d9dee3] p-4 dark:border-[#2f3742]">
-              <h2 className="field-section-title">Service Due Soon</h2>
+              <h2 className="field-section-title">Machine Maintenance Due Soon</h2>
               <p className="field-muted mt-1">
                 Machines due or overdue within {reminderWindowDays} days
               </p>

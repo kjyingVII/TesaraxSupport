@@ -31,6 +31,7 @@ type SettingsResponse = {
 
 type LogForm = {
   logType: "SERVICE" | "UPGRADE";
+  serviceType: "CORRECTIVE_SERVICE" | "MACHINE_MAINTENANCE" | "COMPONENT_REPLACEMENT" | "INSPECTION_DIAGNOSIS" | "OTHER";
   workDate: string;
   workSummary: string;
   partsUsed: string;
@@ -45,6 +46,7 @@ type LogForm = {
 
 const defaultLogForm: LogForm = {
   logType: "SERVICE",
+  serviceType: "CORRECTIVE_SERVICE",
   workDate: "",
   workSummary: "",
   partsUsed: "",
@@ -122,12 +124,13 @@ export function NewMachineLogPage({ machineId }: { machineId: string }) {
         method: "POST",
         body: JSON.stringify({
           logType: form.logType,
+          serviceType: form.logType === "SERVICE" ? form.serviceType : undefined,
           workDate: new Date(form.workDate).toISOString(),
           workSummary: form.workSummary,
           partsUsed: form.partsUsed,
           upgradeVersion: form.logType === "UPGRADE" ? form.upgradeVersion : undefined,
           upgradeDescription: form.logType === "UPGRADE" ? form.upgradeDescription : undefined,
-          nextServiceDueOverrideAt: form.nextServiceDueOverrideAt
+          nextServiceDueOverrideAt: form.logType === "SERVICE" && form.serviceType === "MACHINE_MAINTENANCE" && form.nextServiceDueOverrideAt
             ? new Date(form.nextServiceDueOverrideAt).toISOString()
             : undefined,
           requesterConfirmedName: form.requesterConfirmedName,
@@ -137,10 +140,11 @@ export function NewMachineLogPage({ machineId }: { machineId: string }) {
           attachments: preparedAttachments
         })
       });
-      setMessage(`${form.logType === "SERVICE" ? "Service" : "Upgrade"} log created.`);
+      setMessage(`${form.logType === "SERVICE" ? serviceTypeLabel(form.serviceType) : "Upgrade"} log created.`);
       setForm({
         ...defaultLogForm,
         logType: form.logType,
+        serviceType: form.serviceType,
         workDate: toDateTimeLocal(new Date().toISOString())
       });
       setAttachments([]);
@@ -218,6 +222,25 @@ export function NewMachineLogPage({ machineId }: { machineId: string }) {
                 <option value="UPGRADE">Upgrade</option>
               </select>
             </label>
+            {form.logType === "SERVICE" ? (
+              <label className="block">
+                <span className="field-label">Service Purpose</span>
+                <select
+                  className="field-input h-11"
+                  value={form.serviceType}
+                  onChange={(event) => updateForm("serviceType", event.target.value as LogForm["serviceType"])}
+                >
+                  <option value="CORRECTIVE_SERVICE">Corrective Service</option>
+                  <option value="MACHINE_MAINTENANCE">Machine Maintenance</option>
+                  <option value="COMPONENT_REPLACEMENT">Component Replacement</option>
+                  <option value="INSPECTION_DIAGNOSIS">Inspection / Diagnosis</option>
+                  <option value="OTHER">Other</option>
+                </select>
+                <p className="field-muted mt-2">
+                  Only Machine Maintenance updates the machine maintenance schedule. Other service logs are saved as activity history only.
+                </p>
+              </label>
+            ) : null}
             <TextInput label="Work Date" type="datetime-local" value={form.workDate} required onChange={(value) => updateForm("workDate", value)} />
             <TextAreaInput label="Work Summary" value={form.workSummary} required onChange={(value) => updateForm("workSummary", value)} />
             <TextInput label="Parts Used" value={form.partsUsed} onChange={(value) => updateForm("partsUsed", value)} />
@@ -227,12 +250,14 @@ export function NewMachineLogPage({ machineId }: { machineId: string }) {
                 <TextAreaInput label="Upgrade Description" value={form.upgradeDescription} onChange={(value) => updateForm("upgradeDescription", value)} />
               </>
             ) : null}
-            <TextInput
-              label="Next Service Override"
-              type="datetime-local"
-              value={form.nextServiceDueOverrideAt}
-              onChange={(value) => updateForm("nextServiceDueOverrideAt", value)}
-            />
+            {form.logType === "SERVICE" && form.serviceType === "MACHINE_MAINTENANCE" ? (
+              <TextInput
+                label="Next Machine Maintenance Override"
+                type="datetime-local"
+                value={form.nextServiceDueOverrideAt}
+                onChange={(value) => updateForm("nextServiceDueOverrideAt", value)}
+              />
+            ) : null}
             <TextInput label="Requester Name" value={form.requesterConfirmedName} onChange={(value) => updateForm("requesterConfirmedName", value)} />
             <TextInput label="Contact Number" value={form.requesterContactPhone} onChange={(value) => updateForm("requesterContactPhone", value)} />
             <TextInput label="Email" type="email" value={form.requesterContactEmail} onChange={(value) => updateForm("requesterContactEmail", value)} />
@@ -358,6 +383,22 @@ function toDateTimeLocal(value: string) {
   const date = new Date(value);
   const offsetMs = date.getTimezoneOffset() * 60 * 1000;
   return new Date(date.getTime() - offsetMs).toISOString().slice(0, 16);
+}
+
+function serviceTypeLabel(value: LogForm["serviceType"]) {
+  switch (value) {
+    case "MACHINE_MAINTENANCE":
+      return "Machine Maintenance";
+    case "COMPONENT_REPLACEMENT":
+      return "Component Replacement";
+    case "INSPECTION_DIAGNOSIS":
+      return "Inspection / Diagnosis";
+    case "OTHER":
+      return "Service";
+    case "CORRECTIVE_SERVICE":
+    default:
+      return "Corrective Service";
+  }
 }
 
 function validateAttachments(attachments: File[], maxFileMb: number, maxTotalMb: number) {

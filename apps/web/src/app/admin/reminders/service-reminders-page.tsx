@@ -89,7 +89,7 @@ export function ServiceRemindersPage() {
         Object.fromEntries(statusOptions.map((option, index) => [option.value, countResponses[index].meta.total]))
       );
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Unable to load service reminders.");
+      setError(err instanceof Error ? err.message : "Unable to load machine maintenance reminders.");
     } finally {
       setLoading(false);
     }
@@ -117,7 +117,7 @@ export function ServiceRemindersPage() {
               <span>/</span>
               <span>Reminders</span>
             </nav>
-            <h1 className="field-title">Service Reminders</h1>
+            <h1 className="field-title">Machine Maintenance Reminders</h1>
           </div>
           <ThemeToggle />
         </header>
@@ -154,7 +154,7 @@ export function ServiceRemindersPage() {
               <div>
                 <h2 className="field-section-title">{heading}</h2>
                 <p className="field-muted mt-1">
-                  Upcoming uses the configured {reminderWindowDays}-day reminder window.
+                  Upcoming uses the configured {reminderWindowDays}-day maintenance reminder window.
                 </p>
               </div>
               <form className="grid gap-3 sm:grid-cols-[180px_minmax(220px,1fr)_auto]" onSubmit={handleFilter}>
@@ -185,7 +185,7 @@ export function ServiceRemindersPage() {
           <div className="divide-y divide-[#d9dee3] dark:divide-[#2f3742]">
             {loading ? <p className="field-muted p-5">Loading...</p> : null}
             {!loading && machines.length === 0 ? (
-              <p className="field-muted p-5">No machines found for this reminder status.</p>
+              <p className="field-muted p-5">No machines found for this maintenance status.</p>
             ) : null}
             {machines.map((machine) => (
               <article key={machine.id} className="p-5">
@@ -204,9 +204,9 @@ export function ServiceRemindersPage() {
                     <p className="field-muted mt-1">{machine.location}</p>
                   </div>
                   <div className="grid gap-2 text-sm sm:grid-cols-3 lg:min-w-[480px]">
-                    <MiniMetric label="Last Service" value={machine.lastServiceAt ? formatDate(machine.lastServiceAt) : "None"} />
+                    <MiniMetric label="Last Machine Maintenance" value={machine.lastServiceAt ? formatDate(machine.lastServiceAt) : "None"} />
                     <MiniMetric label="Next Due" value={machine.nextServiceDueAt ? formatDate(machine.nextServiceDueAt) : "Not set"} />
-                    <MiniMetric label="Interval" value={`${machine.serviceReminderIntervalDays} days`} />
+                    <MiniMetric label="Maintenance Interval" value={`${machine.serviceReminderIntervalDays} days`} />
                   </div>
                 </div>
                 <div className="mt-4 flex flex-wrap gap-2">
@@ -217,7 +217,7 @@ export function ServiceRemindersPage() {
                     Add Service Log
                   </Link>
                   <Link className="field-button-secondary" href={`/admin/machines/${machine.id}/edit`}>
-                    Edit Reminder
+                    Edit Maintenance Reminder
                   </Link>
                 </div>
               </article>

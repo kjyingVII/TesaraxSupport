@@ -148,7 +148,7 @@ export function SettingsPage() {
           {!loading ? (
             <form className="mt-4 grid gap-5" onSubmit={saveSettings}>
               <div className="grid gap-4 md:grid-cols-2">
-                <TextInput label="Default Service Reminder Interval Days" type="number" value={form.defaultServiceReminderIntervalDays} required onChange={(value) => updateField("defaultServiceReminderIntervalDays", value)} />
+                <TextInput label="Default Machine Maintenance Interval Days" type="number" value={form.defaultServiceReminderIntervalDays} required onChange={(value) => updateField("defaultServiceReminderIntervalDays", value)} />
                 <TextInput label="Reminder Window Days" type="number" value={form.reminderWindowDays} required onChange={(value) => updateField("reminderWindowDays", value)} />
                 <TextInput label="Company Name" value={form.companyName} onChange={(value) => updateField("companyName", value)} />
                 <TextInput label="Support Email" type="email" value={form.supportEmail} onChange={(value) => updateField("supportEmail", value)} />

@@ -2,6 +2,7 @@ import { UploadTicketAttachmentDto } from "../../attachments/dto/upload-ticket-a
 
 export type CreateMachineLogDto = {
   logType?: string;
+  serviceType?: string;
   workDate?: string;
   workSummary?: string;
   partsUsed?: string;

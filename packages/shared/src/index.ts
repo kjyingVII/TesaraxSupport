@@ -29,6 +29,14 @@ export enum MachineLogType {
   Upgrade = "UPGRADE"
 }
 
+export enum MachineServiceType {
+  CorrectiveService = "CORRECTIVE_SERVICE",
+  MachineMaintenance = "MACHINE_MAINTENANCE",
+  ComponentReplacement = "COMPONENT_REPLACEMENT",
+  InspectionDiagnosis = "INSPECTION_DIAGNOSIS",
+  Other = "OTHER"
+}
+
 export enum TimelineItemType {
   Service = "SERVICE",
   Upgrade = "UPGRADE",
@@ -46,4 +54,3 @@ export type MachineTimelineItem = {
   attachmentCount: number;
   actorName?: string | null;
 };
-

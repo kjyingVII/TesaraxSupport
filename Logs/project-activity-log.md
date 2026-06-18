@@ -1130,3 +1130,10 @@ This file records meaningful project updates, decisions, and implementation step
 ## 2026-06-18 - Prisma Seed Command
 
 - Added Prisma seed configuration to the API package so `prisma db seed` runs `prisma/seed-demo-users.js`.
+
+## 2026-06-18 - Machine Maintenance Service Log Flow
+
+- Added machine service purpose tracking for service logs: corrective service, machine maintenance, component replacement, inspection/diagnosis, and other.
+- Changed machine maintenance scheduling so only service logs marked as `MACHINE_MAINTENANCE` update `lastServiceAt` and `nextServiceDueAt`.
+- Updated add-log UI to explain that ordinary service/component work does not move the machine maintenance schedule.
+- Renamed user-facing planned maintenance wording from service reminder/next service to machine maintenance where applicable.

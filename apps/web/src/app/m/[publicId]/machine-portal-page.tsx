@@ -206,9 +206,9 @@ export function MachinePortalPage({ publicId }: { publicId: string }) {
                 </Link>
               </div>
               <div className="mt-5 grid gap-3 sm:grid-cols-3">
-                <InfoBox label="Next Service Due" value={portal.machine.nextServiceDueAt ? formatDate(portal.machine.nextServiceDueAt) : "Not set"} />
-                <InfoBox label="Last Service" value={portal.machine.lastServiceAt ? formatDate(portal.machine.lastServiceAt) : "No service recorded"} />
-                <InfoBox label="Reminder Cycle" value={`${portal.machine.serviceReminderIntervalDays} days`} />
+                <InfoBox label="Next Machine Maintenance Due" value={portal.machine.nextServiceDueAt ? formatDate(portal.machine.nextServiceDueAt) : "Not set"} />
+                <InfoBox label="Last Machine Maintenance" value={portal.machine.lastServiceAt ? formatDate(portal.machine.lastServiceAt) : "No maintenance recorded"} />
+                <InfoBox label="Maintenance Cycle" value={`${portal.machine.serviceReminderIntervalDays} days`} />
               </div>
             </section>
 

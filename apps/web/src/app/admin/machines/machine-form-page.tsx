@@ -214,8 +214,8 @@ export function MachineFormPage({ machineId }: { machineId?: string }) {
               <TextInput label="Model" value={form.model} required onChange={(value) => updateField("model", value)} />
               <TextInput label="Serial Number" value={form.serialNumber} required onChange={(value) => updateField("serialNumber", value)} />
               <TextInput label="Location" value={form.location} required onChange={(value) => updateField("location", value)} />
-              <TextInput label="Service Reminder Interval Days" type="number" value={form.serviceReminderIntervalDays} required onChange={(value) => updateField("serviceReminderIntervalDays", value)} />
-              <TextInput label="Next Service Due" type="datetime-local" value={form.nextServiceDueAt} onChange={(value) => updateField("nextServiceDueAt", value)} />
+              <TextInput label="Machine Maintenance Interval Days" type="number" value={form.serviceReminderIntervalDays} required onChange={(value) => updateField("serviceReminderIntervalDays", value)} />
+              <TextInput label="Next Machine Maintenance Due" type="datetime-local" value={form.nextServiceDueAt} onChange={(value) => updateField("nextServiceDueAt", value)} />
               <TextInput label={isEdit ? "New Machine Access Password" : "Machine Access Password"} type="password" value={form.machineAccessPassword} required={!isEdit} onChange={(value) => updateField("machineAccessPassword", value)} />
               {isEdit ? (
                 <p className="field-muted">

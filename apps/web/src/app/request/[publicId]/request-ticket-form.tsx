@@ -377,7 +377,7 @@ export function RequestTicketForm({ publicId }: { publicId: string }) {
                       <option value="BREAKDOWN">Breakdown</option>
                       <option value="ABNORMAL_SOUND">Abnormal sound</option>
                       <option value="QUALITY_ISSUE">Quality issue</option>
-                      <option value="PREVENTIVE_MAINTENANCE">Preventive maintenance</option>
+                      <option value="MACHINE_MAINTENANCE">Machine maintenance</option>
                       <option value="OTHER">Other</option>
                     </select>
                   </label>

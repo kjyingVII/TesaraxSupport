@@ -1,5 +1,5 @@
 import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
-import { MachineLogType, Prisma } from "@prisma/client";
+import { MachineLogType, MachineServiceType, Prisma } from "@prisma/client";
 import { AttachmentsService } from "../attachments/attachments.service";
 import { PrismaService } from "../prisma/prisma.service";
 import { CreateMachineLogDto } from "./dto/create-machine-log.dto";
@@ -114,6 +114,9 @@ export class MachineLogsService {
   async createLog(machineId: string, dto: CreateMachineLogDto) {
     const machine = await this.getMachine(machineId);
     const logType = this.parseLogType(dto.logType);
+    const serviceType = logType === MachineLogType.SERVICE
+      ? this.parseServiceType(dto.serviceType)
+      : null;
     const workDate = this.parseRequiredDate(dto.workDate, "workDate");
     const workSummary = this.requiredString(dto.workSummary, "Work summary is required.");
     const ticketId = this.cleanOptionalString(dto.ticketId);
@@ -146,6 +149,7 @@ export class MachineLogsService {
           ticketId,
           serviceReportId,
           logType,
+          serviceType,
           workDate,
           workSummary,
           partsUsed: this.cleanOptionalString(dto.partsUsed),
@@ -173,7 +177,7 @@ export class MachineLogsService {
         }
       });
 
-      if (logType === MachineLogType.SERVICE) {
+      if (logType === MachineLogType.SERVICE && serviceType === MachineServiceType.MACHINE_MAINTENANCE) {
         await tx.machine.update({
           where: { id: machineId },
           data: {
@@ -317,7 +321,7 @@ export class MachineLogsService {
       ...machineLogs.map((log) => ({
         type: log.logType,
         eventDate: log.workDate,
-        title: log.logType === MachineLogType.SERVICE ? "Service completed" : "Upgrade completed",
+        title: log.logType === MachineLogType.SERVICE ? `${this.serviceTypeLabel(log.serviceType)} completed` : "Upgrade completed",
         summary: log.workSummary,
         status: null,
         relatedId: log.id,
@@ -432,6 +436,32 @@ export class MachineLogsService {
     }
 
     return logType as MachineLogType;
+  }
+
+  private parseServiceType(value: string | undefined) {
+    const serviceType = value?.trim().toUpperCase() || MachineServiceType.CORRECTIVE_SERVICE;
+
+    if (!Object.values(MachineServiceType).includes(serviceType as MachineServiceType)) {
+      throw new BadRequestException("serviceType must be CORRECTIVE_SERVICE, MACHINE_MAINTENANCE, COMPONENT_REPLACEMENT, INSPECTION_DIAGNOSIS, or OTHER.");
+    }
+
+    return serviceType as MachineServiceType;
+  }
+
+  private serviceTypeLabel(value: MachineServiceType | null) {
+    switch (value) {
+      case MachineServiceType.MACHINE_MAINTENANCE:
+        return "Machine maintenance";
+      case MachineServiceType.COMPONENT_REPLACEMENT:
+        return "Component replacement";
+      case MachineServiceType.INSPECTION_DIAGNOSIS:
+        return "Inspection / diagnosis";
+      case MachineServiceType.OTHER:
+        return "Service";
+      case MachineServiceType.CORRECTIVE_SERVICE:
+      default:
+        return "Corrective service";
+    }
   }
 
   private parseTimelineType(value: string | undefined) {

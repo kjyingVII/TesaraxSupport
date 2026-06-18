@@ -36,6 +36,7 @@ type TimelineItem = {
 type MachineLogDetail = {
   id: string;
   logType: "SERVICE" | "UPGRADE";
+  serviceType: "CORRECTIVE_SERVICE" | "MACHINE_MAINTENANCE" | "COMPONENT_REPLACEMENT" | "INSPECTION_DIAGNOSIS" | "OTHER" | null;
   workDate: string;
   workSummary: string;
   partsUsed: string | null;
@@ -296,9 +297,9 @@ export function MachineLogPage({ machineId }: { machineId: string }) {
                 <p className="field-muted mt-1">{machine.location}</p>
               </div>
               <div className="grid gap-2 text-sm sm:grid-cols-3 lg:min-w-[520px]">
-                <MiniMetric label="Last Service" value={machine.lastServiceAt ? formatDate(machine.lastServiceAt) : "None"} />
-                <MiniMetric label="Next Service" value={machine.nextServiceDueAt ? formatDate(machine.nextServiceDueAt) : "Not set"} />
-                <MiniMetric label="Reminder" value={serviceStatus} />
+                <MiniMetric label="Last Machine Maintenance" value={machine.lastServiceAt ? formatDate(machine.lastServiceAt) : "None"} />
+                <MiniMetric label="Next Machine Maintenance" value={machine.nextServiceDueAt ? formatDate(machine.nextServiceDueAt) : "Not set"} />
+                <MiniMetric label="Maintenance Reminder" value={serviceStatus} />
               </div>
             </div>
           </section>
@@ -464,6 +465,9 @@ function MachineLogDetailPanel({ detail }: { detail: MachineLogDetail }) {
   return (
     <div className="mt-4 grid gap-4">
       <InfoLine label="Type" value={detail.logType} />
+      {detail.logType === "SERVICE" ? (
+        <InfoLine label="Service Purpose" value={serviceTypeLabel(detail.serviceType)} />
+      ) : null}
       <InfoLine label="Work Date" value={formatDate(detail.workDate)} />
       <InfoLine label="Summary" value={detail.workSummary} />
       <InfoLine label="Parts Used" value={detail.partsUsed || "None recorded"} />
@@ -473,7 +477,9 @@ function MachineLogDetailPanel({ detail }: { detail: MachineLogDetail }) {
           <InfoLine label="Upgrade Description" value={detail.upgradeDescription || "None recorded"} />
         </>
       ) : null}
-      <InfoLine label="Next Service Override" value={detail.nextServiceDueOverrideAt ? formatDate(detail.nextServiceDueOverrideAt) : "None"} />
+      {detail.serviceType === "MACHINE_MAINTENANCE" ? (
+        <InfoLine label="Next Machine Maintenance Override" value={detail.nextServiceDueOverrideAt ? formatDate(detail.nextServiceDueOverrideAt) : "None"} />
+      ) : null}
       <InfoLine label="Requester Name" value={detail.requesterConfirmedName || detail.loggedByRequesterName || "Not recorded"} />
       <InfoLine label="Contact Number" value={detail.requesterContactPhone || "Not recorded"} />
       <InfoLine label="Email" value={detail.requesterContactEmail || "Not recorded"} />
@@ -574,6 +580,22 @@ function TypeBadge({ value }: { value: string }) {
       {value}
     </span>
   );
+}
+
+function serviceTypeLabel(value: MachineLogDetail["serviceType"]) {
+  switch (value) {
+    case "MACHINE_MAINTENANCE":
+      return "Machine Maintenance";
+    case "COMPONENT_REPLACEMENT":
+      return "Component Replacement";
+    case "INSPECTION_DIAGNOSIS":
+      return "Inspection / Diagnosis";
+    case "OTHER":
+      return "Other";
+    case "CORRECTIVE_SERVICE":
+    default:
+      return "Corrective Service";
+  }
 }
 
 function StatusBadge({ value }: { value: string }) {

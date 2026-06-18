@@ -110,10 +110,10 @@ export function MachinesAdminPage() {
                     <p>{machine.model}</p>
                     <p>{machine.serialNumber}</p>
                     <p>{machine.location}</p>
-                    <p>{machine.serviceReminderIntervalDays} day reminder</p>
+                    <p>{machine.serviceReminderIntervalDays} day maintenance interval</p>
                   </div>
                   <p className="field-muted mt-2">
-                    Next service due: {machine.nextServiceDueAt ? new Date(machine.nextServiceDueAt).toLocaleDateString() : "Not set"}
+                    Next machine maintenance due: {machine.nextServiceDueAt ? new Date(machine.nextServiceDueAt).toLocaleDateString() : "Not set"}
                   </p>
                 </div>
                 <div className={`grid gap-2 ${canEditMachines ? "sm:grid-cols-3" : "sm:grid-cols-2"} lg:grid-cols-none`}>
