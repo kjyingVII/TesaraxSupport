@@ -1,0 +1,195 @@
+import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
+import { Prisma } from "@prisma/client";
+import { AuditService } from "../audit/audit.service";
+import { PrismaService } from "../prisma/prisma.service";
+import { CreateCustomerDto } from "./dto/create-customer.dto";
+import { UpdateCustomerDto } from "./dto/update-customer.dto";
+
+type ListCustomersInput = {
+  search?: string;
+  isActive?: string;
+  page?: string;
+  pageSize?: string;
+};
+
+@Injectable()
+export class CustomersService {
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly auditService: AuditService
+  ) {}
+
+  async list(input: ListCustomersInput) {
+    const page = this.parsePositiveInteger(input.page, 1);
+    const pageSize = this.parsePositiveInteger(input.pageSize, 20);
+    const where: Prisma.CustomerWhereInput = {};
+
+    if (input.search?.trim()) {
+      const search = input.search.trim();
+      where.OR = [
+        { name: { contains: search, mode: "insensitive" } },
+        { contactName: { contains: search, mode: "insensitive" } },
+        { contactEmail: { contains: search, mode: "insensitive" } },
+        { contactPhone: { contains: search, mode: "insensitive" } }
+      ];
+    }
+
+    if (input.isActive !== undefined) {
+      where.isActive = this.parseBoolean(input.isActive, "isActive");
+    }
+
+    const [items, total] = await this.prisma.$transaction([
+      this.prisma.customer.findMany({
+        where,
+        orderBy: { createdAt: "desc" },
+        skip: (page - 1) * pageSize,
+        take: pageSize
+      }),
+      this.prisma.customer.count({ where })
+    ]);
+
+    return {
+      data: items,
+      meta: {
+        page,
+        pageSize,
+        total
+      }
+    };
+  }
+
+  async create(dto: CreateCustomerDto) {
+    const name = dto.name?.trim();
+
+    if (!name) {
+      throw new BadRequestException("Customer name is required.");
+    }
+
+    const customer = await this.prisma.customer.create({
+      data: {
+        name,
+        contactName: this.cleanOptionalString(dto.contactName),
+        contactEmail: this.cleanOptionalString(dto.contactEmail),
+        contactPhone: this.cleanOptionalString(dto.contactPhone),
+        address: this.cleanOptionalString(dto.address),
+        remarks: this.cleanOptionalString(dto.remarks)
+      }
+    });
+
+    return { data: customer };
+  }
+
+  async getById(id: string) {
+    const customer = await this.prisma.customer.findUnique({
+      where: { id },
+      include: {
+        machines: {
+          orderBy: { createdAt: "desc" }
+        }
+      }
+    });
+
+    if (!customer) {
+      throw new NotFoundException("Customer not found.");
+    }
+
+    return { data: customer };
+  }
+
+  async update(id: string, dto: UpdateCustomerDto, actorUserId?: string) {
+    const before = await this.ensureExists(id);
+
+    const data: Prisma.CustomerUpdateInput = {};
+
+    if (dto.name !== undefined) {
+      const name = dto.name.trim();
+      if (!name) {
+        throw new BadRequestException("Customer name cannot be empty.");
+      }
+      data.name = name;
+    }
+
+    if (dto.contactName !== undefined) data.contactName = this.cleanNullableString(dto.contactName);
+    if (dto.contactEmail !== undefined) data.contactEmail = this.cleanNullableString(dto.contactEmail);
+    if (dto.contactPhone !== undefined) data.contactPhone = this.cleanNullableString(dto.contactPhone);
+    if (dto.address !== undefined) data.address = this.cleanNullableString(dto.address);
+    if (dto.remarks !== undefined) data.remarks = this.cleanNullableString(dto.remarks);
+    if (dto.isActive !== undefined) data.isActive = dto.isActive;
+
+    const customer = await this.prisma.customer.update({
+      where: { id },
+      data
+    });
+
+    await this.auditService.write({
+      actorUserId,
+      action: "UPDATE_CUSTOMER",
+      entityType: "Customer",
+      entityId: id,
+      beforeData: before,
+      afterData: customer
+    });
+
+    return { data: customer };
+  }
+
+  async deactivate(id: string, actorUserId?: string) {
+    const before = await this.ensureExists(id);
+
+    const customer = await this.prisma.customer.update({
+      where: { id },
+      data: { isActive: false }
+    });
+
+    await this.auditService.write({
+      actorUserId,
+      action: "DEACTIVATE_CUSTOMER",
+      entityType: "Customer",
+      entityId: id,
+      beforeData: before,
+      afterData: customer
+    });
+
+    return { data: customer };
+  }
+
+  private async ensureExists(id: string) {
+    const customer = await this.prisma.customer.findUnique({
+      where: { id },
+    });
+
+    if (!customer) {
+      throw new NotFoundException("Customer not found.");
+    }
+
+    return customer;
+  }
+
+  private parsePositiveInteger(value: string | undefined, fallback: number) {
+    if (value === undefined) return fallback;
+
+    const parsed = Number(value);
+    if (!Number.isInteger(parsed) || parsed < 1) {
+      throw new BadRequestException("Pagination values must be positive integers.");
+    }
+
+    return Math.min(parsed, 100);
+  }
+
+  private parseBoolean(value: string, fieldName: string) {
+    if (value === "true") return true;
+    if (value === "false") return false;
+    throw new BadRequestException(`${fieldName} must be true or false.`);
+  }
+
+  private cleanOptionalString(value: string | undefined) {
+    const cleaned = value?.trim();
+    return cleaned ? cleaned : undefined;
+  }
+
+  private cleanNullableString(value: string | null | undefined) {
+    if (value === null) return null;
+    const cleaned = value?.trim();
+    return cleaned ? cleaned : null;
+  }
+}

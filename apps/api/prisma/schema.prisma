@@ -1,0 +1,442 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  ADMIN
+  SUPERVISOR
+  TECHNICIAN
+}
+
+enum TicketStatus {
+  NEW
+  ASSIGNED
+  IN_PROGRESS
+  WAITING_FOR_PARTS
+  WAITING_FOR_REQUESTER
+  RESOLVED
+  PENDING_ACKNOWLEDGEMENT
+  CLOSED
+  FOLLOW_UP_REQUIRED
+  CANCELLED
+}
+
+enum TicketPriority {
+  LOW
+  NORMAL
+  URGENT
+  MACHINE_DOWN
+}
+
+enum MachineLogType {
+  SERVICE
+  UPGRADE
+}
+
+enum ReminderType {
+  UPCOMING
+  DUE
+  OVERDUE
+}
+
+enum NotificationChannel {
+  EMAIL
+  SMS
+  WHATSAPP
+  SYSTEM
+}
+
+enum NotificationStatus {
+  PENDING
+  SENT
+  FAILED
+  SKIPPED
+}
+
+enum AcknowledgementResponse {
+  ACCEPTED
+  FOLLOW_UP_REQUESTED
+}
+
+enum TicketCommentVisibility {
+  INTERNAL
+  REQUESTER_VISIBLE
+}
+
+enum ServiceResolutionStatus {
+  RESOLVED
+  PARTIALLY_RESOLVED
+  NOT_RESOLVED
+}
+
+enum AttachmentRelatedType {
+  TICKET
+  TICKET_COMMENT
+  SERVICE_REPORT
+  MACHINE_LOG
+  MACHINE_DOCUMENT
+  ACKNOWLEDGEMENT_SIGNATURE
+}
+
+model User {
+  id                  String                @id @default(uuid())
+  name                String
+  email               String                @unique
+  phone               String?
+  passwordHash        String
+  role                UserRole
+  isActive            Boolean               @default(true)
+  lastLoginAt         DateTime?
+  assignedTickets     Ticket[]              @relation("AssignedTechnician")
+  serviceReports      ServiceReport[]
+  machineLogs         MachineLog[]          @relation("MachineLogUser")
+  statusChanges       TicketStatusHistory[] @relation("StatusChangedBy")
+  comments            TicketComment[]
+  assignmentsMade     TicketAssignment[]    @relation("AssignedBy")
+  assignmentsReceived TicketAssignment[]    @relation("AssignedTo")
+  assignmentsUnassigned TicketAssignment[]  @relation("UnassignedBy")
+  attachments         Attachment[]
+  auditLogs           AuditLog[]
+  createdAt           DateTime              @default(now())
+  updatedAt           DateTime              @updatedAt
+
+  @@index([role])
+  @@index([isActive])
+}
+
+model Customer {
+  id           String    @id @default(uuid())
+  name         String
+  contactName  String?
+  contactEmail String?
+  contactPhone String?
+  address      String?
+  remarks      String?
+  isActive     Boolean   @default(true)
+  machines     Machine[]
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@index([name])
+  @@index([isActive])
+}
+
+model Machine {
+  id                          String               @id @default(uuid())
+  publicId                    String               @unique
+  customerId                  String
+  customer                    Customer             @relation(fields: [customerId], references: [id])
+  machineName                 String
+  model                       String
+  serialNumber                String
+  location                    String
+  qrCodeUrl                   String?
+  machineAccessPasswordHash   String?
+  machineAccessPasswordUpdatedAt DateTime?
+  serviceReminderIntervalDays Int
+  lastServiceAt               DateTime?
+  nextServiceDueAt            DateTime?
+  lastUpgradeAt               DateTime?
+  installationDate            DateTime?
+  warrantyExpiryDate          DateTime?
+  internalRemarks             String?
+  isActive                    Boolean              @default(true)
+  tickets                     Ticket[]
+  logs                        MachineLog[]
+  documents                   Attachment[]
+  serviceReminderLogs         ServiceReminderLog[]
+  createdAt                   DateTime             @default(now())
+  updatedAt                   DateTime             @updatedAt
+
+  @@index([customerId])
+  @@index([serialNumber])
+  @@index([nextServiceDueAt])
+  @@index([isActive])
+}
+
+model Ticket {
+  id                   String                @id @default(uuid())
+  ticketNumber         String                @unique
+  machineId            String
+  machine              Machine               @relation(fields: [machineId], references: [id])
+  requesterName        String
+  requesterCompany     String?
+  requesterDepartment  String?
+  requesterPhone       String?
+  requesterEmail       String?
+  issueTitle           String
+  issueDescription     String
+  issueCategory        String
+  priority             TicketPriority
+  status               TicketStatus          @default(NEW)
+  assignedTechnicianId String?
+  assignedTechnician   User?                 @relation("AssignedTechnician", fields: [assignedTechnicianId], references: [id])
+  createdFromPublicQr  Boolean               @default(false)
+  statusHistory        TicketStatusHistory[]
+  comments             TicketComment[]
+  assignments          TicketAssignment[]
+  serviceReports       ServiceReport[]
+  acknowledgements     Acknowledgement[]
+  attachments          Attachment[]
+  machineLogs          MachineLog[]
+  closedAt             DateTime?
+  createdAt            DateTime              @default(now())
+  updatedAt            DateTime              @updatedAt
+
+  @@index([machineId])
+  @@index([status])
+  @@index([priority])
+  @@index([assignedTechnicianId])
+  @@index([createdAt])
+}
+
+model TicketStatusHistory {
+  id                     String        @id @default(uuid())
+  ticketId               String
+  ticket                 Ticket        @relation(fields: [ticketId], references: [id])
+  fromStatus             TicketStatus?
+  toStatus               TicketStatus
+  changedByUserId        String?
+  changedByUser          User?         @relation("StatusChangedBy", fields: [changedByUserId], references: [id])
+  changedByRequesterName String?
+  comment                String?
+  createdAt              DateTime      @default(now())
+
+  @@index([ticketId])
+  @@index([changedByUserId])
+  @@index([createdAt])
+}
+
+model TicketComment {
+  id                     String                  @id @default(uuid())
+  ticketId               String
+  ticket                 Ticket                  @relation(fields: [ticketId], references: [id])
+  comment                String
+  visibility             TicketCommentVisibility @default(INTERNAL)
+  createdByUserId        String?
+  createdByUser          User?                   @relation(fields: [createdByUserId], references: [id])
+  createdByRequesterName String?
+  attachments            Attachment[]
+  createdAt              DateTime                @default(now())
+
+  @@index([ticketId])
+  @@index([createdByUserId])
+}
+
+model TicketAssignment {
+  id               String   @id @default(uuid())
+  ticketId         String
+  ticket           Ticket   @relation(fields: [ticketId], references: [id])
+  assignedToUserId String
+  assignedToUser   User     @relation("AssignedTo", fields: [assignedToUserId], references: [id])
+  assignedByUserId String
+  assignedByUser   User     @relation("AssignedBy", fields: [assignedByUserId], references: [id])
+  unassignedByUserId String?
+  unassignedByUser   User?    @relation("UnassignedBy", fields: [unassignedByUserId], references: [id])
+  isActive         Boolean  @default(true)
+  isLead           Boolean  @default(false)
+  comment          String?
+  unassignedAt     DateTime?
+  createdAt        DateTime @default(now())
+
+  @@index([ticketId])
+  @@index([assignedToUserId])
+  @@index([assignedByUserId])
+  @@index([unassignedByUserId])
+  @@index([isActive])
+  @@index([isLead])
+}
+
+model ServiceReport {
+  id                             String                  @id @default(uuid())
+  ticketId                       String
+  ticket                         Ticket                  @relation(fields: [ticketId], references: [id])
+  technicianId                   String
+  technician                     User                    @relation(fields: [technicianId], references: [id])
+  diagnosis                      String
+  actionTaken                    String
+  partsUsed                      String?
+  recommendations                String?
+  technicianRemarks              String?
+  serviceStartAt                 DateTime
+  serviceEndAt                   DateTime
+  resolutionStatus               ServiceResolutionStatus
+  submittedForAcknowledgementAt  DateTime?
+  acknowledgement                Acknowledgement?
+  attachments                    Attachment[]
+  machineLogs                    MachineLog[]
+  createdAt                      DateTime                @default(now())
+  updatedAt                      DateTime                @updatedAt
+
+  @@index([ticketId])
+  @@index([technicianId])
+}
+
+model MachineLog {
+  id                         String         @id @default(uuid())
+  machineId                  String
+  machine                    Machine        @relation(fields: [machineId], references: [id])
+  ticketId                   String?
+  ticket                     Ticket?        @relation(fields: [ticketId], references: [id])
+  serviceReportId            String?
+  serviceReport              ServiceReport? @relation(fields: [serviceReportId], references: [id])
+  logType                    MachineLogType
+  workDate                   DateTime
+  workSummary                String
+  partsUsed                  String?
+  upgradeVersion             String?
+  upgradeDescription         String?
+  nextServiceDueOverrideAt   DateTime?
+  requesterConfirmedName     String?
+  requesterContactPhone      String?
+  requesterContactEmail      String?
+  requesterConfirmedAt       DateTime?
+  loggedByUserId             String?
+  loggedByUser               User?          @relation("MachineLogUser", fields: [loggedByUserId], references: [id])
+  loggedByRequesterName      String?
+  attachments                Attachment[]
+  createdAt                  DateTime       @default(now())
+  updatedAt                  DateTime       @updatedAt
+
+  @@index([machineId])
+  @@index([ticketId])
+  @@index([serviceReportId])
+  @@index([logType])
+  @@index([workDate])
+}
+
+model Acknowledgement {
+  id                       String                   @id @default(uuid())
+  ticketId                 String
+  ticket                   Ticket                   @relation(fields: [ticketId], references: [id])
+  serviceReportId          String?                  @unique
+  serviceReport            ServiceReport?           @relation(fields: [serviceReportId], references: [id])
+  acknowledgementTokenHash String
+  tokenExpiresAt           DateTime
+  response                 AcknowledgementResponse?
+  requesterName            String?
+  requesterPhone           String?
+  requesterEmail           String?
+  requesterComment         String?
+  signatureAttachmentId    String?                  @unique
+  signatureAttachment      Attachment?              @relation("AcknowledgementSignature", fields: [signatureAttachmentId], references: [id])
+  attachments              Attachment[]             @relation("AcknowledgementAttachments")
+  acknowledgedAt           DateTime?
+  createdAt                DateTime                 @default(now())
+  updatedAt                DateTime                 @updatedAt
+
+  @@index([ticketId])
+  @@index([serviceReportId])
+  @@index([acknowledgementTokenHash])
+  @@index([tokenExpiresAt])
+}
+
+model Attachment {
+  id                       String            @id @default(uuid())
+  relatedType              AttachmentRelatedType
+  ticketId                 String?
+  ticket                   Ticket?           @relation(fields: [ticketId], references: [id])
+  serviceReportId          String?
+  serviceReport            ServiceReport?    @relation(fields: [serviceReportId], references: [id])
+  ticketCommentId          String?
+  ticketComment            TicketComment?     @relation(fields: [ticketCommentId], references: [id])
+  machineLogId             String?
+  machineLog               MachineLog?       @relation(fields: [machineLogId], references: [id])
+  machineId                String?
+  machine                  Machine?          @relation(fields: [machineId], references: [id])
+  acknowledgementId        String?
+  acknowledgement          Acknowledgement?   @relation("AcknowledgementAttachments", fields: [acknowledgementId], references: [id])
+  signatureFor             Acknowledgement?   @relation("AcknowledgementSignature")
+  uploadedByUserId         String?
+  uploadedByUser           User?             @relation(fields: [uploadedByUserId], references: [id])
+  uploadedByRequesterName  String?
+  originalFileName         String
+  contentType              String
+  fileSizeBytes            Int
+  storageBucket            String
+  storageKey               String
+  checksum                 String?
+  createdAt                DateTime          @default(now())
+
+  @@index([ticketId])
+  @@index([ticketCommentId])
+  @@index([serviceReportId])
+  @@index([machineLogId])
+  @@index([machineId])
+  @@index([acknowledgementId])
+  @@index([uploadedByUserId])
+}
+
+model ServiceReminderLog {
+  id          String              @id @default(uuid())
+  machineId   String
+  machine     Machine             @relation(fields: [machineId], references: [id])
+  reminderType ReminderType
+  dueDate     DateTime
+  sentToName  String?
+  sentToEmail String?
+  sentToPhone String?
+  channel     NotificationChannel
+  status      NotificationStatus  @default(PENDING)
+  sentAt      DateTime?
+  errorMessage String?
+  createdAt   DateTime            @default(now())
+
+  @@index([machineId])
+  @@index([dueDate])
+  @@index([status])
+}
+
+model AuditLog {
+  id                 String   @id @default(uuid())
+  actorUserId        String?
+  actorUser          User?    @relation(fields: [actorUserId], references: [id])
+  actorRequesterName String?
+  action             String
+  entityType         String
+  entityId           String
+  beforeData         Json?
+  afterData          Json?
+  ipAddress          String?
+  userAgent          String?
+  createdAt          DateTime @default(now())
+
+  @@index([actorUserId])
+  @@index([entityType, entityId])
+  @@index([action])
+  @@index([createdAt])
+}
+
+model NotificationLog {
+  id                String             @id @default(uuid())
+  relatedType       String?
+  relatedId         String?
+  channel           NotificationChannel
+  recipientName     String?
+  recipientEmail    String?
+  recipientPhone    String?
+  subject           String?
+  messageSummary    String?
+  status            NotificationStatus @default(PENDING)
+  providerMessageId String?
+  errorMessage      String?
+  sentAt            DateTime?
+  createdAt         DateTime           @default(now())
+
+  @@index([relatedType, relatedId])
+  @@index([channel])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model SystemSetting {
+  key       String   @id
+  value     Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}

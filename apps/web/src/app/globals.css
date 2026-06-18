@@ -1,0 +1,141 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+}
+
+.dark {
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: #f6f7f8;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+@layer components {
+  .field-page {
+    @apply min-h-screen bg-[#f6f7f8] text-neutral-950 dark:bg-[#0f1115] dark:text-[#f5f7fa];
+  }
+
+  .field-shell {
+    @apply mx-auto flex min-h-screen w-full flex-col px-4 py-5 sm:px-6;
+  }
+
+  .field-header {
+    @apply flex flex-wrap items-start justify-between gap-4;
+  }
+
+  .field-eyebrow {
+    @apply text-sm font-medium text-[#5f6368] dark:text-[#a8b0ba];
+  }
+
+  .field-title {
+    @apply mt-1 text-2xl font-semibold text-neutral-950 dark:text-[#f5f7fa];
+  }
+
+  .field-panel {
+    @apply rounded-lg border border-[#d9dee3] bg-white p-5 shadow-sm dark:border-[#2f3742] dark:bg-[#171a21];
+  }
+
+  .field-panel-subtle {
+    @apply rounded-lg border border-[#d9dee3] bg-[#fbfcfd] p-4 dark:border-[#2f3742] dark:bg-[#1f242d];
+  }
+
+  .field-section-title {
+    @apply text-lg font-semibold text-neutral-950 dark:text-[#f5f7fa];
+  }
+
+  .field-muted {
+    @apply text-sm text-[#5f6368] dark:text-[#a8b0ba];
+  }
+
+  .field-label {
+    @apply text-sm font-medium text-neutral-800 dark:text-neutral-100;
+  }
+
+  .field-meta-label {
+    @apply text-xs font-medium uppercase text-[#5f6368] dark:text-[#a8b0ba];
+  }
+
+  .field-input {
+    @apply mt-2 h-12 w-full rounded-md border border-[#cfd6dd] bg-white px-3 text-base text-neutral-950 outline-none transition focus:border-[#155e75] focus:ring-2 focus:ring-cyan-800/10 dark:border-[#2f3742] dark:bg-[#171a21] dark:text-[#f5f7fa] dark:focus:border-[#22d3ee] dark:focus:ring-cyan-300/10;
+  }
+
+  .field-textarea {
+    @apply mt-2 min-h-28 w-full rounded-md border border-[#cfd6dd] bg-white px-3 py-3 text-base text-neutral-950 outline-none transition focus:border-[#155e75] focus:ring-2 focus:ring-cyan-800/10 dark:border-[#2f3742] dark:bg-[#171a21] dark:text-[#f5f7fa] dark:focus:border-[#22d3ee] dark:focus:ring-cyan-300/10;
+  }
+
+  .field-button-primary {
+    @apply grid min-h-11 place-items-center rounded-md bg-[#155e75] px-4 text-sm font-semibold text-white transition hover:bg-[#0e4f63] disabled:cursor-not-allowed disabled:opacity-50 dark:bg-[#22d3ee] dark:text-[#082f49] dark:hover:bg-[#67e8f9];
+  }
+
+  .field-button-secondary {
+    @apply grid min-h-10 place-items-center rounded-md border border-[#cfd6dd] bg-white px-4 text-sm font-medium text-neutral-800 transition hover:border-[#155e75] hover:text-[#155e75] dark:border-[#2f3742] dark:bg-[#171a21] dark:text-neutral-100 dark:hover:border-[#22d3ee] dark:hover:text-[#67e8f9];
+  }
+
+  .field-link {
+    @apply text-sm font-medium text-[#155e75] hover:text-[#0e4f63] dark:text-[#67e8f9] dark:hover:text-[#a5f3fc];
+  }
+
+  .field-alert-error {
+    @apply rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-900 dark:border-red-900 dark:bg-red-950 dark:text-red-100;
+  }
+
+  .field-alert-success {
+    @apply rounded-lg border border-emerald-200 bg-emerald-50 p-5 text-emerald-950 dark:border-emerald-900 dark:bg-emerald-950 dark:text-emerald-100;
+  }
+
+  .field-alert-warning {
+    @apply rounded-lg border border-amber-200 bg-amber-50 p-5 text-amber-950 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-100;
+  }
+
+  .status-badge {
+    @apply inline-flex w-fit items-center rounded-md border px-2.5 py-1 text-xs font-semibold;
+  }
+
+  .status-neutral {
+    @apply border-neutral-300 bg-neutral-100 text-neutral-700 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-200;
+  }
+
+  .status-blue {
+    @apply border-blue-200 bg-blue-50 text-blue-800 dark:border-blue-900 dark:bg-blue-950 dark:text-blue-200;
+  }
+
+  .status-cyan {
+    @apply border-cyan-200 bg-cyan-50 text-cyan-800 dark:border-cyan-900 dark:bg-cyan-950 dark:text-cyan-200;
+  }
+
+  .status-amber {
+    @apply border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-100;
+  }
+
+  .status-orange {
+    @apply border-orange-200 bg-orange-50 text-orange-800 dark:border-orange-900 dark:bg-orange-950 dark:text-orange-100;
+  }
+
+  .status-green {
+    @apply border-green-200 bg-green-50 text-green-800 dark:border-green-900 dark:bg-green-950 dark:text-green-100;
+  }
+
+  .status-emerald {
+    @apply border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950 dark:text-emerald-100;
+  }
+
+  .status-violet {
+    @apply border-violet-200 bg-violet-50 text-violet-800 dark:border-violet-900 dark:bg-violet-950 dark:text-violet-100;
+  }
+}
