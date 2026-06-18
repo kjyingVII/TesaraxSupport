@@ -1126,3 +1126,7 @@ This file records meaningful project updates, decisions, and implementation step
 
 - Added Git ignore rules to keep `.env`, backups, and uploaded files out of the repository.
 - Added `data/uploads/.gitkeep` so the upload folder structure can exist after cloning without committing user files.
+
+## 2026-06-18 - Prisma Seed Command
+
+- Added Prisma seed configuration to the API package so `prisma db seed` runs `prisma/seed-demo-users.js`.
