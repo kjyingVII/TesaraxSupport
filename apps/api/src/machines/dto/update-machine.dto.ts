@@ -7,7 +7,6 @@ export type UpdateMachineDto = {
   serviceReminderIntervalDays?: number;
   lastServiceAt?: string | null;
   nextServiceDueAt?: string | null;
-  lastUpgradeAt?: string | null;
   installationDate?: string | null;
   warrantyExpiryDate?: string | null;
   internalRemarks?: string | null;

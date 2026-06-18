@@ -24,22 +24,17 @@ export enum TicketPriority {
   MachineDown = "MACHINE_DOWN"
 }
 
-export enum MachineLogType {
-  Service = "SERVICE",
-  Upgrade = "UPGRADE"
-}
-
-export enum MachineServiceType {
+export enum MachineActivityType {
   CorrectiveService = "CORRECTIVE_SERVICE",
   MachineMaintenance = "MACHINE_MAINTENANCE",
   ComponentReplacement = "COMPONENT_REPLACEMENT",
   InspectionDiagnosis = "INSPECTION_DIAGNOSIS",
+  Upgrade = "UPGRADE",
   Other = "OTHER"
 }
 
 export enum TimelineItemType {
-  Service = "SERVICE",
-  Upgrade = "UPGRADE",
+  MachineLog = "MACHINE_LOG",
   Ticket = "TICKET"
 }
 
@@ -48,6 +43,7 @@ export type MachineTimelineItem = {
   eventDate: string;
   title: string;
   summary: string;
+  activityType?: MachineActivityType | null;
   status?: string | null;
   relatedId: string;
   relatedNumber?: string | null;

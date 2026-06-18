@@ -22,7 +22,7 @@ type TicketSummary = {
 
 type LogSummary = {
   id: string;
-  logType: "SERVICE" | "UPGRADE";
+  activityType: ActivityType;
   workDate: string;
   workSummary: string;
   partsUsed: string | null;
@@ -52,17 +52,13 @@ type PortalResponse = {
       serviceReminderIntervalDays: number;
       lastServiceAt: string | null;
       nextServiceDueAt: string | null;
-      lastUpgradeAt: string | null;
       isActive: boolean;
     };
     tickets: {
       active: TicketSummary[];
       closed: TicketSummary[];
     };
-    logs: {
-      service: LogSummary[];
-      upgrade: LogSummary[];
-    };
+    logs: LogSummary[];
     documents: MachineDocument[];
   };
 };
@@ -224,11 +220,8 @@ export function MachinePortalPage({ publicId }: { publicId: string }) {
               <ListPanel title="Closed Tickets" empty="No closed tickets.">
                 {portal.tickets.closed.map((ticket) => <TicketRow key={ticket.id} publicId={publicId} ticket={ticket} />)}
               </ListPanel>
-              <ListPanel title="Service Log" empty="No service logs.">
-                {portal.logs.service.map((log) => <LogRow key={log.id} log={log} />)}
-              </ListPanel>
-              <ListPanel title="Upgrade Log" empty="No upgrade logs.">
-                {portal.logs.upgrade.map((log) => <LogRow key={log.id} log={log} />)}
+              <ListPanel title="Machine Activity Log" empty="No machine activity logs.">
+                {portal.logs.map((log) => <LogRow key={log.id} log={log} />)}
               </ListPanel>
             </section>
           </>
@@ -277,7 +270,7 @@ function LogRow({ log }: { log: LogSummary }) {
     <article className="field-panel-subtle text-sm">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <span className="font-semibold">{formatDate(log.workDate)}</span>
-        <span className={`status-badge ${log.logType === "SERVICE" ? "status-cyan" : "status-violet"}`}>{log.logType}</span>
+        <span className="status-badge status-cyan">{activityTypeLabel(log.activityType)}</span>
       </div>
       <p className="mt-2 whitespace-pre-wrap leading-6 text-neutral-700 dark:text-neutral-200">{log.workSummary}</p>
       {log.partsUsed ? <p className="field-muted mt-2">Parts: {log.partsUsed}</p> : null}
@@ -285,6 +278,32 @@ function LogRow({ log }: { log: LogSummary }) {
       {log.upgradeDescription ? <p className="field-muted mt-1">{log.upgradeDescription}</p> : null}
     </article>
   );
+}
+
+type ActivityType =
+  | "CORRECTIVE_SERVICE"
+  | "MACHINE_MAINTENANCE"
+  | "COMPONENT_REPLACEMENT"
+  | "INSPECTION_DIAGNOSIS"
+  | "UPGRADE"
+  | "OTHER";
+
+function activityTypeLabel(value: ActivityType) {
+  switch (value) {
+    case "MACHINE_MAINTENANCE":
+      return "Machine Maintenance";
+    case "COMPONENT_REPLACEMENT":
+      return "Component Replacement";
+    case "INSPECTION_DIAGNOSIS":
+      return "Inspection / Diagnosis";
+    case "UPGRADE":
+      return "Upgrade";
+    case "OTHER":
+      return "Other";
+    case "CORRECTIVE_SERVICE":
+    default:
+      return "Corrective Service";
+  }
 }
 
 function DocumentRow({ document, onDownload }: { document: MachineDocument; onDownload: (document: MachineDocument) => void }) {

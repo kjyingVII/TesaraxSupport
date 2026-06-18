@@ -169,7 +169,6 @@ export class MachinesService {
     }
     if (dto.lastServiceAt !== undefined) data.lastServiceAt = this.parseNullableDate(dto.lastServiceAt, "lastServiceAt");
     if (dto.nextServiceDueAt !== undefined) data.nextServiceDueAt = this.parseNullableDate(dto.nextServiceDueAt, "nextServiceDueAt");
-    if (dto.lastUpgradeAt !== undefined) data.lastUpgradeAt = this.parseNullableDate(dto.lastUpgradeAt, "lastUpgradeAt");
     if (dto.installationDate !== undefined) data.installationDate = this.parseNullableDate(dto.installationDate, "installationDate");
     if (dto.warrantyExpiryDate !== undefined) data.warrantyExpiryDate = this.parseNullableDate(dto.warrantyExpiryDate, "warrantyExpiryDate");
     if (dto.internalRemarks !== undefined) data.internalRemarks = this.cleanNullableString(dto.internalRemarks);

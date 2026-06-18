@@ -129,8 +129,7 @@ export function NewMachineLogPage({ machineId }: { machineId: string }) {
       await apiRequest(`/api/machines/${machineId}/logs`, {
         method: "POST",
         body: JSON.stringify({
-          logType: logTypeFromActivity(form.activityType),
-          serviceType: serviceTypeFromActivity(form.activityType),
+          activityType: form.activityType,
           workDate: new Date(form.workDate).toISOString(),
           workSummary: form.workSummary,
           partsUsed: form.partsUsed,
@@ -376,14 +375,6 @@ function toDateTimeLocal(value: string) {
   const date = new Date(value);
   const offsetMs = date.getTimezoneOffset() * 60 * 1000;
   return new Date(date.getTime() - offsetMs).toISOString().slice(0, 16);
-}
-
-function logTypeFromActivity(value: ActivityType) {
-  return value === "UPGRADE" ? "UPGRADE" : "SERVICE";
-}
-
-function serviceTypeFromActivity(value: ActivityType) {
-  return value === "UPGRADE" ? undefined : value;
 }
 
 function activityTypeLabel(value: ActivityType) {

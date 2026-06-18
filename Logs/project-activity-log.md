@@ -1142,3 +1142,10 @@ This file records meaningful project updates, decisions, and implementation step
 
 - Simplified the add machine log form to use one Type dropdown: Corrective Service, Machine Maintenance, Component Replacement, Inspection / Diagnosis, Upgrade, and Other.
 - Kept Upgrade mapped to the existing upgrade log behavior while ordinary service types remain activity-only unless Machine Maintenance is selected.
+
+## 2026-06-19 - Unified Machine Log Data Model
+
+- Replaced separate machine log `logType` and service `serviceType` fields with one `activityType` field.
+- Added `MachineActivityType` values for corrective service, machine maintenance, component replacement, inspection/diagnosis, upgrade, and other.
+- Migrated existing service/upgrade log data into `activityType` and removed the separate `lastUpgradeAt` machine field.
+- Updated staff and public machine log views to treat upgrade as a normal machine activity type.

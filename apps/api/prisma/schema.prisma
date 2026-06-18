@@ -33,16 +33,12 @@ enum TicketPriority {
   MACHINE_DOWN
 }
 
-enum MachineLogType {
-  SERVICE
-  UPGRADE
-}
-
-enum MachineServiceType {
+enum MachineActivityType {
   CORRECTIVE_SERVICE
   MACHINE_MAINTENANCE
   COMPONENT_REPLACEMENT
   INSPECTION_DIAGNOSIS
+  UPGRADE
   OTHER
 }
 
@@ -149,7 +145,6 @@ model Machine {
   serviceReminderIntervalDays Int
   lastServiceAt               DateTime?
   nextServiceDueAt            DateTime?
-  lastUpgradeAt               DateTime?
   installationDate            DateTime?
   warrantyExpiryDate          DateTime?
   internalRemarks             String?
@@ -293,8 +288,7 @@ model MachineLog {
   ticket                     Ticket?        @relation(fields: [ticketId], references: [id])
   serviceReportId            String?
   serviceReport              ServiceReport? @relation(fields: [serviceReportId], references: [id])
-  logType                    MachineLogType
-  serviceType                MachineServiceType?
+  activityType               MachineActivityType
   workDate                   DateTime
   workSummary                String
   partsUsed                  String?
@@ -315,8 +309,7 @@ model MachineLog {
   @@index([machineId])
   @@index([ticketId])
   @@index([serviceReportId])
-  @@index([logType])
-  @@index([serviceType])
+  @@index([activityType])
   @@index([workDate])
 }
 

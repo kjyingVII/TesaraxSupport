@@ -12,7 +12,7 @@ export class MachineLogsController {
   @Get("logs")
   listLogs(
     @Param("machineId") machineId: string,
-    @Query("logType") logType?: string,
+    @Query("activityType") activityType?: string,
     @Query("dateFrom") dateFrom?: string,
     @Query("dateTo") dateTo?: string,
     @Query("search") search?: string,
@@ -20,7 +20,7 @@ export class MachineLogsController {
     @Query("pageSize") pageSize?: string
   ) {
     return this.machineLogsService.listLogs(machineId, {
-      logType,
+      activityType,
       dateFrom,
       dateTo,
       search,

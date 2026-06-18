@@ -15,14 +15,14 @@ type MachineDetail = {
   serviceReminderIntervalDays: number;
   lastServiceAt: string | null;
   nextServiceDueAt: string | null;
-  lastUpgradeAt: string | null;
   customer: {
     name: string;
   };
 };
 
 type TimelineItem = {
-  type: "SERVICE" | "UPGRADE" | "TICKET";
+  type: "MACHINE_LOG" | "TICKET";
+  activityType: ActivityType | null;
   eventDate: string;
   title: string;
   summary: string;
@@ -35,8 +35,7 @@ type TimelineItem = {
 
 type MachineLogDetail = {
   id: string;
-  logType: "SERVICE" | "UPGRADE";
-  serviceType: "CORRECTIVE_SERVICE" | "MACHINE_MAINTENANCE" | "COMPONENT_REPLACEMENT" | "INSPECTION_DIAGNOSIS" | "OTHER" | null;
+  activityType: ActivityType;
   workDate: string;
   workSummary: string;
   partsUsed: string | null;
@@ -149,8 +148,13 @@ type SelectedDetail =
 
 const typeFilters = [
   { label: "All", value: "" },
-  { label: "Service", value: "SERVICE" },
+  { label: "Machine Logs", value: "MACHINE_LOG" },
+  { label: "Corrective Service", value: "CORRECTIVE_SERVICE" },
+  { label: "Machine Maintenance", value: "MACHINE_MAINTENANCE" },
+  { label: "Component Replacement", value: "COMPONENT_REPLACEMENT" },
+  { label: "Inspection / Diagnosis", value: "INSPECTION_DIAGNOSIS" },
   { label: "Upgrade", value: "UPGRADE" },
+  { label: "Other", value: "OTHER" },
   { label: "Ticket", value: "TICKET" }
 ];
 
@@ -464,20 +468,17 @@ export function MachineLogPage({ machineId }: { machineId: string }) {
 function MachineLogDetailPanel({ detail }: { detail: MachineLogDetail }) {
   return (
     <div className="mt-4 grid gap-4">
-      <InfoLine label="Type" value={detail.logType} />
-      {detail.logType === "SERVICE" ? (
-        <InfoLine label="Service Purpose" value={serviceTypeLabel(detail.serviceType)} />
-      ) : null}
+      <InfoLine label="Activity Type" value={activityTypeLabel(detail.activityType)} />
       <InfoLine label="Work Date" value={formatDate(detail.workDate)} />
       <InfoLine label="Summary" value={detail.workSummary} />
       <InfoLine label="Parts Used" value={detail.partsUsed || "None recorded"} />
-      {detail.logType === "UPGRADE" ? (
+      {detail.activityType === "UPGRADE" ? (
         <>
           <InfoLine label="Upgrade Version" value={detail.upgradeVersion || "None recorded"} />
           <InfoLine label="Upgrade Description" value={detail.upgradeDescription || "None recorded"} />
         </>
       ) : null}
-      {detail.serviceType === "MACHINE_MAINTENANCE" ? (
+      {detail.activityType === "MACHINE_MAINTENANCE" ? (
         <InfoLine label="Next Machine Maintenance Override" value={detail.nextServiceDueOverrideAt ? formatDate(detail.nextServiceDueOverrideAt) : "None"} />
       ) : null}
       <InfoLine label="Requester Name" value={detail.requesterConfirmedName || detail.loggedByRequesterName || "Not recorded"} />
@@ -576,13 +577,21 @@ function InfoLine({ label, value }: { label: string; value: string }) {
 
 function TypeBadge({ value }: { value: string }) {
   return (
-    <span className={`status-badge ${value === "SERVICE" ? "status-cyan" : value === "UPGRADE" ? "status-violet" : "status-blue"}`}>
-      {value}
+    <span className={`status-badge ${value === "MACHINE_LOG" ? "status-cyan" : "status-blue"}`}>
+      {value.replaceAll("_", " ")}
     </span>
   );
 }
 
-function serviceTypeLabel(value: MachineLogDetail["serviceType"]) {
+type ActivityType =
+  | "CORRECTIVE_SERVICE"
+  | "MACHINE_MAINTENANCE"
+  | "COMPONENT_REPLACEMENT"
+  | "INSPECTION_DIAGNOSIS"
+  | "UPGRADE"
+  | "OTHER";
+
+function activityTypeLabel(value: ActivityType) {
   switch (value) {
     case "MACHINE_MAINTENANCE":
       return "Machine Maintenance";
@@ -592,6 +601,8 @@ function serviceTypeLabel(value: MachineLogDetail["serviceType"]) {
       return "Inspection / Diagnosis";
     case "OTHER":
       return "Other";
+    case "UPGRADE":
+      return "Upgrade";
     case "CORRECTIVE_SERVICE":
     default:
       return "Corrective Service";

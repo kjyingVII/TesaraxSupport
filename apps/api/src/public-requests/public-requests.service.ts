@@ -187,7 +187,6 @@ export class PublicRequestsService {
         serviceReminderIntervalDays: true,
         lastServiceAt: true,
         nextServiceDueAt: true,
-        lastUpgradeAt: true,
         customer: {
           select: {
             name: true,
@@ -213,7 +212,7 @@ export class PublicRequestsService {
         logs: {
           select: {
             id: true,
-            logType: true,
+            activityType: true,
             workDate: true,
             workSummary: true,
             partsUsed: true,
@@ -271,17 +270,13 @@ export class PublicRequestsService {
           serviceReminderIntervalDays: machine.serviceReminderIntervalDays,
           lastServiceAt: machine.lastServiceAt,
           nextServiceDueAt: machine.nextServiceDueAt,
-          lastUpgradeAt: machine.lastUpgradeAt,
           isActive: machine.isActive && machine.customer.isActive
         },
         tickets: {
           active: machine.tickets.filter((ticket) => !closedStatuses.has(ticket.status)),
           closed: machine.tickets.filter((ticket) => closedStatuses.has(ticket.status))
         },
-        logs: {
-          service: machine.logs.filter((log) => log.logType === "SERVICE"),
-          upgrade: machine.logs.filter((log) => log.logType === "UPGRADE")
-        },
+        logs: machine.logs,
         documents: machine.documents
       }
     };

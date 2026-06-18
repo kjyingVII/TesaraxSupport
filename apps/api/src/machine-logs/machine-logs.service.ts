@@ -1,11 +1,11 @@
 import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
-import { MachineLogType, MachineServiceType, Prisma } from "@prisma/client";
+import { MachineActivityType, Prisma } from "@prisma/client";
 import { AttachmentsService } from "../attachments/attachments.service";
 import { PrismaService } from "../prisma/prisma.service";
 import { CreateMachineLogDto } from "./dto/create-machine-log.dto";
 
 type ListMachineLogsInput = {
-  logType?: string;
+  activityType?: string;
   dateFrom?: string;
   dateTo?: string;
   search?: string;
@@ -23,7 +23,8 @@ type TimelineInput = {
 };
 
 type TimelineItem = {
-  type: "SERVICE" | "UPGRADE" | "TICKET";
+  type: "MACHINE_LOG" | "TICKET";
+  activityType: MachineActivityType | null;
   eventDate: Date;
   title: string;
   summary: string;
@@ -48,8 +49,8 @@ export class MachineLogsService {
     const pageSize = this.parsePositiveInteger(input.pageSize, 20);
     const where: Prisma.MachineLogWhereInput = { machineId };
 
-    if (input.logType?.trim()) {
-      where.logType = this.parseLogType(input.logType);
+    if (input.activityType?.trim()) {
+      where.activityType = this.parseActivityType(input.activityType);
     }
 
     if (input.dateFrom || input.dateTo) {
@@ -113,10 +114,7 @@ export class MachineLogsService {
 
   async createLog(machineId: string, dto: CreateMachineLogDto) {
     const machine = await this.getMachine(machineId);
-    const logType = this.parseLogType(dto.logType);
-    const serviceType = logType === MachineLogType.SERVICE
-      ? this.parseServiceType(dto.serviceType)
-      : null;
+    const activityType = this.parseActivityType(dto.activityType);
     const workDate = this.parseRequiredDate(dto.workDate, "workDate");
     const workSummary = this.requiredString(dto.workSummary, "Work summary is required.");
     const ticketId = this.cleanOptionalString(dto.ticketId);
@@ -148,8 +146,7 @@ export class MachineLogsService {
           machineId,
           ticketId,
           serviceReportId,
-          logType,
-          serviceType,
+          activityType,
           workDate,
           workSummary,
           partsUsed: this.cleanOptionalString(dto.partsUsed),
@@ -177,7 +174,7 @@ export class MachineLogsService {
         }
       });
 
-      if (logType === MachineLogType.SERVICE && serviceType === MachineServiceType.MACHINE_MAINTENANCE) {
+      if (activityType === MachineActivityType.MACHINE_MAINTENANCE) {
         await tx.machine.update({
           where: { id: machineId },
           data: {
@@ -185,15 +182,6 @@ export class MachineLogsService {
             nextServiceDueAt:
               nextServiceDueOverrideAt ??
               this.addDays(workDate, machine.serviceReminderIntervalDays)
-          }
-        });
-      }
-
-      if (logType === MachineLogType.UPGRADE) {
-        await tx.machine.update({
-          where: { id: machineId },
-          data: {
-            lastUpgradeAt: workDate
           }
         });
       }
@@ -282,7 +270,7 @@ export class MachineLogsService {
       this.prisma.machineLog.findMany({
         where: {
           machineId,
-          ...(type === "SERVICE" || type === "UPGRADE" ? { logType: type } : {}),
+          ...(this.isActivityTimelineType(type) ? { activityType: type } : {}),
           ...(type === "TICKET" ? { id: "__never__" } : {}),
           ...(dateFilter ? { workDate: dateFilter } : {})
         },
@@ -303,7 +291,7 @@ export class MachineLogsService {
       this.prisma.ticket.findMany({
         where: {
           machineId,
-          ...(type === "SERVICE" || type === "UPGRADE" ? { id: "__never__" } : {}),
+          ...(type === "MACHINE_LOG" || this.isActivityTimelineType(type) ? { id: "__never__" } : {}),
           ...(dateFilter ? { createdAt: dateFilter } : {})
         },
         include: {
@@ -319,9 +307,10 @@ export class MachineLogsService {
 
     const items: TimelineItem[] = [
       ...machineLogs.map((log) => ({
-        type: log.logType,
+        type: "MACHINE_LOG" as const,
+        activityType: log.activityType,
         eventDate: log.workDate,
-        title: log.logType === MachineLogType.SERVICE ? `${this.serviceTypeLabel(log.serviceType)} completed` : "Upgrade completed",
+        title: `${this.activityTypeLabel(log.activityType)} completed`,
         summary: log.workSummary,
         status: null,
         relatedId: log.id,
@@ -331,6 +320,7 @@ export class MachineLogsService {
       })),
       ...tickets.map((ticket) => ({
         type: "TICKET" as const,
+        activityType: null,
         eventDate: ticket.createdAt,
         title: ticket.issueTitle,
         summary: ticket.issueDescription,
@@ -428,37 +418,29 @@ export class MachineLogsService {
     }
   }
 
-  private parseLogType(value: string | undefined) {
-    const logType = value?.trim().toUpperCase();
+  private parseActivityType(value: string | undefined) {
+    const activityType = value?.trim().toUpperCase() || MachineActivityType.CORRECTIVE_SERVICE;
 
-    if (!logType || !Object.values(MachineLogType).includes(logType as MachineLogType)) {
-      throw new BadRequestException("logType must be SERVICE or UPGRADE.");
+    if (!Object.values(MachineActivityType).includes(activityType as MachineActivityType)) {
+      throw new BadRequestException("activityType must be CORRECTIVE_SERVICE, MACHINE_MAINTENANCE, COMPONENT_REPLACEMENT, INSPECTION_DIAGNOSIS, UPGRADE, or OTHER.");
     }
 
-    return logType as MachineLogType;
+    return activityType as MachineActivityType;
   }
 
-  private parseServiceType(value: string | undefined) {
-    const serviceType = value?.trim().toUpperCase() || MachineServiceType.CORRECTIVE_SERVICE;
-
-    if (!Object.values(MachineServiceType).includes(serviceType as MachineServiceType)) {
-      throw new BadRequestException("serviceType must be CORRECTIVE_SERVICE, MACHINE_MAINTENANCE, COMPONENT_REPLACEMENT, INSPECTION_DIAGNOSIS, or OTHER.");
-    }
-
-    return serviceType as MachineServiceType;
-  }
-
-  private serviceTypeLabel(value: MachineServiceType | null) {
+  private activityTypeLabel(value: MachineActivityType) {
     switch (value) {
-      case MachineServiceType.MACHINE_MAINTENANCE:
+      case MachineActivityType.MACHINE_MAINTENANCE:
         return "Machine maintenance";
-      case MachineServiceType.COMPONENT_REPLACEMENT:
+      case MachineActivityType.COMPONENT_REPLACEMENT:
         return "Component replacement";
-      case MachineServiceType.INSPECTION_DIAGNOSIS:
+      case MachineActivityType.INSPECTION_DIAGNOSIS:
         return "Inspection / diagnosis";
-      case MachineServiceType.OTHER:
-        return "Service";
-      case MachineServiceType.CORRECTIVE_SERVICE:
+      case MachineActivityType.UPGRADE:
+        return "Upgrade";
+      case MachineActivityType.OTHER:
+        return "Other";
+      case MachineActivityType.CORRECTIVE_SERVICE:
       default:
         return "Corrective service";
     }
@@ -468,11 +450,15 @@ export class MachineLogsService {
     if (!value?.trim()) return undefined;
 
     const type = value.trim().toUpperCase();
-    if (type !== "SERVICE" && type !== "UPGRADE" && type !== "TICKET") {
-      throw new BadRequestException("type must be SERVICE, UPGRADE, or TICKET.");
+    if (type === "MACHINE_LOG" || type === "TICKET" || this.isActivityTimelineType(type)) {
+      return type;
     }
 
-    return type;
+    throw new BadRequestException("type must be MACHINE_LOG, TICKET, or a valid machine activity type.");
+  }
+
+  private isActivityTimelineType(value: string | undefined): value is MachineActivityType {
+    return Object.values(MachineActivityType).includes(value as MachineActivityType);
   }
 
   private buildDateFilter(dateFrom?: Date, dateTo?: Date) {
