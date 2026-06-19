@@ -32,6 +32,7 @@ type PortalResponse = {
 type LogForm = {
   activityType: ActivityType;
   workDate: string;
+  workEndAt: string;
   workSummary: string;
   partsUsed: string;
   upgradeVersion: string;
@@ -46,6 +47,7 @@ type LogForm = {
 const defaultForm: LogForm = {
   activityType: "CORRECTIVE_SERVICE",
   workDate: "",
+  workEndAt: "",
   workSummary: "",
   partsUsed: "",
   upgradeVersion: "",
@@ -84,6 +86,7 @@ export function PublicMachineLogPage({ publicId }: { publicId: string }) {
       router.replace(`/m/${publicId}/access`);
       return;
     }
+    const accessSession = session;
 
     setForm((current) => ({
       ...current,
@@ -97,7 +100,7 @@ export function PublicMachineLogPage({ publicId }: { publicId: string }) {
       try {
         const response = await apiRequest<PortalResponse>(`/api/public/machines/${publicId}/portal`, {
           headers: {
-            Authorization: `Bearer ${session.accessToken}`
+            Authorization: `Bearer ${accessSession.accessToken}`
           }
         });
         if (!mounted) return;
@@ -151,6 +154,7 @@ export function PublicMachineLogPage({ publicId }: { publicId: string }) {
         body: JSON.stringify({
           activityType: form.activityType,
           workDate: new Date(form.workDate).toISOString(),
+          workEndAt: form.workEndAt ? new Date(form.workEndAt).toISOString() : undefined,
           workSummary: form.workSummary,
           partsUsed: form.partsUsed,
           upgradeVersion: form.activityType === "UPGRADE" ? form.upgradeVersion : undefined,
@@ -241,7 +245,8 @@ export function PublicMachineLogPage({ publicId }: { publicId: string }) {
                 Use Machine Maintenance only when the full machine maintenance cycle was completed.
               </p>
             </label>
-            <TextInput label="Work Date" type="datetime-local" value={form.workDate} required onChange={(value) => updateForm("workDate", value)} />
+            <TextInput label="Work Time" type="datetime-local" value={form.workDate} required onChange={(value) => updateForm("workDate", value)} />
+            <TextInput label="End Time" type="datetime-local" value={form.workEndAt} onChange={(value) => updateForm("workEndAt", value)} />
             <TextAreaInput label="Issue / Work Summary" value={form.workSummary} required onChange={(value) => updateForm("workSummary", value)} />
             <TextInput label="Parts Used" value={form.partsUsed} onChange={(value) => updateForm("partsUsed", value)} />
             {form.activityType === "UPGRADE" ? (

@@ -116,6 +116,7 @@ export class MachineLogsService {
     const machine = await this.getMachine(machineId);
     const activityType = this.parseActivityType(dto.activityType);
     const workDate = this.parseRequiredDate(dto.workDate, "workDate");
+    const workEndAt = this.parseNullableDate(dto.workEndAt, "workEndAt");
     const workSummary = this.requiredString(dto.workSummary, "Work summary is required.");
     const ticketId = this.cleanOptionalString(dto.ticketId);
     const serviceReportId = this.cleanOptionalString(dto.serviceReportId);
@@ -133,6 +134,10 @@ export class MachineLogsService {
       await this.ensureUserExists(loggedByUserId);
     }
 
+    if (workEndAt && workEndAt < workDate) {
+      throw new BadRequestException("workEndAt cannot be earlier than workDate.");
+    }
+
     const preparedAttachments = await this.attachmentsService.prepareTicketAttachments(dto.attachments);
 
     const nextServiceDueOverrideAt = this.parseNullableDate(
@@ -148,6 +153,7 @@ export class MachineLogsService {
           serviceReportId,
           activityType,
           workDate,
+          workEndAt,
           workSummary,
           partsUsed: this.cleanOptionalString(dto.partsUsed),
           upgradeVersion: this.cleanOptionalString(dto.upgradeVersion),

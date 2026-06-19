@@ -1,0 +1,1 @@
+ALTER TABLE "MachineLog" ADD COLUMN "workEndAt" TIMESTAMP(3);

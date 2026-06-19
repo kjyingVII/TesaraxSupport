@@ -1168,3 +1168,9 @@ This file records meaningful project updates, decisions, and implementation step
 - Added an "Add Machine Log" action on the QR machine page so plant engineers can record minor issues and solutions without raising a ticket.
 - Created a mobile-friendly public add-log page with activity type, issue/work summary, contact details, optional maintenance override, and attachments.
 - Wrote public machine log creation to the audit log for traceability.
+
+## 2026-06-19 - Machine Log End Time
+
+- Added optional machine log end time for staff and public plant engineer log entry.
+- Added validation so end time cannot be earlier than work time.
+- Updated machine log displays to show date and time instead of date only.

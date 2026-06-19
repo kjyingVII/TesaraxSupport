@@ -37,6 +37,7 @@ type MachineLogDetail = {
   id: string;
   activityType: ActivityType;
   workDate: string;
+  workEndAt: string | null;
   workSummary: string;
   partsUsed: string | null;
   upgradeVersion: string | null;
@@ -427,7 +428,7 @@ export function MachineLogPage({ machineId }: { machineId: string }) {
                       <h3 className="mt-3 text-base font-semibold">{item.title}</h3>
                       <p className="field-muted mt-2 leading-6">{item.summary}</p>
                     </div>
-                    <p className="field-muted">{formatDate(item.eventDate)}</p>
+                    <p className="field-muted">{formatDateTime(item.eventDate)}</p>
                   </div>
                   <div className="mt-3 flex flex-wrap gap-2 text-xs text-[#5f6368] dark:text-[#a8b0ba]">
                     <span className="rounded-md border border-[#d9dee3] px-2 py-1 dark:border-[#2f3742]">
@@ -469,7 +470,8 @@ function MachineLogDetailPanel({ detail }: { detail: MachineLogDetail }) {
   return (
     <div className="mt-4 grid gap-4">
       <InfoLine label="Activity Type" value={activityTypeLabel(detail.activityType)} />
-      <InfoLine label="Work Date" value={formatDate(detail.workDate)} />
+      <InfoLine label="Work Time" value={formatDateTime(detail.workDate)} />
+      <InfoLine label="End Time" value={detail.workEndAt ? formatDateTime(detail.workEndAt) : "Not recorded"} />
       <InfoLine label="Summary" value={detail.workSummary} />
       <InfoLine label="Parts Used" value={detail.partsUsed || "None recorded"} />
       {detail.activityType === "UPGRADE" ? (
@@ -625,6 +627,10 @@ function formatDate(value: string) {
     hour: "2-digit",
     minute: "2-digit"
   }).format(new Date(value));
+}
+
+function formatDateTime(value: string) {
+  return formatDate(value);
 }
 
 function formatBytes(value: number) {

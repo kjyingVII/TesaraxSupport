@@ -41,6 +41,7 @@ type ActivityType =
 type LogForm = {
   activityType: ActivityType;
   workDate: string;
+  workEndAt: string;
   workSummary: string;
   partsUsed: string;
   upgradeVersion: string;
@@ -55,6 +56,7 @@ type LogForm = {
 const defaultLogForm: LogForm = {
   activityType: "CORRECTIVE_SERVICE",
   workDate: "",
+  workEndAt: "",
   workSummary: "",
   partsUsed: "",
   upgradeVersion: "",
@@ -134,6 +136,7 @@ export function NewMachineLogPage({ machineId }: { machineId: string }) {
         body: JSON.stringify({
           activityType: form.activityType,
           workDate: new Date(form.workDate).toISOString(),
+          workEndAt: form.workEndAt ? new Date(form.workEndAt).toISOString() : undefined,
           workSummary: form.workSummary,
           partsUsed: form.partsUsed,
           upgradeVersion: form.activityType === "UPGRADE" ? form.upgradeVersion : undefined,
@@ -238,7 +241,8 @@ export function NewMachineLogPage({ machineId }: { machineId: string }) {
                 Only Machine Maintenance updates the machine maintenance schedule. Other log types are saved as activity history only.
               </p>
             </label>
-            <TextInput label="Work Date" type="datetime-local" value={form.workDate} required onChange={(value) => updateForm("workDate", value)} />
+            <TextInput label="Work Time" type="datetime-local" value={form.workDate} required onChange={(value) => updateForm("workDate", value)} />
+            <TextInput label="End Time" type="datetime-local" value={form.workEndAt} onChange={(value) => updateForm("workEndAt", value)} />
             <TextAreaInput label="Work Summary" value={form.workSummary} required onChange={(value) => updateForm("workSummary", value)} />
             <TextInput label="Parts Used" value={form.partsUsed} onChange={(value) => updateForm("partsUsed", value)} />
             {form.activityType === "UPGRADE" ? (

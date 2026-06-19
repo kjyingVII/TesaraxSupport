@@ -217,6 +217,7 @@ export class PublicRequestsService {
             id: true,
             activityType: true,
             workDate: true,
+            workEndAt: true,
             workSummary: true,
             partsUsed: true,
             upgradeVersion: true,
@@ -300,6 +301,7 @@ export class PublicRequestsService {
     const log = await this.machineLogsService.createLog(access.machineId, {
       activityType: dto.activityType,
       workDate: dto.workDate,
+      workEndAt: dto.workEndAt,
       workSummary: dto.workSummary,
       partsUsed: dto.partsUsed,
       upgradeVersion: dto.upgradeVersion,

@@ -3,6 +3,7 @@ import { UploadTicketAttachmentDto } from "../../attachments/dto/upload-ticket-a
 export type CreateMachineLogDto = {
   activityType?: string;
   workDate?: string;
+  workEndAt?: string | null;
   workSummary?: string;
   partsUsed?: string;
   upgradeVersion?: string;

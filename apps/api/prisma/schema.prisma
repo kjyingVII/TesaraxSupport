@@ -290,6 +290,7 @@ model MachineLog {
   serviceReport              ServiceReport? @relation(fields: [serviceReportId], references: [id])
   activityType               MachineActivityType
   workDate                   DateTime
+  workEndAt                  DateTime?
   workSummary                String
   partsUsed                  String?
   upgradeVersion             String?

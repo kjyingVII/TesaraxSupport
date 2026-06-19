@@ -24,6 +24,7 @@ type LogSummary = {
   id: string;
   activityType: ActivityType;
   workDate: string;
+  workEndAt: string | null;
   workSummary: string;
   partsUsed: string | null;
   upgradeVersion: string | null;
@@ -279,9 +280,10 @@ function LogRow({ log }: { log: LogSummary }) {
   return (
     <article className="field-panel-subtle text-sm">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <span className="font-semibold">{formatDate(log.workDate)}</span>
+        <span className="font-semibold">{formatDateTime(log.workDate)}</span>
         <span className="status-badge status-cyan">{activityTypeLabel(log.activityType)}</span>
       </div>
+      {log.workEndAt ? <p className="field-muted mt-1">End: {formatDateTime(log.workEndAt)}</p> : null}
       <p className="mt-2 whitespace-pre-wrap leading-6 text-neutral-700 dark:text-neutral-200">{log.workSummary}</p>
       {log.partsUsed ? <p className="field-muted mt-2">Parts: {log.partsUsed}</p> : null}
       {log.upgradeVersion ? <p className="field-muted mt-2">Version: {log.upgradeVersion}</p> : null}
