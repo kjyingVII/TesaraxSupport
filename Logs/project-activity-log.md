@@ -1204,3 +1204,8 @@ This file records meaningful project updates, decisions, and implementation step
 - Added `Caddyfile` routes for the web app and API domains.
 - Added Caddy data/config volumes so certificates persist across container rebuilds.
 - Passed `CORS_ORIGINS` and `PUBLIC_MACHINE_ACCESS_SECRET` from `.env` into the API container.
+
+## 2026-06-19 - Remove Project Caddy Container
+
+- Removed the project-specific Caddy container and Caddyfile from this repository.
+- Kept web and API host ports configurable so a shared VPS-level Caddy can reverse proxy to `13000` and `14000`.
