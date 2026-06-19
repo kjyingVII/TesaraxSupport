@@ -54,6 +54,17 @@ export class PublicRequestsController {
     return this.publicRequestsService.createMachineLog(publicId, dto, authorization, { ipAddress, userAgent });
   }
 
+  @Get(":publicId/logs/:logId")
+  getMachineLog(
+    @Param("publicId") publicId: string,
+    @Param("logId") logId: string,
+    @Headers("authorization") authorization?: string,
+    @Ip() ipAddress?: string,
+    @Headers("user-agent") userAgent?: string
+  ) {
+    return this.publicRequestsService.getMachineLog(publicId, logId, authorization, { ipAddress, userAgent });
+  }
+
   @Get(":publicId/tickets/:ticketId")
   getMachineTicket(
     @Param("publicId") publicId: string,

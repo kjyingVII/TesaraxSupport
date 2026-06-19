@@ -41,6 +41,34 @@ type MachineDocument = {
   createdAt: string;
 };
 
+type LogDetail = LogSummary & {
+  nextServiceDueOverrideAt: string | null;
+  requesterContactPhone: string | null;
+  requesterContactEmail: string | null;
+  requesterConfirmedAt: string | null;
+  loggedByRequesterName: string | null;
+  ticket: {
+    id: string;
+    ticketNumber: string;
+    issueTitle: string;
+    status: string;
+  } | null;
+  serviceReport: {
+    id: string;
+    diagnosis: string;
+    actionTaken: string;
+    resolutionStatus: string;
+  } | null;
+  attachments: Array<{
+    id: string;
+    originalFileName: string;
+    contentType: string;
+    fileSizeBytes: number;
+    uploadedByRequesterName: string | null;
+    createdAt: string;
+  }>;
+};
+
 type PortalResponse = {
   data: {
     machine: {
@@ -66,9 +94,15 @@ type PortalResponse = {
   };
 };
 
+type LogDetailResponse = {
+  data: LogDetail;
+};
+
 export function MachinePortalPage({ publicId }: { publicId: string }) {
   const router = useRouter();
   const [portal, setPortal] = useState<PortalResponse["data"] | null>(null);
+  const [selectedLog, setSelectedLog] = useState<LogDetail | null>(null);
+  const [loadingLogId, setLoadingLogId] = useState<string | null>(null);
   const [requesterName, setRequesterName] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -145,6 +179,30 @@ export function MachinePortalPage({ publicId }: { publicId: string }) {
       window.URL.revokeObjectURL(url);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unable to download document.");
+    }
+  }
+
+  async function openLogDetail(log: LogSummary) {
+    const session = getMachineAccessSession(publicId);
+    if (!session) {
+      router.replace(`/m/${publicId}/access`);
+      return;
+    }
+
+    setLoadingLogId(log.id);
+    setError(null);
+
+    try {
+      const response = await apiRequest<LogDetailResponse>(`/api/public/machines/${publicId}/logs/${log.id}`, {
+        headers: {
+          Authorization: `Bearer ${session.accessToken}`
+        }
+      });
+      setSelectedLog(response.data);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unable to load machine log detail.");
+    } finally {
+      setLoadingLogId(null);
     }
   }
 
@@ -232,7 +290,16 @@ export function MachinePortalPage({ publicId }: { publicId: string }) {
                 {portal.tickets.closed.map((ticket) => <TicketRow key={ticket.id} publicId={publicId} ticket={ticket} />)}
               </ListPanel>
               <ListPanel title="Machine Activity Log" empty="No machine activity logs.">
-                {portal.logs.map((log) => <LogRow key={log.id} log={log} />)}
+                {portal.logs.map((log) => (
+                  <LogRow
+                    key={log.id}
+                    log={log}
+                    isSelected={selectedLog?.id === log.id}
+                    isLoading={loadingLogId === log.id}
+                    onOpen={openLogDetail}
+                  />
+                ))}
+                {selectedLog ? <LogDetailPanel log={selectedLog} /> : null}
               </ListPanel>
             </section>
           </>
@@ -251,12 +318,15 @@ function InfoBox({ label, value }: { label: string; value: string }) {
   );
 }
 
-function ListPanel({ title, empty, children }: { title: string; empty: string; children: React.ReactNode[] }) {
+function ListPanel({ title, empty, children }: { title: string; empty: string; children: React.ReactNode }) {
+  const items = Array.isArray(children) ? children.filter(Boolean) : children;
+  const hasChildren = Array.isArray(items) ? items.length > 0 : Boolean(items);
+
   return (
     <section className="field-panel">
       <h2 className="field-section-title">{title}</h2>
       <div className="mt-4 grid gap-3">
-        {children.length > 0 ? children : <p className="field-muted">{empty}</p>}
+        {hasChildren ? items : <p className="field-muted">{empty}</p>}
       </div>
     </section>
   );
@@ -276,9 +346,25 @@ function TicketRow({ publicId, ticket }: { publicId: string; ticket: TicketSumma
   );
 }
 
-function LogRow({ log }: { log: LogSummary }) {
+function LogRow({
+  log,
+  isSelected,
+  isLoading,
+  onOpen
+}: {
+  log: LogSummary;
+  isSelected: boolean;
+  isLoading: boolean;
+  onOpen: (log: LogSummary) => void;
+}) {
   return (
-    <article className="field-panel-subtle text-sm">
+    <button
+      className={`field-panel-subtle text-left text-sm transition hover:border-[#155e75] dark:hover:border-[#22d3ee] ${
+        isSelected ? "border-[#155e75] bg-cyan-50/70 dark:border-[#22d3ee] dark:bg-[#1f242d]" : ""
+      }`}
+      type="button"
+      onClick={() => onOpen(log)}
+    >
       <div className="flex flex-wrap items-center justify-between gap-2">
         <span className="font-semibold">{formatDateTime(log.workDate)}</span>
         <span className="status-badge status-cyan">{activityTypeLabel(log.activityType)}</span>
@@ -288,7 +374,78 @@ function LogRow({ log }: { log: LogSummary }) {
       {log.partsUsed ? <p className="field-muted mt-2">Parts: {log.partsUsed}</p> : null}
       {log.upgradeVersion ? <p className="field-muted mt-2">Version: {log.upgradeVersion}</p> : null}
       {log.upgradeDescription ? <p className="field-muted mt-1">{log.upgradeDescription}</p> : null}
-    </article>
+      <p className="field-link mt-3">{isLoading ? "Loading..." : "View details"}</p>
+    </button>
+  );
+}
+
+function LogDetailPanel({ log }: { log: LogDetail }) {
+  return (
+    <section className="rounded-md border border-[#155e75] bg-white p-4 text-sm dark:border-[#22d3ee] dark:bg-[#1f242d]">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h3 className="font-semibold">Machine Log Detail</h3>
+        <span className="status-badge status-cyan">{activityTypeLabel(log.activityType)}</span>
+      </div>
+      <div className="mt-4 grid gap-3">
+        <DetailLine label="Work Time" value={formatDateTime(log.workDate)} />
+        <DetailLine label="End Time" value={log.workEndAt ? formatDateTime(log.workEndAt) : "Not recorded"} />
+        <DetailLine label="Summary" value={log.workSummary} multiline />
+        <DetailLine label="Parts Used" value={log.partsUsed || "None recorded"} />
+        {log.activityType === "UPGRADE" ? (
+          <>
+            <DetailLine label="Upgrade Version" value={log.upgradeVersion || "Not recorded"} />
+            <DetailLine label="Upgrade Description" value={log.upgradeDescription || "Not recorded"} multiline />
+          </>
+        ) : null}
+        {log.activityType === "MACHINE_MAINTENANCE" ? (
+          <DetailLine
+            label="Next Machine Maintenance Override"
+            value={log.nextServiceDueOverrideAt ? formatDateTime(log.nextServiceDueOverrideAt) : "None"}
+          />
+        ) : null}
+        <DetailLine label="Name" value={log.requesterConfirmedName || "Not recorded"} />
+        <DetailLine label="Contact Number" value={log.requesterContactPhone || "Not recorded"} />
+        <DetailLine label="Email" value={log.requesterContactEmail || "Not recorded"} />
+        <DetailLine label="Logged By" value={log.loggedByRequesterName || log.requesterConfirmedName || "Not recorded"} />
+        {log.ticket ? <DetailLine label="Related Ticket" value={`${log.ticket.ticketNumber} / ${log.ticket.issueTitle} / ${log.ticket.status}`} /> : null}
+        {log.serviceReport ? (
+          <div className="field-panel-subtle">
+            <p className="text-sm font-semibold">Related Service Report</p>
+            <DetailLine label="Diagnosis" value={log.serviceReport.diagnosis} multiline />
+            <DetailLine label="Action Taken" value={log.serviceReport.actionTaken} multiline />
+            <DetailLine label="Result" value={log.serviceReport.resolutionStatus} />
+          </div>
+        ) : null}
+        <div>
+          <p className="field-meta-label">Attachments</p>
+          {log.attachments.length > 0 ? (
+            <div className="mt-2 grid gap-2">
+              {log.attachments.map((attachment) => (
+                <div key={attachment.id} className="field-panel-subtle">
+                  <p className="font-medium">{attachment.originalFileName}</p>
+                  <p className="field-muted mt-1">
+                    {formatBytes(attachment.fileSizeBytes)} / Uploaded {formatDateTime(attachment.createdAt)}
+                  </p>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="mt-1 text-sm text-neutral-800 dark:text-neutral-200">No attachments.</p>
+          )}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function DetailLine({ label, value, multiline }: { label: string; value: string; multiline?: boolean }) {
+  return (
+    <div>
+      <p className="field-meta-label">{label}</p>
+      <p className={`mt-1 text-sm leading-6 text-neutral-800 dark:text-neutral-200 ${multiline ? "whitespace-pre-wrap" : ""}`}>
+        {value}
+      </p>
+    </div>
   );
 }
 

@@ -1174,3 +1174,10 @@ This file records meaningful project updates, decisions, and implementation step
 - Added optional machine log end time for staff and public plant engineer log entry.
 - Added validation so end time cannot be earlier than work time.
 - Updated machine log displays to show date and time instead of date only.
+
+## 2026-06-19 - Public Machine Log Detail View
+
+- Added a secure public machine log detail endpoint behind the machine access token.
+- Made machine logs on the QR machine page clickable.
+- Added an inline detail panel showing work time, end time, summary, contact details, related ticket/report, and attachment names.
+- Added audit logging when a public user views a machine log detail.

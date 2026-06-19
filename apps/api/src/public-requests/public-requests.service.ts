@@ -335,6 +335,87 @@ export class PublicRequestsService {
     return log;
   }
 
+  async getMachineLog(publicId: string, logId: string, authorization?: string, context: PublicRequestContext = {}) {
+    const access = await this.verifyMachineAccess(publicId, authorization);
+
+    const log = await this.prisma.machineLog.findFirst({
+      where: {
+        id: logId,
+        machineId: access.machineId,
+        machine: {
+          publicId
+        }
+      },
+      select: {
+        id: true,
+        activityType: true,
+        workDate: true,
+        workEndAt: true,
+        workSummary: true,
+        partsUsed: true,
+        upgradeVersion: true,
+        upgradeDescription: true,
+        nextServiceDueOverrideAt: true,
+        requesterConfirmedName: true,
+        requesterContactPhone: true,
+        requesterContactEmail: true,
+        requesterConfirmedAt: true,
+        loggedByRequesterName: true,
+        createdAt: true,
+        ticket: {
+          select: {
+            id: true,
+            ticketNumber: true,
+            issueTitle: true,
+            status: true
+          }
+        },
+        serviceReport: {
+          select: {
+            id: true,
+            diagnosis: true,
+            actionTaken: true,
+            resolutionStatus: true
+          }
+        },
+        attachments: {
+          select: {
+            id: true,
+            originalFileName: true,
+            contentType: true,
+            fileSizeBytes: true,
+            uploadedByRequesterName: true,
+            createdAt: true
+          },
+          orderBy: { createdAt: "desc" }
+        }
+      }
+    });
+
+    if (!log) {
+      throw new NotFoundException("Machine log not found.");
+    }
+
+    await this.auditService.write({
+      actorRequesterName: access.requesterName,
+      action: "PUBLIC_MACHINE_LOG_VIEWED",
+      entityType: "MachineLog",
+      entityId: log.id,
+      afterData: {
+        publicId,
+        machineId: access.machineId,
+        activityType: log.activityType,
+        requesterName: access.requesterName,
+        requesterPhone: access.requesterPhone,
+        requesterEmail: access.requesterEmail
+      },
+      ipAddress: context.ipAddress,
+      userAgent: context.userAgent
+    });
+
+    return { data: log };
+  }
+
   async createTicket(publicId: string, dto: CreatePublicTicketDto, authorization?: string) {
     await this.verifyMachineAccess(publicId, authorization);
     const machine = await this.prisma.machine.findUnique({
