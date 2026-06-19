@@ -4,6 +4,7 @@ export type CreateMachineLogDto = {
   activityType?: string;
   workDate?: string;
   workEndAt?: string | null;
+  title?: string;
   workSummary?: string;
   partsUsed?: string;
   upgradeVersion?: string;

@@ -1181,3 +1181,10 @@ This file records meaningful project updates, decisions, and implementation step
 - Made machine logs on the QR machine page clickable.
 - Added an inline detail panel showing work time, end time, summary, contact details, related ticket/report, and attachment names.
 - Added audit logging when a public user views a machine log detail.
+
+## 2026-06-19 - Machine Log Title and Detail Page
+
+- Added a required title field to machine logs and backfilled existing logs from their summaries.
+- Updated staff and public machine log forms to collect title separately from summary.
+- Simplified the QR machine page log list to show only work date/time, activity type, and title.
+- Moved public machine log details to a separate page at `/m/:publicId/logs/:logId`.

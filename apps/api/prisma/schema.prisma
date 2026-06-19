@@ -291,6 +291,7 @@ model MachineLog {
   activityType               MachineActivityType
   workDate                   DateTime
   workEndAt                  DateTime?
+  title                      String
   workSummary                String
   partsUsed                  String?
   upgradeVersion             String?

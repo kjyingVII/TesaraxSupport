@@ -62,6 +62,7 @@ export class MachineLogsService {
     if (input.search?.trim()) {
       const search = input.search.trim();
       where.OR = [
+        { title: { contains: search, mode: "insensitive" } },
         { workSummary: { contains: search, mode: "insensitive" } },
         { partsUsed: { contains: search, mode: "insensitive" } },
         { upgradeVersion: { contains: search, mode: "insensitive" } },
@@ -117,6 +118,7 @@ export class MachineLogsService {
     const activityType = this.parseActivityType(dto.activityType);
     const workDate = this.parseRequiredDate(dto.workDate, "workDate");
     const workEndAt = this.parseNullableDate(dto.workEndAt, "workEndAt");
+    const title = this.requiredString(dto.title, "Title is required.");
     const workSummary = this.requiredString(dto.workSummary, "Work summary is required.");
     const ticketId = this.cleanOptionalString(dto.ticketId);
     const serviceReportId = this.cleanOptionalString(dto.serviceReportId);
@@ -154,6 +156,7 @@ export class MachineLogsService {
           activityType,
           workDate,
           workEndAt,
+          title,
           workSummary,
           partsUsed: this.cleanOptionalString(dto.partsUsed),
           upgradeVersion: this.cleanOptionalString(dto.upgradeVersion),
@@ -316,7 +319,7 @@ export class MachineLogsService {
         type: "MACHINE_LOG" as const,
         activityType: log.activityType,
         eventDate: log.workDate,
-        title: `${this.activityTypeLabel(log.activityType)} completed`,
+        title: log.title,
         summary: log.workSummary,
         status: null,
         relatedId: log.id,

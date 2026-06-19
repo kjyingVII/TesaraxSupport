@@ -38,6 +38,7 @@ type MachineLogDetail = {
   activityType: ActivityType;
   workDate: string;
   workEndAt: string | null;
+  title: string;
   workSummary: string;
   partsUsed: string | null;
   upgradeVersion: string | null;
@@ -472,6 +473,7 @@ function MachineLogDetailPanel({ detail }: { detail: MachineLogDetail }) {
       <InfoLine label="Activity Type" value={activityTypeLabel(detail.activityType)} />
       <InfoLine label="Work Time" value={formatDateTime(detail.workDate)} />
       <InfoLine label="End Time" value={detail.workEndAt ? formatDateTime(detail.workEndAt) : "Not recorded"} />
+      <InfoLine label="Title" value={detail.title} />
       <InfoLine label="Summary" value={detail.workSummary} />
       <InfoLine label="Parts Used" value={detail.partsUsed || "None recorded"} />
       {detail.activityType === "UPGRADE" ? (

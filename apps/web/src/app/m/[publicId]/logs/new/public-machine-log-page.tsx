@@ -33,6 +33,7 @@ type LogForm = {
   activityType: ActivityType;
   workDate: string;
   workEndAt: string;
+  title: string;
   workSummary: string;
   partsUsed: string;
   upgradeVersion: string;
@@ -48,6 +49,7 @@ const defaultForm: LogForm = {
   activityType: "CORRECTIVE_SERVICE",
   workDate: "",
   workEndAt: "",
+  title: "",
   workSummary: "",
   partsUsed: "",
   upgradeVersion: "",
@@ -155,6 +157,7 @@ export function PublicMachineLogPage({ publicId }: { publicId: string }) {
           activityType: form.activityType,
           workDate: new Date(form.workDate).toISOString(),
           workEndAt: form.workEndAt ? new Date(form.workEndAt).toISOString() : undefined,
+          title: form.title,
           workSummary: form.workSummary,
           partsUsed: form.partsUsed,
           upgradeVersion: form.activityType === "UPGRADE" ? form.upgradeVersion : undefined,
@@ -247,6 +250,7 @@ export function PublicMachineLogPage({ publicId }: { publicId: string }) {
             </label>
             <TextInput label="Work Time" type="datetime-local" value={form.workDate} required onChange={(value) => updateForm("workDate", value)} />
             <TextInput label="End Time" type="datetime-local" value={form.workEndAt} onChange={(value) => updateForm("workEndAt", value)} />
+            <TextInput label="Title" value={form.title} required onChange={(value) => updateForm("title", value)} />
             <TextAreaInput label="Issue / Work Summary" value={form.workSummary} required onChange={(value) => updateForm("workSummary", value)} />
             <TextInput label="Parts Used" value={form.partsUsed} onChange={(value) => updateForm("partsUsed", value)} />
             {form.activityType === "UPGRADE" ? (
