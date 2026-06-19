@@ -60,6 +60,8 @@ type PortalResponse = {
     };
     logs: LogSummary[];
     documents: MachineDocument[];
+    requestAttachmentMaxFileMb: number;
+    requestAttachmentMaxTotalMb: number;
   };
 };
 
@@ -194,12 +196,20 @@ export function MachinePortalPage({ publicId }: { publicId: string }) {
                   </p>
                   <p className="field-muted mt-1">{portal.machine.location}</p>
                 </div>
-                <Link
-                  className="field-button-primary w-full sm:w-auto"
-                  href={`/request/${publicId}`}
-                >
-                  Submit New Request
-                </Link>
+                <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+                  <Link
+                    className="field-button-secondary w-full sm:w-auto"
+                    href={`/m/${publicId}/logs/new`}
+                  >
+                    Add Machine Log
+                  </Link>
+                  <Link
+                    className="field-button-primary w-full sm:w-auto"
+                    href={`/request/${publicId}`}
+                  >
+                    Submit New Request
+                  </Link>
+                </div>
               </div>
               <div className="mt-5 grid gap-3 sm:grid-cols-3">
                 <InfoBox label="Next Machine Maintenance Due" value={portal.machine.nextServiceDueAt ? formatDate(portal.machine.nextServiceDueAt) : "Not set"} />

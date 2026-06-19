@@ -7,6 +7,7 @@ import { MachineLogsService } from "./machine-logs.service";
 @Module({
   imports: [AttachmentsModule, PrismaModule],
   controllers: [MachineLogsController],
-  providers: [MachineLogsService]
+  providers: [MachineLogsService],
+  exports: [MachineLogsService]
 })
 export class MachineLogsModule {}

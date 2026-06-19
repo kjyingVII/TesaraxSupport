@@ -15,6 +15,8 @@ import { FollowUpAcknowledgementDto } from "../acknowledgements/dto/follow-up-ac
 import { AuditService } from "../audit/audit.service";
 import { AttachmentsService } from "../attachments/attachments.service";
 import { AuthService } from "../auth/auth.service";
+import { CreateMachineLogDto } from "../machine-logs/dto/create-machine-log.dto";
+import { MachineLogsService } from "../machine-logs/machine-logs.service";
 import { PrismaService } from "../prisma/prisma.service";
 import { SettingsService } from "../settings/settings.service";
 import { CreatePublicTicketCommentDto } from "./dto/create-public-ticket-comment.dto";
@@ -43,6 +45,7 @@ export class PublicRequestsService {
     private readonly auditService: AuditService,
     private readonly attachmentsService: AttachmentsService,
     private readonly authService: AuthService,
+    private readonly machineLogsService: MachineLogsService,
     private readonly settingsService: SettingsService
   ) {}
 
@@ -263,6 +266,8 @@ export class PublicRequestsService {
       userAgent: context.userAgent
     });
 
+    const settings = await this.settingsService.getCurrentSettings();
+
     return {
       data: {
         machine: {
@@ -277,9 +282,55 @@ export class PublicRequestsService {
           closed: machine.tickets.filter((ticket) => closedStatuses.has(ticket.status))
         },
         logs: machine.logs,
-        documents: machine.documents
+        documents: machine.documents,
+        requestAttachmentMaxFileMb: settings.requestAttachmentMaxFileMb,
+        requestAttachmentMaxTotalMb: settings.requestAttachmentMaxTotalMb
       }
     };
+  }
+
+  async createMachineLog(
+    publicId: string,
+    dto: CreateMachineLogDto,
+    authorization?: string,
+    context: PublicRequestContext = {}
+  ) {
+    const access = await this.verifyMachineAccess(publicId, authorization);
+
+    const log = await this.machineLogsService.createLog(access.machineId, {
+      activityType: dto.activityType,
+      workDate: dto.workDate,
+      workSummary: dto.workSummary,
+      partsUsed: dto.partsUsed,
+      upgradeVersion: dto.upgradeVersion,
+      upgradeDescription: dto.upgradeDescription,
+      nextServiceDueOverrideAt: dto.nextServiceDueOverrideAt,
+      requesterConfirmedName: this.cleanOptionalString(dto.requesterConfirmedName) ?? access.requesterName,
+      requesterContactPhone: this.cleanOptionalString(dto.requesterContactPhone) ?? access.requesterPhone,
+      requesterContactEmail: this.cleanOptionalString(dto.requesterContactEmail) ?? access.requesterEmail,
+      requesterConfirmedAt: dto.requesterConfirmedAt,
+      loggedByRequesterName: this.cleanOptionalString(dto.loggedByRequesterName) ?? access.requesterName,
+      attachments: dto.attachments
+    });
+
+    await this.auditService.write({
+      actorRequesterName: access.requesterName,
+      action: "PUBLIC_MACHINE_LOG_CREATED",
+      entityType: "MachineLog",
+      entityId: log.data.id,
+      afterData: {
+        publicId,
+        machineId: access.machineId,
+        activityType: log.data.activityType,
+        requesterName: access.requesterName,
+        requesterPhone: access.requesterPhone,
+        requesterEmail: access.requesterEmail
+      },
+      ipAddress: context.ipAddress,
+      userAgent: context.userAgent
+    });
+
+    return log;
   }
 
   async createTicket(publicId: string, dto: CreatePublicTicketDto, authorization?: string) {

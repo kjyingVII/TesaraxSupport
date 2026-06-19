@@ -1161,3 +1161,10 @@ This file records meaningful project updates, decisions, and implementation step
 - Replaced the placeholder home page with a role-aware staff entry page and requester QR access note.
 - Normalized `NEXT_PUBLIC_API_URL` to avoid double slashes when the value has a trailing slash.
 - Added comma-separated `CORS_ORIGINS` support so the API can allow the production web domain and temporary direct-port test URLs.
+
+## 2026-06-19 - Public Machine Log Entry
+
+- Added a public machine log creation endpoint for users who entered through the machine password flow.
+- Added an "Add Machine Log" action on the QR machine page so plant engineers can record minor issues and solutions without raising a ticket.
+- Created a mobile-friendly public add-log page with activity type, issue/work summary, contact details, optional maintenance override, and attachments.
+- Wrote public machine log creation to the audit log for traceability.

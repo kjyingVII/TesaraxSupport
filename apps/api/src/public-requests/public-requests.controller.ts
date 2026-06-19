@@ -2,6 +2,7 @@ import { Body, Controller, Get, Header, Headers, Ip, Param, Post, Res } from "@n
 import { AcceptAcknowledgementDto } from "../acknowledgements/dto/accept-acknowledgement.dto";
 import { FollowUpAcknowledgementDto } from "../acknowledgements/dto/follow-up-acknowledgement.dto";
 import { Public } from "../auth/auth.decorators";
+import { CreateMachineLogDto } from "../machine-logs/dto/create-machine-log.dto";
 import { CreatePublicTicketCommentDto } from "./dto/create-public-ticket-comment.dto";
 import { CreatePublicTicketDto } from "./dto/create-public-ticket.dto";
 import { RequestMachineAccessDto } from "./dto/request-machine-access.dto";
@@ -40,6 +41,17 @@ export class PublicRequestsController {
   @Post(":publicId/tickets")
   createTicket(@Param("publicId") publicId: string, @Body() dto: CreatePublicTicketDto, @Headers("authorization") authorization?: string) {
     return this.publicRequestsService.createTicket(publicId, dto, authorization);
+  }
+
+  @Post(":publicId/logs")
+  createMachineLog(
+    @Param("publicId") publicId: string,
+    @Body() dto: CreateMachineLogDto,
+    @Headers("authorization") authorization?: string,
+    @Ip() ipAddress?: string,
+    @Headers("user-agent") userAgent?: string
+  ) {
+    return this.publicRequestsService.createMachineLog(publicId, dto, authorization, { ipAddress, userAgent });
   }
 
   @Get(":publicId/tickets/:ticketId")
