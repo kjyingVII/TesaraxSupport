@@ -484,7 +484,7 @@ function MachineLogDetailPanel({ detail }: { detail: MachineLogDetail }) {
       <InfoLine label="Requester Name" value={detail.requesterConfirmedName || detail.loggedByRequesterName || "Not recorded"} />
       <InfoLine label="Contact Number" value={detail.requesterContactPhone || "Not recorded"} />
       <InfoLine label="Email" value={detail.requesterContactEmail || "Not recorded"} />
-      <InfoLine label="Logged By" value={detail.loggedByUser?.name ?? detail.loggedByRequesterName ?? "Not recorded"} />
+      <InfoLine label="Logged By" value={detail.loggedByRequesterName ?? detail.loggedByUser?.name ?? "Not recorded"} />
       {detail.ticket ? (
         <div className="field-panel-subtle">
           <p className="text-sm font-semibold">Related Ticket</p>

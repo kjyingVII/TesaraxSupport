@@ -1149,3 +1149,9 @@ This file records meaningful project updates, decisions, and implementation step
 - Added `MachineActivityType` values for corrective service, machine maintenance, component replacement, inspection/diagnosis, upgrade, and other.
 - Migrated existing service/upgrade log data into `activityType` and removed the separate `lastUpgradeAt` machine field.
 - Updated staff and public machine log views to treat upgrade as a normal machine activity type.
+
+## 2026-06-19 - Machine Log Logged By Prefill
+
+- Prefilled the Add Machine Log "Logged By" field with the current logged-in user name when available.
+- Kept the field editable while still sending the logged-in user id for traceability.
+- Updated machine log display to prefer the manually entered Logged By name when present.

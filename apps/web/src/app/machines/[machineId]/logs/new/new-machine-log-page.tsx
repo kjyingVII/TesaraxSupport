@@ -4,6 +4,7 @@ import { FormEvent, useEffect, useState } from "react";
 import { AdminMenu } from "../../../../../components/admin-menu";
 import { ThemeToggle } from "../../../../../components/theme-toggle";
 import { apiRequest } from "../../../../../lib/api";
+import { getAuthUser, type AuthUser } from "../../../../../lib/auth";
 
 type MachineDetail = {
   id: string;
@@ -69,9 +70,11 @@ const bytesPerMb = 1024 * 1024;
 
 export function NewMachineLogPage({ machineId }: { machineId: string }) {
   const [machine, setMachine] = useState<MachineDetail | null>(null);
+  const [user] = useState<AuthUser | null>(() => getAuthUser());
   const [form, setForm] = useState<LogForm>(() => ({
     ...defaultLogForm,
-    workDate: toDateTimeLocal(new Date().toISOString())
+    workDate: toDateTimeLocal(new Date().toISOString()),
+    loggedByRequesterName: getAuthUser()?.name ?? ""
   }));
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -141,6 +144,7 @@ export function NewMachineLogPage({ machineId }: { machineId: string }) {
           requesterConfirmedName: form.requesterConfirmedName,
           requesterContactPhone: form.requesterContactPhone,
           requesterContactEmail: form.requesterContactEmail,
+          loggedByUserId: user?.id,
           loggedByRequesterName: form.loggedByRequesterName,
           attachments: preparedAttachments
         })
@@ -149,7 +153,8 @@ export function NewMachineLogPage({ machineId }: { machineId: string }) {
       setForm({
         ...defaultLogForm,
         activityType: form.activityType,
-        workDate: toDateTimeLocal(new Date().toISOString())
+        workDate: toDateTimeLocal(new Date().toISOString()),
+        loggedByRequesterName: user?.name ?? ""
       });
       setAttachments([]);
     } catch (err) {

@@ -316,7 +316,7 @@ export class MachineLogsService {
         relatedId: log.id,
         relatedNumber: log.upgradeVersion,
         attachmentCount: log._count.attachments,
-        actorName: log.loggedByUser?.name ?? log.loggedByRequesterName
+        actorName: log.loggedByRequesterName ?? log.loggedByUser?.name
       })),
       ...tickets.map((ticket) => ({
         type: "TICKET" as const,
