@@ -36,9 +36,11 @@ services:
       NODE_ENV: ${NODE_ENV:-development}
       PORT: 4000
       WEB_APP_URL: ${WEB_APP_URL:-http://localhost:13000}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:13000}
       DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-support_system}?schema=public
       JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:-local-dev-access-secret}
       JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:-local-dev-refresh-secret}
+      PUBLIC_MACHINE_ACCESS_SECRET: ${PUBLIC_MACHINE_ACCESS_SECRET:-local-dev-machine-access-secret}
     ports:
       - "${API_PORT:-14000}:4000"
     volumes:
@@ -64,6 +66,28 @@ services:
       api:
         condition: service_started
 
+  caddy:
+    image: caddy:2-alpine
+    container_name: support-system-caddy
+    restart: unless-stopped
+    environment:
+      WEB_DOMAIN: ${WEB_DOMAIN:-tesarax.cloud}
+      API_DOMAIN: ${API_DOMAIN:-supportapi.tesarax.cloud}
+    ports:
+      - "${HTTP_PORT:-80}:80"
+      - "${HTTPS_PORT:-443}:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      web:
+        condition: service_started
+      api:
+        condition: service_started
+
 volumes:
   postgres-data:
   redis-data:
+  caddy-data:
+  caddy-config:

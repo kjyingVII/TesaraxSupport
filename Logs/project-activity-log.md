@@ -1197,3 +1197,10 @@ This file records meaningful project updates, decisions, and implementation step
 
 - Removed demo account guidance from the login page.
 - Cleared default login email and password values so production login starts blank.
+
+## 2026-06-19 - Caddy Reverse Proxy
+
+- Added a Caddy reverse proxy container for HTTPS domain routing.
+- Added `Caddyfile` routes for the web app and API domains.
+- Added Caddy data/config volumes so certificates persist across container rebuilds.
+- Passed `CORS_ORIGINS` and `PUBLIC_MACHINE_ACCESS_SECRET` from `.env` into the API container.
