@@ -1,4 +1,4 @@
-export const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:14000";
+export const apiBaseUrl = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:14000").replace(/\/+$/, "");
 
 export async function apiRequest<T>(path: string, init?: RequestInit): Promise<T> {
   const token =

@@ -7,8 +7,19 @@ async function bootstrap() {
   app.useBodyParser("json", { limit: "150mb" });
   app.useBodyParser("urlencoded", { extended: true, limit: "150mb" });
   app.setGlobalPrefix("api");
+  const allowedOrigins = (process.env.CORS_ORIGINS ?? process.env.WEB_APP_URL ?? "http://localhost:3000")
+    .split(",")
+    .map((origin) => origin.trim().replace(/\/+$/, ""))
+    .filter(Boolean);
   app.enableCors({
-    origin: process.env.WEB_APP_URL ?? "http://localhost:3000",
+    origin(origin, callback) {
+      if (!origin || allowedOrigins.includes(origin.replace(/\/+$/, ""))) {
+        callback(null, true);
+        return;
+      }
+
+      callback(new Error(`Origin ${origin} is not allowed by CORS.`));
+    },
     credentials: true
   });
   await app.listen(process.env.PORT ? Number(process.env.PORT) : 4000);

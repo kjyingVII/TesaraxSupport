@@ -1155,3 +1155,9 @@ This file records meaningful project updates, decisions, and implementation step
 - Prefilled the Add Machine Log "Logged By" field with the current logged-in user name when available.
 - Kept the field editable while still sending the logged-in user id for traceability.
 - Updated machine log display to prefer the manually entered Logged By name when present.
+
+## 2026-06-19 - Production Home Page and Login Fetch Robustness
+
+- Replaced the placeholder home page with a role-aware staff entry page and requester QR access note.
+- Normalized `NEXT_PUBLIC_API_URL` to avoid double slashes when the value has a trailing slash.
+- Added comma-separated `CORS_ORIGINS` support so the API can allow the production web domain and temporary direct-port test URLs.
