@@ -13,8 +13,8 @@ type LoginResponse = {
 };
 
 export function LoginForm() {
-  const [email, setEmail] = useState("technician@example.com");
-  const [password, setPassword] = useState("password123");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -86,10 +86,6 @@ export function LoginForm() {
           >
             {submitting ? "Logging in..." : "Login"}
           </button>
-
-          <div className="mt-5 rounded-md bg-neutral-100 p-3 text-sm text-neutral-700 dark:bg-neutral-800 dark:text-neutral-200">
-            Demo accounts: `technician@example.com` or `admin@example.com` with password `password123`.
-          </div>
         </form>
       </section>
     </main>

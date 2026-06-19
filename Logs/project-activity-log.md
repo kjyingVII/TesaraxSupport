@@ -1192,3 +1192,8 @@ This file records meaningful project updates, decisions, and implementation step
 ## 2026-06-19 - Machine Log Card Cleanup
 
 - Removed the redundant "Show details" text from public machine log cards because the full card opens the detail page.
+
+## 2026-06-19 - Production Login Cleanup
+
+- Removed demo account guidance from the login page.
+- Cleared default login email and password values so production login starts blank.
