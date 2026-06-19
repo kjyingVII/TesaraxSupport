@@ -1188,3 +1188,7 @@ This file records meaningful project updates, decisions, and implementation step
 - Updated staff and public machine log forms to collect title separately from summary.
 - Simplified the QR machine page log list to show only work date/time, activity type, and title.
 - Moved public machine log details to a separate page at `/m/:publicId/logs/:logId`.
+
+## 2026-06-19 - Machine Log Card Cleanup
+
+- Removed the redundant "Show details" text from public machine log cards because the full card opens the detail page.

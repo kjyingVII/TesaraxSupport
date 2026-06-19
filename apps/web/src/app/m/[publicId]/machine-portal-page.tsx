@@ -296,9 +296,8 @@ function LogRow({ publicId, log }: { publicId: string; log: LogSummary }) {
         <span className="font-semibold">{formatDateTime(log.workDate)}</span>
         <span className="status-badge status-cyan">{activityTypeLabel(log.activityType)}</span>
       </div>
-      <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+      <div className="mt-2">
         <p className="font-medium text-neutral-800 dark:text-neutral-100">{log.title}</p>
-        <span className="field-link">Show details</span>
       </div>
     </Link>
   );
