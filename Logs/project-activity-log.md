@@ -1220,3 +1220,34 @@ This file records meaningful project updates, decisions, and implementation step
 
 - Renamed machine log acknowledgement-required wording to "User signature required" in staff and public views.
 - Updated public ticket service report pending signature wording from requester signature to user signature.
+
+## 2026-06-20 - Machine Log Acknowledgement Signatures
+
+- Added database support for acknowledgements linked directly to machine logs.
+- Added staff API support to generate a direct acknowledgement link for a selected machine log.
+- Added public machine-session support so users can acknowledge and draw a signature on a machine log even when user signature is optional.
+- Updated the public direct acknowledgement page to support machine-log acknowledgement links without requiring a ticket.
+- Updated the full machine log detail panel with acknowledgement status and a Copy Acknowledgement Link action.
+- Added public machine-log attachment and signature download checks scoped to the machine access session.
+- Rebuilt API and web containers, applied the new Prisma migration locally, and verified API/web type checks pass.
+- Smoke tested direct machine-log acknowledgement link generation and public token lookup.
+
+## 2026-06-20 - Machine Log Acknowledgement Form Collapse
+
+- Changed the public machine log detail page so the acknowledgement form is hidden by default.
+- Added an Acknowledge Service button to open the signature form only when the user chooses to sign.
+- Verified the web type check passes after the UI change.
+
+## 2026-06-20 - Machine Log Logged By Cleanup
+
+- Removed the redundant Name/Logged By duplication from public and staff machine log detail views.
+- Kept a single Logged By field with fallback to the available requester or logged-in user name.
+- Verified the web type check passes after the cleanup.
+- Renamed the single displayed field back to Name for a friendlier label.
+
+## 2026-06-20 - Public Machine Log Signature Policy
+
+- Removed the User signature required checkbox from the public machine log creation page.
+- Public-created machine logs now always save signature requirement as optional.
+- Kept the User signature required checkbox on the staff/admin machine log creation page.
+- Verified API and web type checks pass after the policy change.

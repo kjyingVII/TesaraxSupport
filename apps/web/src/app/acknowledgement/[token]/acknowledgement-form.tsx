@@ -28,6 +28,25 @@ type AcknowledgementDetail = {
   requesterPhone: string | null;
   requesterEmail: string | null;
   serviceReport: ServiceReport | null;
+  machineLog: {
+    id: string;
+    activityType: string;
+    workDate: string;
+    workEndAt: string | null;
+    title: string;
+    workSummary: string;
+    partsUsed: string | null;
+    requesterAcknowledgementRequired: boolean;
+    machine: {
+      machineName: string;
+      model: string;
+      serialNumber: string;
+      location: string;
+      customer: {
+        name: string;
+      };
+    };
+  } | null;
   ticket: {
     id: string;
     ticketNumber: string;
@@ -49,7 +68,7 @@ type AcknowledgementDetail = {
       };
     };
     serviceReports: ServiceReport[];
-  };
+  } | null;
 };
 
 type AcknowledgementResponse = {
@@ -102,14 +121,16 @@ export function AcknowledgementForm({ token }: { token: string }) {
     };
   }, [token]);
 
-  const acknowledgementReport = detail?.serviceReport ?? detail?.ticket.serviceReports[0] ?? null;
-  const isPending = detail?.ticket.status === "PENDING_ACKNOWLEDGEMENT" && !detail.response;
+  const acknowledgementReport = detail?.serviceReport ?? detail?.ticket?.serviceReports[0] ?? null;
+  const isMachineLogAcknowledgement = Boolean(detail?.machineLog);
+  const isPending = detail ? !detail.response && (detail.machineLog ? true : detail.ticket?.status === "PENDING_ACKNOWLEDGEMENT") : false;
 
   const canSubmit = useMemo(() => {
     if (!requesterName.trim() || !requesterPhone.trim() || !isPending) return false;
+    if (isMachineLogAcknowledgement && mode === "follow-up") return false;
     if (mode === "accept") return Boolean(signature.trim());
     return Boolean(comment.trim());
-  }, [comment, isPending, mode, requesterName, requesterPhone, signature]);
+  }, [comment, isMachineLogAcknowledgement, isPending, mode, requesterName, requesterPhone, signature]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -178,29 +199,39 @@ export function AcknowledgementForm({ token }: { token: string }) {
             <Panel className="mt-6">
               <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                 <div>
-                  <p className="text-sm text-neutral-500 dark:text-neutral-400">{detail.ticket.ticketNumber}</p>
-                  <h2 className="mt-1 text-xl font-semibold">{detail.ticket.issueTitle}</h2>
+                  <p className="text-sm text-neutral-500 dark:text-neutral-400">
+                    {detail.ticket?.ticketNumber ?? "Machine Log"}
+                  </p>
+                  <h2 className="mt-1 text-xl font-semibold">{detail.ticket?.issueTitle ?? detail.machineLog?.title ?? "Acknowledgement"}</h2>
                   <p className="mt-2 text-sm leading-6 text-neutral-600 dark:text-neutral-300">
-                    {detail.ticket.issueDescription}
+                    {detail.ticket?.issueDescription ?? detail.machineLog?.workSummary ?? ""}
                   </p>
                 </div>
                 <span className="w-fit rounded-md border border-neutral-200 px-3 py-1 text-sm dark:border-neutral-700">
-                  {detail.ticket.status}
+                  {detail.ticket?.status ?? (detail.response ? "ACKNOWLEDGED" : "PENDING SIGNATURE")}
                 </span>
               </div>
             </Panel>
 
             <div className="mt-5 grid gap-5 lg:grid-cols-[1fr_1.2fr]">
               <Panel title="Machine">
-                <InfoLine label="Customer" value={detail.ticket.machine.customer.name} />
-                <InfoLine label="Machine" value={detail.ticket.machine.machineName} />
-                <InfoLine label="Model" value={detail.ticket.machine.model} />
-                <InfoLine label="Serial No." value={detail.ticket.machine.serialNumber} />
-                <InfoLine label="Location" value={detail.ticket.machine.location} />
+                <InfoLine label="Customer" value={(detail.ticket?.machine ?? detail.machineLog?.machine)?.customer.name ?? "Not recorded"} />
+                <InfoLine label="Machine" value={(detail.ticket?.machine ?? detail.machineLog?.machine)?.machineName ?? "Not recorded"} />
+                <InfoLine label="Model" value={(detail.ticket?.machine ?? detail.machineLog?.machine)?.model ?? "Not recorded"} />
+                <InfoLine label="Serial No." value={(detail.ticket?.machine ?? detail.machineLog?.machine)?.serialNumber ?? "Not recorded"} />
+                <InfoLine label="Location" value={(detail.ticket?.machine ?? detail.machineLog?.machine)?.location ?? "Not recorded"} />
               </Panel>
 
-              <Panel title="Service Report">
-                {acknowledgementReport ? (
+              <Panel title={detail.machineLog ? "Machine Activity" : "Service Report"}>
+                {detail.machineLog ? (
+                  <div className="grid gap-4">
+                    <InfoLine label="Activity Type" value={detail.machineLog.activityType.replaceAll("_", " ")} />
+                    <InfoLine label="Work Time" value={formatDateTime(detail.machineLog.workDate)} />
+                    <InfoLine label="End Time" value={detail.machineLog.workEndAt ? formatDateTime(detail.machineLog.workEndAt) : "Not recorded"} />
+                    <InfoLine label="Summary" value={detail.machineLog.workSummary} />
+                    <InfoLine label="Parts Used" value={detail.machineLog.partsUsed || "None recorded"} />
+                  </div>
+                ) : acknowledgementReport ? (
                   <div className="grid gap-4">
                     <InfoLine label="Technician" value={acknowledgementReport.technician.name} />
                     <InfoLine label="Diagnosis" value={acknowledgementReport.diagnosis} />
@@ -226,14 +257,15 @@ export function AcknowledgementForm({ token }: { token: string }) {
             {!result && !isPending ? (
               <section className="mt-6 rounded-lg border border-amber-200 bg-amber-50 p-5 text-amber-950 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-100">
                 <p className="text-sm font-medium">This acknowledgement is no longer pending.</p>
-                <p className="mt-2 text-sm">Current response: {detail.response ?? detail.ticket.status}</p>
+                <p className="mt-2 text-sm">Current response: {detail.response ?? detail.ticket?.status ?? "Acknowledged"}</p>
               </section>
             ) : null}
 
             {!result && isPending ? (
               <form className="mt-6 space-y-5" onSubmit={handleSubmit}>
                 <Panel title="Requester Response">
-                  <div className="grid grid-cols-2 gap-2 rounded-lg bg-neutral-100 p-1 dark:bg-neutral-800">
+                  {!isMachineLogAcknowledgement ? (
+                    <div className="grid grid-cols-2 gap-2 rounded-lg bg-neutral-100 p-1 dark:bg-neutral-800">
                     <button
                       className={`h-11 rounded-md text-sm font-medium ${
                         mode === "accept"
@@ -256,7 +288,8 @@ export function AcknowledgementForm({ token }: { token: string }) {
                     >
                       Follow Up
                     </button>
-                  </div>
+                    </div>
+                  ) : null}
 
                   <TextInput label="Name" value={requesterName} required onChange={setRequesterName} />
                   <TextInput label="Contact Number" value={requesterPhone} required onChange={setRequesterPhone} />
@@ -325,6 +358,16 @@ function InfoLine({ label, value }: { label: string; value: string }) {
       <p className="mt-1 text-sm leading-6 text-neutral-800 dark:text-neutral-200">{value}</p>
     </div>
   );
+}
+
+function formatDateTime(value: string) {
+  return new Intl.DateTimeFormat("en", {
+    year: "numeric",
+    month: "short",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit"
+  }).format(new Date(value));
 }
 
 function TextInput({

@@ -8,7 +8,7 @@ import {
   TicketPriority,
   TicketStatus
 } from "@prisma/client";
-import { createHmac, timingSafeEqual } from "crypto";
+import { createHash, createHmac, randomBytes, timingSafeEqual } from "crypto";
 import { ReadStream } from "fs";
 import { AcceptAcknowledgementDto } from "../acknowledgements/dto/accept-acknowledgement.dto";
 import { FollowUpAcknowledgementDto } from "../acknowledgements/dto/follow-up-acknowledgement.dto";
@@ -313,7 +313,7 @@ export class PublicRequestsService {
       requesterConfirmedName: this.cleanOptionalString(dto.requesterConfirmedName) ?? access.requesterName,
       requesterContactPhone: this.cleanOptionalString(dto.requesterContactPhone) ?? access.requesterPhone,
       requesterContactEmail: this.cleanOptionalString(dto.requesterContactEmail) ?? access.requesterEmail,
-      requesterAcknowledgementRequired: dto.requesterAcknowledgementRequired,
+      requesterAcknowledgementRequired: false,
       requesterConfirmedAt: dto.requesterConfirmedAt,
       loggedByRequesterName: this.cleanOptionalString(dto.loggedByRequesterName) ?? access.requesterName,
       attachments: dto.attachments
@@ -394,6 +394,27 @@ export class PublicRequestsService {
             createdAt: true
           },
           orderBy: { createdAt: "desc" }
+        },
+        acknowledgement: {
+          select: {
+            id: true,
+            response: true,
+            requesterName: true,
+            requesterPhone: true,
+            requesterEmail: true,
+            requesterComment: true,
+            acknowledgedAt: true,
+            tokenExpiresAt: true,
+            signatureAttachment: {
+              select: {
+                id: true,
+                originalFileName: true,
+                contentType: true,
+                fileSizeBytes: true,
+                createdAt: true
+              }
+            }
+          }
         }
       }
     });
@@ -420,6 +441,106 @@ export class PublicRequestsService {
     });
 
     return { data: log };
+  }
+
+  async acceptMachineLogAcknowledgement(
+    publicId: string,
+    logId: string,
+    dto: AcceptAcknowledgementDto,
+    authorization?: string,
+    context: PublicRequestContext = {}
+  ) {
+    const access = await this.verifyMachineAccess(publicId, authorization);
+    const log = await this.prisma.machineLog.findFirst({
+      where: {
+        id: logId,
+        machineId: access.machineId,
+        machine: {
+          publicId
+        }
+      },
+      include: {
+        acknowledgement: true
+      }
+    });
+
+    if (!log) {
+      throw new NotFoundException("Machine log not found.");
+    }
+
+    if (log.acknowledgement?.response) {
+      throw new BadRequestException("Machine log acknowledgement has already been submitted.");
+    }
+
+    const requesterName = this.requiredString(dto.requesterName, "Requester name is required.");
+    const requesterPhone = this.requiredString(dto.requesterPhone, "Contact number is required.");
+    const requesterEmail = this.cleanOptionalString(dto.requesterEmail);
+    const signatureDataUrl = this.cleanOptionalString(dto.signatureDataUrl);
+
+    if (!signatureDataUrl) {
+      throw new BadRequestException("Signature is required.");
+    }
+
+    const result = await this.prisma.$transaction(async (tx) => {
+      const acknowledgement = log.acknowledgement ?? await tx.acknowledgement.create({
+        data: {
+          machineLogId: log.id,
+          acknowledgementTokenHash: this.hashAcknowledgementToken(randomBytes(32).toString("base64url")),
+          tokenExpiresAt: this.addDays(new Date(), 14)
+        }
+      });
+
+      const signatureAttachment = await this.attachmentsService.saveAcknowledgementSignature(
+        acknowledgement.id,
+        signatureDataUrl,
+        requesterName,
+        tx
+      );
+
+      return tx.acknowledgement.update({
+        where: { id: acknowledgement.id },
+        data: {
+          response: AcknowledgementResponse.ACCEPTED,
+          requesterName,
+          requesterPhone,
+          requesterEmail,
+          requesterComment: this.cleanOptionalString(dto.comment),
+          signatureAttachmentId: signatureAttachment.id,
+          acknowledgedAt: new Date()
+        },
+        include: {
+          signatureAttachment: {
+            select: {
+              id: true,
+              originalFileName: true,
+              contentType: true,
+              fileSizeBytes: true,
+              createdAt: true
+            }
+          }
+        }
+      });
+    });
+
+    await this.auditService.write({
+      actorRequesterName: requesterName,
+      action: "PUBLIC_MACHINE_LOG_ACKNOWLEDGEMENT_ACCEPTED",
+      entityType: "MachineLog",
+      entityId: log.id,
+      afterData: {
+        publicId,
+        machineId: access.machineId,
+        activityType: log.activityType,
+        acknowledgementId: result.id,
+        requesterName,
+        requesterPhone,
+        requesterEmail
+      },
+      ipAddress: context.ipAddress,
+      userAgent: context.userAgent
+    });
+
+    return { data: result };
   }
 
   async createTicket(publicId: string, dto: CreatePublicTicketDto, authorization?: string) {
@@ -780,7 +901,13 @@ export class PublicRequestsService {
     dto: AcceptAcknowledgementDto,
     context: PublicRequestContext
   ) {
-    if (acknowledgement.ticket.status !== TicketStatus.PENDING_ACKNOWLEDGEMENT) {
+    if (!acknowledgement.ticket) {
+      throw new NotFoundException("Ticket acknowledgement not found.");
+    }
+
+    const ticket = acknowledgement.ticket;
+
+    if (ticket.status !== TicketStatus.PENDING_ACKNOWLEDGEMENT) {
       throw new BadRequestException("Ticket is not pending acknowledgement.");
     }
 
@@ -831,11 +958,11 @@ export class PublicRequestsService {
       });
 
       await tx.ticketStatusHistory.create({
-        data: {
-          ticketId,
-          fromStatus: acknowledgement.ticket.status,
-          toStatus: nextStatus,
-          changedByRequesterName: requesterName,
+          data: {
+            ticketId,
+            fromStatus: ticket.status,
+            toStatus: nextStatus,
+            changedByRequesterName: requesterName,
           comment: nextStatus === TicketStatus.CLOSED
             ? "Requester accepted resolved service report and signed acknowledgement from machine ticket page."
             : "Requester acknowledged service report; follow-up action is required."
@@ -852,7 +979,7 @@ export class PublicRequestsService {
       entityId: ticketId,
       afterData: {
         publicId,
-        ticketNumber: acknowledgement.ticket.ticketNumber,
+        ticketNumber: ticket.ticketNumber,
         acknowledgementId: acknowledgement.id,
         serviceReportId: acknowledgement.serviceReportId,
         resolutionStatus: acknowledgement.serviceReport?.resolutionStatus,
@@ -902,7 +1029,13 @@ export class PublicRequestsService {
     dto: FollowUpAcknowledgementDto,
     context: PublicRequestContext
   ) {
-    if (acknowledgement.ticket.status !== TicketStatus.PENDING_ACKNOWLEDGEMENT) {
+    if (!acknowledgement.ticket) {
+      throw new NotFoundException("Ticket acknowledgement not found.");
+    }
+
+    const ticket = acknowledgement.ticket;
+
+    if (ticket.status !== TicketStatus.PENDING_ACKNOWLEDGEMENT) {
       throw new BadRequestException("Ticket is not pending acknowledgement.");
     }
 
@@ -936,7 +1069,7 @@ export class PublicRequestsService {
       await tx.ticketStatusHistory.create({
         data: {
           ticketId,
-          fromStatus: acknowledgement.ticket.status,
+          fromStatus: ticket.status,
           toStatus: TicketStatus.FOLLOW_UP_REQUIRED,
           changedByRequesterName: requesterName,
           comment
@@ -953,7 +1086,7 @@ export class PublicRequestsService {
       entityId: ticketId,
       afterData: {
         publicId,
-        ticketNumber: acknowledgement.ticket.ticketNumber,
+        ticketNumber: ticket.ticketNumber,
         acknowledgementId: acknowledgement.id,
         serviceReportId: acknowledgement.serviceReportId,
         resolutionStatus: acknowledgement.serviceReport?.resolutionStatus,
@@ -1144,12 +1277,12 @@ export class PublicRequestsService {
       attachment.ticket?.machineId ??
       attachment.serviceReport?.ticket.machineId ??
       attachment.ticketComment?.ticket.machineId ??
-      attachment.signatureFor?.ticket.machineId;
+      attachment.signatureFor?.ticket?.machineId;
     const owningPublicId =
       attachment.ticket?.machine.publicId ??
       attachment.serviceReport?.ticket.machine.publicId ??
       attachment.ticketComment?.ticket.machine.publicId ??
-      attachment.signatureFor?.ticket.machine.publicId;
+      attachment.signatureFor?.ticket?.machine.publicId;
 
     if (owningTicketId !== ticketId || owningMachineId !== access.machineId || owningPublicId !== publicId) {
       throw new UnauthorizedException("Attachment does not belong to this machine ticket.");
@@ -1190,6 +1323,69 @@ export class PublicRequestsService {
 
     if (attachment.machineId !== access.machineId || attachment.machine?.publicId !== publicId) {
       throw new UnauthorizedException("Document does not belong to this machine access session.");
+    }
+
+    return this.attachmentsService.getDownload(attachmentId) as Promise<{
+      attachment: {
+        contentType: string;
+        fileSizeBytes: number;
+        originalFileName: string;
+      };
+      stream: ReadStream;
+    }>;
+  }
+
+  async getMachineLogAttachmentDownload(publicId: string, logId: string, attachmentId: string, authorization?: string) {
+    const access = await this.verifyMachineAccess(publicId, authorization);
+    const attachment = await this.prisma.attachment.findUnique({
+      where: { id: attachmentId },
+      select: {
+        id: true,
+        machineLogId: true,
+        acknowledgementId: true,
+        originalFileName: true,
+        contentType: true,
+        fileSizeBytes: true,
+        machineLog: {
+          select: {
+            id: true,
+            machineId: true,
+            machine: {
+              select: {
+                publicId: true
+              }
+            }
+          }
+        },
+        signatureFor: {
+          select: {
+            machineLogId: true,
+            machineLog: {
+              select: {
+                id: true,
+                machineId: true,
+                machine: {
+                  select: {
+                    publicId: true
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    });
+
+    if (!attachment) {
+      throw new NotFoundException("Attachment not found.");
+    }
+
+    const owningLogId = attachment.machineLogId ?? attachment.signatureFor?.machineLogId;
+    const owningMachineId = attachment.machineLog?.machineId ?? attachment.signatureFor?.machineLog?.machineId;
+    const owningPublicId = attachment.machineLog?.machine.publicId ?? attachment.signatureFor?.machineLog?.machine.publicId;
+
+    if (owningLogId !== logId || owningMachineId !== access.machineId || owningPublicId !== publicId) {
+      throw new UnauthorizedException("Attachment does not belong to this machine log.");
     }
 
     return this.attachmentsService.getDownload(attachmentId) as Promise<{
@@ -1368,6 +1564,10 @@ export class PublicRequestsService {
       throw new NotFoundException("Acknowledgement not found.");
     }
 
+    if (!acknowledgement.ticket) {
+      throw new NotFoundException("Ticket acknowledgement not found.");
+    }
+
     if (acknowledgement.ticket.machineId !== machineId || acknowledgement.ticket.machine.publicId !== publicId || acknowledgement.ticket.id !== ticketId) {
       throw new UnauthorizedException("Acknowledgement does not belong to this machine ticket.");
     }
@@ -1403,6 +1603,10 @@ export class PublicRequestsService {
 
     if (!acknowledgement) {
       throw new NotFoundException("Service report acknowledgement not found.");
+    }
+
+    if (!acknowledgement.ticket) {
+      throw new NotFoundException("Ticket acknowledgement not found.");
     }
 
     if (
@@ -1442,6 +1646,16 @@ export class PublicRequestsService {
   private cleanOptionalString(value: string | undefined) {
     const cleaned = value?.trim();
     return cleaned ? cleaned : undefined;
+  }
+
+  private hashAcknowledgementToken(value: string) {
+    return createHash("sha256").update(value).digest("hex");
+  }
+
+  private addDays(value: Date, days: number) {
+    const next = new Date(value);
+    next.setDate(next.getDate() + days);
+    return next;
   }
 
   private publicMachineSummary(machine: {

@@ -305,6 +305,7 @@ model MachineLog {
   loggedByUserId             String?
   loggedByUser               User?          @relation("MachineLogUser", fields: [loggedByUserId], references: [id])
   loggedByRequesterName      String?
+  acknowledgement             Acknowledgement?
   attachments                Attachment[]
   createdAt                  DateTime       @default(now())
   updatedAt                  DateTime       @updatedAt
@@ -318,10 +319,12 @@ model MachineLog {
 
 model Acknowledgement {
   id                       String                   @id @default(uuid())
-  ticketId                 String
-  ticket                   Ticket                   @relation(fields: [ticketId], references: [id])
+  ticketId                 String?
+  ticket                   Ticket?                  @relation(fields: [ticketId], references: [id])
   serviceReportId          String?                  @unique
   serviceReport            ServiceReport?           @relation(fields: [serviceReportId], references: [id])
+  machineLogId             String?                  @unique
+  machineLog               MachineLog?              @relation(fields: [machineLogId], references: [id])
   acknowledgementTokenHash String
   tokenExpiresAt           DateTime
   response                 AcknowledgementResponse?
@@ -338,6 +341,7 @@ model Acknowledgement {
 
   @@index([ticketId])
   @@index([serviceReportId])
+  @@index([machineLogId])
   @@index([acknowledgementTokenHash])
   @@index([tokenExpiresAt])
 }

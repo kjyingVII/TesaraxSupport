@@ -242,6 +242,11 @@ export class MachineLogsService {
             role: true
           }
         },
+        acknowledgement: {
+          include: {
+            signatureAttachment: true
+          }
+        },
         attachments: {
           include: {
             uploadedByUser: {

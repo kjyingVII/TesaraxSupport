@@ -30,6 +30,17 @@ export class AcknowledgementsController {
     return this.acknowledgementsService.createServiceReportAcknowledgementLink(serviceReportId, dto, user.id);
   }
 
+  @Roles(UserRole.ADMIN, UserRole.SUPERVISOR, UserRole.TECHNICIAN)
+  @Post("machines/:machineId/logs/:logId/acknowledgement-link")
+  createMachineLogAcknowledgementLink(
+    @Param("machineId") machineId: string,
+    @Param("logId") logId: string,
+    @Body() dto: SubmitAcknowledgementDto,
+    @CurrentUser() user: { id: string }
+  ) {
+    return this.acknowledgementsService.createMachineLogAcknowledgementLink(machineId, logId, dto, user.id);
+  }
+
   @Public()
   @Get("public/acknowledgements/:token")
   getPublicAcknowledgement(@Param("token") token: string) {

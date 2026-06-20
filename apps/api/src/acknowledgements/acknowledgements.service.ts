@@ -234,6 +234,87 @@ export class AcknowledgementsService {
     };
   }
 
+  async createMachineLogAcknowledgementLink(machineId: string, logId: string, dto: SubmitAcknowledgementDto, actorUserId?: string) {
+    const machineLog = await this.prisma.machineLog.findFirst({
+      where: {
+        id: logId,
+        machineId
+      },
+      include: {
+        acknowledgement: true,
+        machine: true
+      }
+    });
+
+    if (!machineLog) {
+      throw new NotFoundException("Machine log not found.");
+    }
+
+    if (machineLog.acknowledgement?.response) {
+      throw new BadRequestException("Machine log has already been acknowledged.");
+    }
+
+    const rawToken = randomBytes(32).toString("base64url");
+    const tokenHash = this.hashToken(rawToken);
+    const tokenExpiresAt = dto.tokenExpiresAt
+      ? this.parseDate(dto.tokenExpiresAt, "tokenExpiresAt")
+      : this.addDays(new Date(), 14);
+    const submittedByUserId = this.cleanOptionalString(dto.submittedByUserId) ?? actorUserId;
+
+    if (submittedByUserId) {
+      await this.ensureUserExists(submittedByUserId);
+    }
+
+    const acknowledgement = await this.prisma.acknowledgement.upsert({
+      where: { machineLogId: logId },
+      update: {
+        acknowledgementTokenHash: tokenHash,
+        tokenExpiresAt,
+        response: null,
+        requesterName: null,
+        requesterPhone: null,
+        requesterEmail: null,
+        requesterComment: null,
+        signatureAttachmentId: null,
+        acknowledgedAt: null
+      },
+      create: {
+        machineLogId: logId,
+        acknowledgementTokenHash: tokenHash,
+        tokenExpiresAt
+      }
+    });
+
+    const webAppUrl = process.env.WEB_APP_URL ?? "http://localhost:13000";
+    const acknowledgementUrl = `${webAppUrl.replace(/\/$/, "")}/acknowledgement/${rawToken}`;
+
+    await this.auditService.write({
+      actorUserId,
+      action: machineLog.acknowledgement ? "REGENERATE_MACHINE_LOG_ACKNOWLEDGEMENT_LINK" : "CREATE_MACHINE_LOG_ACKNOWLEDGEMENT_LINK",
+      entityType: "MachineLog",
+      entityId: logId,
+      beforeData: {
+        machineId,
+        acknowledgementId: machineLog.acknowledgement?.id
+      },
+      afterData: {
+        machineId,
+        acknowledgementId: acknowledgement.id,
+        tokenExpiresAt
+      }
+    });
+
+    return {
+      data: {
+        machineId,
+        machineLogId: logId,
+        acknowledgementId: acknowledgement.id,
+        tokenExpiresAt,
+        acknowledgementUrl
+      }
+    };
+  }
+
   async getPublicAcknowledgement(token: string) {
     const acknowledgement = await this.getValidAcknowledgement(token);
 
@@ -246,6 +327,7 @@ export class AcknowledgementsService {
         requesterPhone: acknowledgement.requesterPhone,
         requesterEmail: acknowledgement.requesterEmail,
         serviceReport: acknowledgement.serviceReport,
+        machineLog: acknowledgement.machineLog,
         ticket: acknowledgement.ticket
       }
     };
@@ -254,8 +336,12 @@ export class AcknowledgementsService {
   async accept(token: string, dto: AcceptAcknowledgementDto) {
     const acknowledgement = await this.getValidAcknowledgement(token);
 
-    if (acknowledgement.ticket.status !== TicketStatus.PENDING_ACKNOWLEDGEMENT) {
+    if (acknowledgement.ticket && acknowledgement.ticket.status !== TicketStatus.PENDING_ACKNOWLEDGEMENT) {
       throw new BadRequestException("Ticket is not pending acknowledgement.");
+    }
+
+    if (!acknowledgement.ticket && !acknowledgement.machineLog) {
+      throw new BadRequestException("Acknowledgement is not linked to a valid record.");
     }
 
     const requesterName = this.requiredString(dto.requesterName, "Requester name is required.");
@@ -298,29 +384,31 @@ export class AcknowledgementsService {
         }
       });
 
-      const nextStatus = acknowledgement.serviceReport?.resolutionStatus === ServiceResolutionStatus.RESOLVED
-        ? TicketStatus.CLOSED
-        : TicketStatus.FOLLOW_UP_REQUIRED;
+      if (acknowledgement.ticket && acknowledgement.ticketId) {
+        const nextStatus = acknowledgement.serviceReport?.resolutionStatus === ServiceResolutionStatus.RESOLVED
+          ? TicketStatus.CLOSED
+          : TicketStatus.FOLLOW_UP_REQUIRED;
 
-      await tx.ticket.update({
-        where: { id: acknowledgement.ticketId },
-        data: {
-          status: nextStatus,
-          closedAt: nextStatus === TicketStatus.CLOSED ? new Date() : null
-        }
-      });
+        await tx.ticket.update({
+          where: { id: acknowledgement.ticketId },
+          data: {
+            status: nextStatus,
+            closedAt: nextStatus === TicketStatus.CLOSED ? new Date() : null
+          }
+        });
 
-      await tx.ticketStatusHistory.create({
-        data: {
-          ticketId: acknowledgement.ticketId,
-          fromStatus: acknowledgement.ticket.status,
-          toStatus: nextStatus,
-          changedByRequesterName: requesterName,
-          comment: nextStatus === TicketStatus.CLOSED
-            ? "Requester accepted resolved service report and signed acknowledgement."
-            : "Requester acknowledged service report; follow-up action is required."
-        }
-      });
+        await tx.ticketStatusHistory.create({
+          data: {
+            ticketId: acknowledgement.ticketId,
+            fromStatus: acknowledgement.ticket.status,
+            toStatus: nextStatus,
+            changedByRequesterName: requesterName,
+            comment: nextStatus === TicketStatus.CLOSED
+              ? "User accepted resolved service report and signed acknowledgement."
+              : "User acknowledged service report; follow-up action is required."
+          }
+        });
+      }
 
       return updatedAcknowledgement;
     });
@@ -330,6 +418,12 @@ export class AcknowledgementsService {
 
   async requestFollowUp(token: string, dto: FollowUpAcknowledgementDto) {
     const acknowledgement = await this.getValidAcknowledgement(token);
+
+    if (!acknowledgement.ticket || !acknowledgement.ticketId) {
+      throw new BadRequestException("Follow-up is only available for ticket acknowledgements.");
+    }
+
+    const ticketId = acknowledgement.ticketId;
 
     if (acknowledgement.ticket.status !== TicketStatus.PENDING_ACKNOWLEDGEMENT) {
       throw new BadRequestException("Ticket is not pending acknowledgement.");
@@ -354,13 +448,13 @@ export class AcknowledgementsService {
       });
 
       await tx.ticket.update({
-        where: { id: acknowledgement.ticketId },
+        where: { id: ticketId },
         data: { status: TicketStatus.FOLLOW_UP_REQUIRED }
       });
 
       await tx.ticketStatusHistory.create({
         data: {
-          ticketId: acknowledgement.ticketId,
+          ticketId,
           fromStatus: TicketStatus.PENDING_ACKNOWLEDGEMENT,
           toStatus: TicketStatus.FOLLOW_UP_REQUIRED,
           changedByRequesterName: requesterName,
@@ -410,6 +504,16 @@ export class AcknowledgementsService {
                 id: true,
                 name: true,
                 email: true
+              }
+            },
+            attachments: true
+          }
+        },
+        machineLog: {
+          include: {
+            machine: {
+              include: {
+                customer: true
               }
             },
             attachments: true

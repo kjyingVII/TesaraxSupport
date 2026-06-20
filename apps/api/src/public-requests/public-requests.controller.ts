@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Header, Headers, Ip, Param, Post, Res } from "@nestjs/common";
+import { Body, Controller, Get, Header, Headers, Ip, Param, Post, Query, Res } from "@nestjs/common";
 import { AcceptAcknowledgementDto } from "../acknowledgements/dto/accept-acknowledgement.dto";
 import { FollowUpAcknowledgementDto } from "../acknowledgements/dto/follow-up-acknowledgement.dto";
 import { Public } from "../auth/auth.decorators";
@@ -63,6 +63,43 @@ export class PublicRequestsController {
     @Headers("user-agent") userAgent?: string
   ) {
     return this.publicRequestsService.getMachineLog(publicId, logId, authorization, { ipAddress, userAgent });
+  }
+
+  @Post(":publicId/logs/:logId/acknowledgement/accept")
+  acceptMachineLogAcknowledgement(
+    @Param("publicId") publicId: string,
+    @Param("logId") logId: string,
+    @Body() dto: AcceptAcknowledgementDto,
+    @Headers("authorization") authorization?: string,
+    @Ip() ipAddress?: string,
+    @Headers("user-agent") userAgent?: string
+  ) {
+    return this.publicRequestsService.acceptMachineLogAcknowledgement(publicId, logId, dto, authorization, {
+      ipAddress,
+      userAgent
+    });
+  }
+
+  @Get(":publicId/logs/:logId/attachments/:attachmentId/download")
+  @Header("Cache-Control", "private, max-age=300")
+  async downloadMachineLogAttachment(
+    @Param("publicId") publicId: string,
+    @Param("logId") logId: string,
+    @Param("attachmentId") attachmentId: string,
+    @Headers("authorization") authorization: string | undefined,
+    @Query("accessToken") accessToken: string | undefined,
+    @Res() response: any
+  ) {
+    const { attachment, stream } = await this.publicRequestsService.getMachineLogAttachmentDownload(
+      publicId,
+      logId,
+      attachmentId,
+      authorization ?? (accessToken ? `Bearer ${accessToken}` : undefined)
+    );
+    response.setHeader("Content-Type", attachment.contentType);
+    response.setHeader("Content-Length", String(attachment.fileSizeBytes));
+    response.setHeader("Content-Disposition", `attachment; filename="${attachment.originalFileName.replace(/"/g, "")}"`);
+    stream.pipe(response);
   }
 
   @Get(":publicId/tickets/:ticketId")

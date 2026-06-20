@@ -66,6 +66,23 @@ type MachineLogDetail = {
     name: string;
     email: string;
   } | null;
+  acknowledgement: {
+    id: string;
+    response: string | null;
+    requesterName: string | null;
+    requesterPhone: string | null;
+    requesterEmail: string | null;
+    requesterComment: string | null;
+    acknowledgedAt: string | null;
+    tokenExpiresAt: string;
+    signatureAttachment: {
+      id: string;
+      originalFileName: string;
+      contentType: string;
+      fileSizeBytes: number;
+      createdAt: string;
+    } | null;
+  } | null;
   attachments: Array<{
     id: string;
     originalFileName: string;
@@ -456,7 +473,7 @@ export function MachineLogPage({ machineId }: { machineId: string }) {
               </p>
             ) : null}
             {!loadingDetail && selectedDetail?.kind === "MACHINE_LOG" ? (
-              <MachineLogDetailPanel detail={selectedDetail.data} />
+              <MachineLogDetailPanel machineId={machineId} detail={selectedDetail.data} />
             ) : null}
             {!loadingDetail && selectedDetail?.kind === "TICKET" ? (
               <TicketDetailPanel detail={selectedDetail.data} />
@@ -468,7 +485,33 @@ export function MachineLogPage({ machineId }: { machineId: string }) {
   );
 }
 
-function MachineLogDetailPanel({ detail }: { detail: MachineLogDetail }) {
+function MachineLogDetailPanel({ machineId, detail }: { machineId: string; detail: MachineLogDetail }) {
+  const [linkStatus, setLinkStatus] = useState<string | null>(null);
+  const [creatingLink, setCreatingLink] = useState(false);
+
+  async function copyAcknowledgementLink() {
+    setCreatingLink(true);
+    setLinkStatus(null);
+
+    try {
+      const response = await apiRequest<{
+        data: {
+          acknowledgementUrl: string;
+        };
+      }>(`/api/machines/${machineId}/logs/${detail.id}/acknowledgement-link`, {
+        method: "POST",
+        body: JSON.stringify({})
+      });
+
+      await navigator.clipboard.writeText(response.data.acknowledgementUrl);
+      setLinkStatus("Acknowledgement link copied.");
+    } catch (err) {
+      setLinkStatus(err instanceof Error ? err.message : "Unable to create acknowledgement link.");
+    } finally {
+      setCreatingLink(false);
+    }
+  }
+
   return (
     <div className="mt-4 grid gap-4">
       <InfoLine label="Activity Type" value={activityTypeLabel(detail.activityType)} />
@@ -486,11 +529,44 @@ function MachineLogDetailPanel({ detail }: { detail: MachineLogDetail }) {
       {detail.activityType === "MACHINE_MAINTENANCE" ? (
         <InfoLine label="Next Machine Maintenance Override" value={detail.nextServiceDueOverrideAt ? formatDate(detail.nextServiceDueOverrideAt) : "None"} />
       ) : null}
-      <InfoLine label="Requester Name" value={detail.requesterConfirmedName || detail.loggedByRequesterName || "Not recorded"} />
+      <InfoLine label="Name" value={detail.loggedByRequesterName ?? detail.loggedByUser?.name ?? detail.requesterConfirmedName ?? "Not recorded"} />
       <InfoLine label="Contact Number" value={detail.requesterContactPhone || "Not recorded"} />
       <InfoLine label="Email" value={detail.requesterContactEmail || "Not recorded"} />
       <InfoLine label="User Signature Required" value={detail.requesterAcknowledgementRequired ? "Yes" : "No"} />
-      <InfoLine label="Logged By" value={detail.loggedByRequesterName ?? detail.loggedByUser?.name ?? "Not recorded"} />
+      <div className="field-panel-subtle">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <p className="text-sm font-semibold">Acknowledgement</p>
+            <p className="field-muted mt-1">
+              {detail.acknowledgement?.response
+                ? `Signed by ${detail.acknowledgement.requesterName ?? "user"}${detail.acknowledgement.acknowledgedAt ? ` on ${formatDateTime(detail.acknowledgement.acknowledgedAt)}` : ""}`
+                : "No signature submitted yet."}
+            </p>
+          </div>
+          {!detail.acknowledgement?.response ? (
+            <button
+              className="field-button-secondary disabled:cursor-not-allowed disabled:opacity-50"
+              type="button"
+              disabled={creatingLink}
+              onClick={copyAcknowledgementLink}
+            >
+              {creatingLink ? "Creating..." : "Copy Acknowledgement Link"}
+            </button>
+          ) : null}
+        </div>
+        {detail.acknowledgement?.response ? (
+          <div className="mt-3 grid gap-2 sm:grid-cols-2">
+            <InfoLine label="Contact Number" value={detail.acknowledgement.requesterPhone || "Not recorded"} />
+            <InfoLine label="Email" value={detail.acknowledgement.requesterEmail || "Not recorded"} />
+            {detail.acknowledgement.requesterComment ? (
+              <div className="sm:col-span-2">
+                <InfoLine label="Comment" value={detail.acknowledgement.requesterComment} />
+              </div>
+            ) : null}
+          </div>
+        ) : null}
+        {linkStatus ? <p className="field-muted mt-3">{linkStatus}</p> : null}
+      </div>
       {detail.ticket ? (
         <div className="field-panel-subtle">
           <p className="text-sm font-semibold">Related Ticket</p>
