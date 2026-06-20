@@ -168,7 +168,7 @@ export function PublicMachineLogDetailPage({ publicId, logId }: { publicId: stri
                 <DetailLine label="Name" value={log.requesterConfirmedName || "Not recorded"} />
                 <DetailLine label="Contact Number" value={log.requesterContactPhone || "Not recorded"} />
                 <DetailLine label="Email" value={log.requesterContactEmail || "Not recorded"} />
-                <DetailLine label="Requester Acknowledgement Required" value={log.requesterAcknowledgementRequired ? "Yes" : "No"} />
+                <DetailLine label="User Signature Required" value={log.requesterAcknowledgementRequired ? "Yes" : "No"} />
                 <DetailLine label="Logged By" value={log.loggedByRequesterName || log.requesterConfirmedName || "Not recorded"} />
               </div>
             </section>

@@ -270,7 +270,7 @@ export function NewMachineLogPage({ machineId }: { machineId: string }) {
             <TextInput label="Contact Number" value={form.requesterContactPhone} onChange={(value) => updateForm("requesterContactPhone", value)} />
             <TextInput label="Email" type="email" value={form.requesterContactEmail} onChange={(value) => updateForm("requesterContactEmail", value)} />
             <CheckboxInput
-              label="Requester acknowledgement required"
+              label="User signature required"
               checked={form.requesterAcknowledgementRequired}
               onChange={(value) => updateForm("requesterAcknowledgementRequired", value)}
             />
@@ -412,7 +412,7 @@ function CheckboxInput({
       <span>
         <span className="font-medium">{label}</span>
         <span className="field-muted mt-1 block">
-          Mark this if the requester must acknowledge this machine log later.
+          Mark this if the user must sign this machine log later.
         </span>
       </span>
     </label>

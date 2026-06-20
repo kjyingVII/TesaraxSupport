@@ -1215,3 +1215,8 @@ This file records meaningful project updates, decisions, and implementation step
 - Added a requester acknowledgement required flag to machine logs.
 - Added the field to staff and public add machine log pages.
 - Displayed the flag in staff and public machine log detail pages.
+
+## 2026-06-20 - User Signature Required Wording
+
+- Renamed machine log acknowledgement-required wording to "User signature required" in staff and public views.
+- Updated public ticket service report pending signature wording from requester signature to user signature.

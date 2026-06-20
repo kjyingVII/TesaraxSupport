@@ -399,7 +399,7 @@ export function PublicTicketPage({ publicId, ticketId }: { publicId: string; tic
                         </div>
                       ) : report.acknowledgement ? (
                         <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                          <p className="field-muted">Requester signature is pending for this service visit.</p>
+                          <p className="field-muted">User signature is pending for this service visit.</p>
                           <Link
                             className="field-button-primary inline-grid min-h-10 place-items-center"
                             href={`/m/${publicId}/tickets/${ticketId}/service-reports/${report.id}/acknowledgement`}
