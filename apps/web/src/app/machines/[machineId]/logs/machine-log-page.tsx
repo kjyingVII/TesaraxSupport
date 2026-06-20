@@ -47,6 +47,7 @@ type MachineLogDetail = {
   requesterConfirmedName: string | null;
   requesterContactPhone: string | null;
   requesterContactEmail: string | null;
+  requesterAcknowledgementRequired: boolean;
   loggedByRequesterName: string | null;
   ticket: {
     ticketNumber: string;
@@ -488,6 +489,7 @@ function MachineLogDetailPanel({ detail }: { detail: MachineLogDetail }) {
       <InfoLine label="Requester Name" value={detail.requesterConfirmedName || detail.loggedByRequesterName || "Not recorded"} />
       <InfoLine label="Contact Number" value={detail.requesterContactPhone || "Not recorded"} />
       <InfoLine label="Email" value={detail.requesterContactEmail || "Not recorded"} />
+      <InfoLine label="Requester Acknowledgement Required" value={detail.requesterAcknowledgementRequired ? "Yes" : "No"} />
       <InfoLine label="Logged By" value={detail.loggedByRequesterName ?? detail.loggedByUser?.name ?? "Not recorded"} />
       {detail.ticket ? (
         <div className="field-panel-subtle">

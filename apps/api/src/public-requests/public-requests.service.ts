@@ -224,6 +224,7 @@ export class PublicRequestsService {
             upgradeVersion: true,
             upgradeDescription: true,
             requesterConfirmedName: true,
+            requesterAcknowledgementRequired: true,
             createdAt: true
           },
           orderBy: { workDate: "desc" },
@@ -312,6 +313,7 @@ export class PublicRequestsService {
       requesterConfirmedName: this.cleanOptionalString(dto.requesterConfirmedName) ?? access.requesterName,
       requesterContactPhone: this.cleanOptionalString(dto.requesterContactPhone) ?? access.requesterPhone,
       requesterContactEmail: this.cleanOptionalString(dto.requesterContactEmail) ?? access.requesterEmail,
+      requesterAcknowledgementRequired: dto.requesterAcknowledgementRequired,
       requesterConfirmedAt: dto.requesterConfirmedAt,
       loggedByRequesterName: this.cleanOptionalString(dto.loggedByRequesterName) ?? access.requesterName,
       attachments: dto.attachments
@@ -362,6 +364,7 @@ export class PublicRequestsService {
         requesterConfirmedName: true,
         requesterContactPhone: true,
         requesterContactEmail: true,
+        requesterAcknowledgementRequired: true,
         requesterConfirmedAt: true,
         loggedByRequesterName: true,
         createdAt: true,

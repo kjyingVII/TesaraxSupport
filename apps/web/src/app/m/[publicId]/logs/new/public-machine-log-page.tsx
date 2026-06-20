@@ -42,6 +42,7 @@ type LogForm = {
   requesterConfirmedName: string;
   requesterContactPhone: string;
   requesterContactEmail: string;
+  requesterAcknowledgementRequired: boolean;
   loggedByRequesterName: string;
 };
 
@@ -58,6 +59,7 @@ const defaultForm: LogForm = {
   requesterConfirmedName: "",
   requesterContactPhone: "",
   requesterContactEmail: "",
+  requesterAcknowledgementRequired: false,
   loggedByRequesterName: ""
 };
 
@@ -168,6 +170,7 @@ export function PublicMachineLogPage({ publicId }: { publicId: string }) {
           requesterConfirmedName: form.requesterConfirmedName,
           requesterContactPhone: form.requesterContactPhone,
           requesterContactEmail: form.requesterContactEmail,
+          requesterAcknowledgementRequired: form.requesterAcknowledgementRequired,
           loggedByRequesterName: form.loggedByRequesterName,
           attachments: preparedAttachments
         })
@@ -270,6 +273,11 @@ export function PublicMachineLogPage({ publicId }: { publicId: string }) {
             <TextInput label="Name" value={form.requesterConfirmedName} required onChange={(value) => updateForm("requesterConfirmedName", value)} />
             <TextInput label="Contact Number" value={form.requesterContactPhone} required onChange={(value) => updateForm("requesterContactPhone", value)} />
             <TextInput label="Email" type="email" value={form.requesterContactEmail} onChange={(value) => updateForm("requesterContactEmail", value)} />
+            <CheckboxInput
+              label="Requester acknowledgement required"
+              checked={form.requesterAcknowledgementRequired}
+              onChange={(value) => updateForm("requesterAcknowledgementRequired", value)}
+            />
             <TextInput label="Logged By" value={form.loggedByRequesterName} required onChange={(value) => updateForm("loggedByRequesterName", value)} />
 
             <div className="field-panel-subtle grid gap-3">
@@ -354,6 +362,33 @@ function TextAreaInput({
     <label className="block">
       <span className="field-label">{label}</span>
       <textarea className="field-textarea min-h-28" value={value} required={required} onChange={(event) => onChange(event.target.value)} />
+    </label>
+  );
+}
+
+function CheckboxInput({
+  label,
+  checked,
+  onChange
+}: {
+  label: string;
+  checked: boolean;
+  onChange: (value: boolean) => void;
+}) {
+  return (
+    <label className="flex items-start gap-3 rounded-md border border-[#d9dee3] bg-[#fbfcfd] p-3 text-sm dark:border-[#2f3742] dark:bg-[#1f242d]">
+      <input
+        className="mt-1 h-4 w-4"
+        type="checkbox"
+        checked={checked}
+        onChange={(event) => onChange(event.target.checked)}
+      />
+      <span>
+        <span className="font-medium">{label}</span>
+        <span className="field-muted mt-1 block">
+          Mark this if this log should be acknowledged later.
+        </span>
+      </span>
     </label>
   );
 }

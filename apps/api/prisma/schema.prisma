@@ -300,6 +300,7 @@ model MachineLog {
   requesterConfirmedName     String?
   requesterContactPhone      String?
   requesterContactEmail      String?
+  requesterAcknowledgementRequired Boolean      @default(false)
   requesterConfirmedAt       DateTime?
   loggedByUserId             String?
   loggedByUser               User?          @relation("MachineLogUser", fields: [loggedByUserId], references: [id])

@@ -15,6 +15,7 @@ export type CreateMachineLogDto = {
   requesterConfirmedName?: string;
   requesterContactPhone?: string;
   requesterContactEmail?: string;
+  requesterAcknowledgementRequired?: boolean;
   requesterConfirmedAt?: string;
   loggedByUserId?: string;
   loggedByRequesterName?: string;

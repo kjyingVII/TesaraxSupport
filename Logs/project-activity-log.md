@@ -1209,3 +1209,9 @@ This file records meaningful project updates, decisions, and implementation step
 
 - Removed the project-specific Caddy container and Caddyfile from this repository.
 - Kept web and API host ports configurable so a shared VPS-level Caddy can reverse proxy to `13000` and `14000`.
+
+## 2026-06-20 - Machine Log Acknowledgement Required Flag
+
+- Added a requester acknowledgement required flag to machine logs.
+- Added the field to staff and public add machine log pages.
+- Displayed the flag in staff and public machine log detail pages.

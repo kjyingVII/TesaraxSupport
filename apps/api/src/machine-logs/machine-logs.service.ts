@@ -165,6 +165,7 @@ export class MachineLogsService {
           requesterConfirmedName: this.cleanOptionalString(dto.requesterConfirmedName),
           requesterContactPhone: this.cleanOptionalString(dto.requesterContactPhone),
           requesterContactEmail: this.cleanOptionalString(dto.requesterContactEmail),
+          requesterAcknowledgementRequired: dto.requesterAcknowledgementRequired === true,
           requesterConfirmedAt: this.parseOptionalDate(dto.requesterConfirmedAt, "requesterConfirmedAt"),
           loggedByUserId,
           loggedByRequesterName: this.cleanOptionalString(dto.loggedByRequesterName)
