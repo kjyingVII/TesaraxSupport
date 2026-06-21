@@ -1318,3 +1318,9 @@ This file records meaningful project updates, decisions, and implementation step
 - Machine log creation now writes a WhatsApp notification log attempt when Notify Customer is selected.
 - Machine log detail view now shows customer notification settings and recipient details.
 - Added a database migration for the new machine log notification fields and applied it locally.
+
+## 2026-06-21 - Staff Machine Log Logger Field Cleanup
+
+- Removed redundant Requester Name, Contact Number, and Email fields from the technician/admin Add Machine Log page.
+- Kept Logged By as the staff log creator field and kept Notify Customer as the customer notification recipient section.
+- Updated the machine log detail page to show Logged By first, with legacy/public contact details only when they exist.

@@ -48,9 +48,6 @@ type LogForm = {
   upgradeVersion: string;
   upgradeDescription: string;
   nextServiceDueOverrideAt: string;
-  requesterConfirmedName: string;
-  requesterContactPhone: string;
-  requesterContactEmail: string;
   requesterAcknowledgementRequired: boolean;
   loggedByRequesterName: string;
   notifyCustomer: boolean;
@@ -70,9 +67,6 @@ const defaultLogForm: LogForm = {
   upgradeVersion: "",
   upgradeDescription: "",
   nextServiceDueOverrideAt: "",
-  requesterConfirmedName: "",
-  requesterContactPhone: "",
-  requesterContactEmail: "",
   requesterAcknowledgementRequired: false,
   loggedByRequesterName: "",
   notifyCustomer: false,
@@ -159,9 +153,6 @@ export function NewMachineLogPage({ machineId }: { machineId: string }) {
           nextServiceDueOverrideAt: form.activityType === "MACHINE_MAINTENANCE" && form.nextServiceDueOverrideAt
             ? new Date(form.nextServiceDueOverrideAt).toISOString()
             : undefined,
-          requesterConfirmedName: form.requesterConfirmedName,
-          requesterContactPhone: form.requesterContactPhone,
-          requesterContactEmail: form.requesterContactEmail,
           requesterAcknowledgementRequired: form.requesterAcknowledgementRequired,
           notifyCustomer: form.notifyCustomer,
           notifyRecipientName: form.notifyCustomer ? form.notifyRecipientName : undefined,
@@ -281,9 +272,6 @@ export function NewMachineLogPage({ machineId }: { machineId: string }) {
                 onChange={(value) => updateForm("nextServiceDueOverrideAt", value)}
               />
             ) : null}
-            <TextInput label="Requester Name" value={form.requesterConfirmedName} onChange={(value) => updateForm("requesterConfirmedName", value)} />
-            <TextInput label="Contact Number" value={form.requesterContactPhone} onChange={(value) => updateForm("requesterContactPhone", value)} />
-            <TextInput label="Email" type="email" value={form.requesterContactEmail} onChange={(value) => updateForm("requesterContactEmail", value)} />
             <TextInput label="Logged By" value={form.loggedByRequesterName} onChange={(value) => updateForm("loggedByRequesterName", value)} />
 
             <div className="field-panel-subtle grid gap-3">

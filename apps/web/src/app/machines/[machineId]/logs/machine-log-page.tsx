@@ -584,9 +584,9 @@ function MachineLogDetailPanel({
       {detail.activityType === "MACHINE_MAINTENANCE" ? (
         <InfoLine label="Next Machine Maintenance Override" value={detail.nextServiceDueOverrideAt ? formatDate(detail.nextServiceDueOverrideAt) : "None"} />
       ) : null}
-      <InfoLine label="Name" value={detail.loggedByRequesterName ?? detail.loggedByUser?.name ?? detail.requesterConfirmedName ?? "Not recorded"} />
-      <InfoLine label="Contact Number" value={detail.requesterContactPhone || "Not recorded"} />
-      <InfoLine label="Email" value={detail.requesterContactEmail || "Not recorded"} />
+      <InfoLine label="Logged By" value={detail.loggedByRequesterName ?? detail.loggedByUser?.name ?? detail.requesterConfirmedName ?? "Not recorded"} />
+      {detail.requesterContactPhone ? <InfoLine label="Contact Number" value={detail.requesterContactPhone} /> : null}
+      {detail.requesterContactEmail ? <InfoLine label="Email" value={detail.requesterContactEmail} /> : null}
       <InfoLine label="User Signature Required" value={detail.requesterAcknowledgementRequired ? "Yes" : "No"} />
       <div className="field-panel-subtle">
         <p className="text-sm font-semibold">Customer Notification</p>
