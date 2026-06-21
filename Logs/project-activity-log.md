@@ -1303,3 +1303,10 @@ This file records meaningful project updates, decisions, and implementation step
 - Ticket status changes now log a requester WhatsApp notification attempt.
 - Service report submission now logs a requester WhatsApp notification attempt.
 - Notifications are marked skipped until a real WhatsApp provider is configured, keeping production behavior safe while preserving traceability.
+
+## 2026-06-21 - Admin Notification Log Viewer
+
+- Added an admin/supervisor API endpoint for notification log listing with channel, status, related type, and search filters.
+- Added a Notifications item to the admin navigation menu.
+- Added the `/admin/notifications` page for viewing notification attempts, recipient details, message summaries, and skip/failure reasons.
+- Built the page in the same operational style as the audit log viewer so admins can validate WhatsApp notification readiness before enabling a provider.

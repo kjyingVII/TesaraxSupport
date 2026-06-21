@@ -1,6 +1,15 @@
-import { Injectable } from "@nestjs/common";
-import { NotificationChannel, NotificationStatus, TicketStatus } from "@prisma/client";
+import { BadRequestException, Injectable } from "@nestjs/common";
+import { NotificationChannel, NotificationStatus, Prisma, TicketStatus } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
+
+type ListNotificationLogsInput = {
+  channel?: string;
+  status?: string;
+  relatedType?: string;
+  search?: string;
+  page?: string;
+  pageSize?: string;
+};
 
 type NotificationRecipient = {
   name?: string | null;
@@ -18,6 +27,46 @@ type WhatsAppLogInput = {
 @Injectable()
 export class NotificationsService {
   constructor(private readonly prisma: PrismaService) {}
+
+  async list(input: ListNotificationLogsInput) {
+    const page = this.parsePositiveInteger(input.page, 1);
+    const pageSize = this.parsePositiveInteger(input.pageSize, 50);
+    const where: Prisma.NotificationLogWhereInput = {};
+
+    if (input.channel?.trim()) where.channel = this.parseChannel(input.channel);
+    if (input.status?.trim()) where.status = this.parseStatus(input.status);
+    if (input.relatedType?.trim()) where.relatedType = input.relatedType.trim();
+    if (input.search?.trim()) {
+      const search = input.search.trim();
+      where.OR = [
+        { recipientName: { contains: search, mode: "insensitive" } },
+        { recipientPhone: { contains: search, mode: "insensitive" } },
+        { recipientEmail: { contains: search, mode: "insensitive" } },
+        { subject: { contains: search, mode: "insensitive" } },
+        { messageSummary: { contains: search, mode: "insensitive" } },
+        { relatedId: { contains: search, mode: "insensitive" } }
+      ];
+    }
+
+    const [items, total] = await this.prisma.$transaction([
+      this.prisma.notificationLog.findMany({
+        where,
+        orderBy: { createdAt: "desc" },
+        skip: (page - 1) * pageSize,
+        take: pageSize
+      }),
+      this.prisma.notificationLog.count({ where })
+    ]);
+
+    return {
+      data: items,
+      meta: {
+        page,
+        pageSize,
+        total
+      }
+    };
+  }
 
   async logTicketCreated(ticketId: string) {
     const ticket = await this.prisma.ticket.findUnique({
@@ -233,6 +282,35 @@ export class NotificationsService {
   private cleanOptionalString(value: string | null | undefined) {
     const cleaned = value?.trim();
     return cleaned ? cleaned : undefined;
+  }
+
+  private parseChannel(value: string) {
+    const channel = value.trim().toUpperCase();
+    if (!Object.values(NotificationChannel).includes(channel as NotificationChannel)) {
+      throw new BadRequestException("Invalid notification channel.");
+    }
+
+    return channel as NotificationChannel;
+  }
+
+  private parseStatus(value: string) {
+    const status = value.trim().toUpperCase();
+    if (!Object.values(NotificationStatus).includes(status as NotificationStatus)) {
+      throw new BadRequestException("Invalid notification status.");
+    }
+
+    return status as NotificationStatus;
+  }
+
+  private parsePositiveInteger(value: string | undefined, fallback: number) {
+    if (value === undefined) return fallback;
+
+    const parsed = Number(value);
+    if (!Number.isInteger(parsed) || parsed < 1) {
+      throw new BadRequestException("Pagination values must be positive integers.");
+    }
+
+    return Math.min(parsed, 100);
   }
 
   private truncate(value: string, maxLength: number) {

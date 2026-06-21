@@ -10,6 +10,7 @@ const menuItems = [
   { href: "/admin/customers", label: "Customers", roles: ["ADMIN", "SUPERVISOR"] },
   { href: "/admin/machines", label: "Machines", roles: ["ADMIN", "SUPERVISOR", "TECHNICIAN"] },
   { href: "/admin/reminders", label: "Reminders", roles: ["ADMIN", "SUPERVISOR"] },
+  { href: "/admin/notifications", label: "Notifications", roles: ["ADMIN", "SUPERVISOR"] },
   { href: "/admin/users", label: "Users", roles: ["ADMIN"] },
   { href: "/technician/tickets", label: "Tickets", roles: ["ADMIN", "SUPERVISOR", "TECHNICIAN"] },
   { href: "/admin/settings", label: "Settings", roles: ["ADMIN", "SUPERVISOR"] },
