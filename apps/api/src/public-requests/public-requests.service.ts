@@ -15,6 +15,7 @@ import { FollowUpAcknowledgementDto } from "../acknowledgements/dto/follow-up-ac
 import { AuditService } from "../audit/audit.service";
 import { AttachmentsService } from "../attachments/attachments.service";
 import { AuthService } from "../auth/auth.service";
+import { parseOptionalPhoneNumber, parseRequiredPhoneNumber } from "../common/phone-number";
 import { CreateMachineLogDto } from "../machine-logs/dto/create-machine-log.dto";
 import { MachineLogsService } from "../machine-logs/machine-logs.service";
 import { NotificationsService } from "../notifications/notifications.service";
@@ -126,7 +127,7 @@ export class PublicRequestsService {
     }
 
     const requesterName = this.requiredString(dto.requesterName, "Requester name is required.");
-    const requesterPhone = this.requiredString(dto.requesterPhone, "Requester phone is required.");
+    const requesterPhone = parseRequiredPhoneNumber(dto.requesterPhone, "Requester phone");
     const requesterEmail = this.cleanOptionalString(dto.requesterEmail);
     const password = this.requiredString(dto.password, "Machine password is required.");
 
@@ -313,7 +314,7 @@ export class PublicRequestsService {
       upgradeDescription: dto.upgradeDescription,
       nextServiceDueOverrideAt: dto.nextServiceDueOverrideAt,
       requesterConfirmedName: this.cleanOptionalString(dto.requesterConfirmedName) ?? access.requesterName,
-      requesterContactPhone: this.cleanOptionalString(dto.requesterContactPhone) ?? access.requesterPhone,
+      requesterContactPhone: parseOptionalPhoneNumber(dto.requesterContactPhone, "Contact number") ?? access.requesterPhone,
       requesterContactEmail: this.cleanOptionalString(dto.requesterContactEmail) ?? access.requesterEmail,
       requesterAcknowledgementRequired: false,
       requesterConfirmedAt: dto.requesterConfirmedAt,
@@ -475,7 +476,7 @@ export class PublicRequestsService {
     }
 
     const requesterName = this.requiredString(dto.requesterName, "Requester name is required.");
-    const requesterPhone = this.requiredString(dto.requesterPhone, "Contact number is required.");
+    const requesterPhone = parseRequiredPhoneNumber(dto.requesterPhone, "Contact number");
     const requesterEmail = this.cleanOptionalString(dto.requesterEmail);
     const signatureDataUrl = this.cleanOptionalString(dto.signatureDataUrl);
 
@@ -573,7 +574,7 @@ export class PublicRequestsService {
     const issueDescription = this.requiredString(dto.issueDescription, "Issue description is required.");
     const issueCategory = this.requiredString(dto.issueCategory, "Issue category is required.");
     const priority = this.parsePriority(dto.priority);
-    const requesterPhone = this.cleanOptionalString(dto.requesterPhone);
+    const requesterPhone = parseOptionalPhoneNumber(dto.requesterPhone, "Requester phone");
     const requesterEmail = this.cleanOptionalString(dto.requesterEmail);
 
     if (!requesterPhone && !requesterEmail) {
@@ -920,7 +921,7 @@ export class PublicRequestsService {
     }
 
     const requesterName = this.requiredString(dto.requesterName, "Requester name is required.");
-    const requesterPhone = this.requiredString(dto.requesterPhone, "Contact number is required.");
+    const requesterPhone = parseRequiredPhoneNumber(dto.requesterPhone, "Contact number");
     const requesterEmail = this.cleanOptionalString(dto.requesterEmail);
     const signatureDataUrl = this.cleanOptionalString(dto.signatureDataUrl);
 
@@ -1048,7 +1049,7 @@ export class PublicRequestsService {
     }
 
     const requesterName = this.requiredString(dto.requesterName, "Requester name is required.");
-    const requesterPhone = this.requiredString(dto.requesterPhone, "Contact number is required.");
+    const requesterPhone = parseRequiredPhoneNumber(dto.requesterPhone, "Contact number");
     const requesterEmail = this.cleanOptionalString(dto.requesterEmail);
     const comment = this.requiredString(dto.comment, "Follow-up comment is required.");
 
@@ -1137,7 +1138,7 @@ export class PublicRequestsService {
 
     const requesterName = this.requiredString(dto.requesterName, "Requester name is required.");
     const commentText = this.requiredString(dto.comment, "Comment is required.");
-    const requesterPhone = this.cleanOptionalString(dto.requesterPhone) ?? access.requesterPhone;
+    const requesterPhone = parseOptionalPhoneNumber(dto.requesterPhone, "Contact number") ?? access.requesterPhone;
     const requesterEmail = this.cleanOptionalString(dto.requesterEmail) ?? access.requesterEmail;
     const preparedAttachments = await this.attachmentsService.prepareTicketAttachments(dto.attachments);
 
@@ -1506,7 +1507,7 @@ export class PublicRequestsService {
   }
 
   private async ensureRequesterCanAccessTicket(ticketId: string, dto: CreatePublicTicketCommentDto) {
-    const requesterPhone = this.cleanOptionalString(dto.requesterPhone);
+    const requesterPhone = parseOptionalPhoneNumber(dto.requesterPhone, "Requester phone");
     const requesterEmail = this.cleanOptionalString(dto.requesterEmail)?.toLowerCase();
 
     if (!requesterPhone && !requesterEmail) {

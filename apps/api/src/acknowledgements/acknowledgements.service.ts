@@ -3,6 +3,7 @@ import { AcknowledgementResponse, Prisma, ServiceResolutionStatus, TicketStatus 
 import { createHash, randomBytes } from "crypto";
 import { AuditService } from "../audit/audit.service";
 import { AttachmentsService } from "../attachments/attachments.service";
+import { parseRequiredPhoneNumber } from "../common/phone-number";
 import { PrismaService } from "../prisma/prisma.service";
 import { AcceptAcknowledgementDto } from "./dto/accept-acknowledgement.dto";
 import { FollowUpAcknowledgementDto } from "./dto/follow-up-acknowledgement.dto";
@@ -345,7 +346,7 @@ export class AcknowledgementsService {
     }
 
     const requesterName = this.requiredString(dto.requesterName, "Requester name is required.");
-    const requesterPhone = this.requiredString(dto.requesterPhone, "Contact number is required.");
+    const requesterPhone = parseRequiredPhoneNumber(dto.requesterPhone, "Contact number");
     const requesterEmail = this.cleanOptionalString(dto.requesterEmail);
     const signatureDataUrl = this.cleanOptionalString(dto.signatureDataUrl);
     const providedSignatureAttachmentId = this.cleanOptionalString(dto.signatureAttachmentId);
@@ -430,7 +431,7 @@ export class AcknowledgementsService {
     }
 
     const requesterName = this.requiredString(dto.requesterName, "Requester name is required.");
-    const requesterPhone = this.requiredString(dto.requesterPhone, "Contact number is required.");
+    const requesterPhone = parseRequiredPhoneNumber(dto.requesterPhone, "Contact number");
     const requesterEmail = this.cleanOptionalString(dto.requesterEmail);
     const comment = this.requiredString(dto.comment, "Follow-up comment is required.");
 

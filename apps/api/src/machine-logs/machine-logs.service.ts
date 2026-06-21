@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
 import { MachineActivityType, Prisma } from "@prisma/client";
 import { AttachmentsService } from "../attachments/attachments.service";
+import { parseOptionalPhoneNumber } from "../common/phone-number";
 import { NotificationsService } from "../notifications/notifications.service";
 import { PrismaService } from "../prisma/prisma.service";
 import { CreateMachineLogDto } from "./dto/create-machine-log.dto";
@@ -125,9 +126,9 @@ export class MachineLogsService {
     const ticketId = this.cleanOptionalString(dto.ticketId);
     const serviceReportId = this.cleanOptionalString(dto.serviceReportId);
     const loggedByUserId = this.cleanOptionalString(dto.loggedByUserId);
-    const loggedByContactPhone = this.parseOptionalPhone(dto.requesterContactPhone, "Logged by contact number");
+    const loggedByContactPhone = parseOptionalPhoneNumber(dto.requesterContactPhone, "Logged by contact number");
     const notifyCustomer = dto.notifyCustomer === true;
-    const notifyRecipientPhone = this.parseOptionalPhone(dto.notifyRecipientPhone, "Notify recipient phone");
+    const notifyRecipientPhone = parseOptionalPhoneNumber(dto.notifyRecipientPhone, "Notify recipient phone");
 
     if (notifyCustomer && !notifyRecipientPhone) {
       throw new BadRequestException("Notify recipient phone is required when notifying customer.");
@@ -549,17 +550,6 @@ export class MachineLogsService {
   private cleanOptionalString(value: string | undefined) {
     const cleaned = value?.trim();
     return cleaned ? cleaned : undefined;
-  }
-
-  private parseOptionalPhone(value: string | undefined, fieldName: string) {
-    const cleaned = this.cleanOptionalString(value);
-    if (!cleaned) return undefined;
-
-    if (!/^\+[1-9]\d{6,14}$/.test(cleaned)) {
-      throw new BadRequestException(`${fieldName} must include country code and use international format, for example +6591234567.`);
-    }
-
-    return cleaned;
   }
 
   private addDays(date: Date, days: number) {

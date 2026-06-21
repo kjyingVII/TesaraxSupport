@@ -2,6 +2,7 @@ import { BadRequestException, ConflictException, Injectable, NotFoundException }
 import { Prisma, UserRole } from "@prisma/client";
 import { AuditService } from "../audit/audit.service";
 import { AuthService } from "../auth/auth.service";
+import { parseNullablePhoneNumber } from "../common/phone-number";
 import { PrismaService } from "../prisma/prisma.service";
 import { ChangeOwnPasswordDto } from "./dto/change-own-password.dto";
 import { CreateUserDto } from "./dto/create-user.dto";
@@ -80,7 +81,7 @@ export class UsersService {
       data: {
         name,
         email,
-        phone: this.cleanNullableString(dto.phone),
+        phone: parseNullablePhoneNumber(dto.phone, "Phone"),
         role,
         passwordHash: this.authService.hashPassword(password),
         isActive: dto.isActive ?? true
@@ -131,7 +132,7 @@ export class UsersService {
       data.email = email;
     }
 
-    if (dto.phone !== undefined) data.phone = this.cleanNullableString(dto.phone);
+    if (dto.phone !== undefined) data.phone = parseNullablePhoneNumber(dto.phone, "Phone");
 
     if (Object.keys(data).length === 0) {
       throw new BadRequestException("No profile fields were provided.");
@@ -211,7 +212,7 @@ export class UsersService {
       data.email = email;
     }
 
-    if (dto.phone !== undefined) data.phone = this.cleanNullableString(dto.phone);
+    if (dto.phone !== undefined) data.phone = parseNullablePhoneNumber(dto.phone, "Phone");
     if (dto.role !== undefined) data.role = this.parseRole(dto.role);
     if (dto.isActive !== undefined) data.isActive = dto.isActive;
 

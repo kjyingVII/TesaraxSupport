@@ -1341,3 +1341,10 @@ This file records meaningful project updates, decisions, and implementation step
 - Kept submitted phone values in international format for notification and future WhatsApp integration compatibility.
 - Clarified the phone input layout with visible Country code and Phone number sub-fields so customer and machine access forms show the country code selector clearly.
 - Added country-specific frontend validation to the shared phone input, including visible invalid-number guidance and native submit blocking.
+
+## 2026-06-21 - Backend Phone Number Validation
+
+- Added a shared backend phone validator with the same supported country code and digit-length rules as the frontend.
+- Applied backend phone validation to customer, user/profile, system settings, machine log, public machine access, ticket request/comment, and acknowledgement flows.
+- Invalid phone numbers now return HTTP 400 even when requests bypass the browser UI.
+- Verified invalid customer and public machine access phone submissions are rejected locally.

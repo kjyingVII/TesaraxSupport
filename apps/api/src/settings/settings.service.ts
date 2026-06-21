@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable } from "@nestjs/common";
 import { Prisma } from "@prisma/client";
 import { AuditService } from "../audit/audit.service";
+import { parseNullablePhoneNumber } from "../common/phone-number";
 import { PrismaService } from "../prisma/prisma.service";
 import { UpdateSystemSettingsDto } from "./dto/update-system-settings.dto";
 
@@ -67,7 +68,7 @@ export class SettingsService {
 
     if (dto.companyName !== undefined) next.companyName = this.cleanNullableString(dto.companyName);
     if (dto.supportEmail !== undefined) next.supportEmail = this.cleanNullableString(dto.supportEmail);
-    if (dto.supportPhone !== undefined) next.supportPhone = this.cleanNullableString(dto.supportPhone);
+    if (dto.supportPhone !== undefined) next.supportPhone = parseNullablePhoneNumber(dto.supportPhone, "Support phone");
     if (dto.acknowledgementRequiredBeforeClosing !== undefined) {
       if (typeof dto.acknowledgementRequiredBeforeClosing !== "boolean") {
         throw new BadRequestException("Acknowledgement required must be true or false.");
