@@ -1340,3 +1340,4 @@ This file records meaningful project updates, decisions, and implementation step
 - Removed the visible "Saved in international format" helper label from contact number inputs.
 - Kept submitted phone values in international format for notification and future WhatsApp integration compatibility.
 - Clarified the phone input layout with visible Country code and Phone number sub-fields so customer and machine access forms show the country code selector clearly.
+- Added country-specific frontend validation to the shared phone input, including visible invalid-number guidance and native submit blocking.

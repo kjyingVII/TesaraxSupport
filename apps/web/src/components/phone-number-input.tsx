@@ -30,6 +30,10 @@ export function PhoneNumberInput({
   onChange
 }: PhoneNumberInputProps) {
   const parsed = parsePhoneNumber(value);
+  const selectedCountry = getCountryByCode(parsed.countryCode);
+  const hasPhoneNumber = Boolean(parsed.localNumber);
+  const phoneNumberIsInvalid = hasPhoneNumber && !isValidPhoneNumber(value);
+  const validationMessage = getPhoneValidationMessage(selectedCountry);
 
   function updateCountryCode(countryCode: string) {
     onChange(parsed.localNumber ? `${countryCode}${parsed.localNumber}` : "");
@@ -63,13 +67,27 @@ export function PhoneNumberInput({
           <span className="field-meta-label">Phone number</span>
           <input
             aria-label={`${label} phone number`}
+            aria-describedby={phoneNumberIsInvalid ? `${phoneInputId(label)}-error` : undefined}
+            aria-invalid={phoneNumberIsInvalid}
+            autoComplete="tel-national"
             className={`${inputClassName} mt-2`}
             inputMode="tel"
+            maxLength={selectedCountry.maxLength}
+            minLength={selectedCountry.minLength}
+            pattern={getPhoneNumberPattern(selectedCountry)}
             placeholder={parsed.countryCode === "+65" ? "91234567" : "Phone number"}
             required={required}
+            title={validationMessage}
             value={parsed.localNumber}
             onChange={(event) => updateLocalNumber(event.target.value)}
+            onInput={(event) => event.currentTarget.setCustomValidity("")}
+            onInvalid={(event) => event.currentTarget.setCustomValidity(validationMessage)}
           />
+          {phoneNumberIsInvalid ? (
+            <span id={`${phoneInputId(label)}-error`} className="mt-2 block text-xs font-medium text-red-700 dark:text-red-300">
+              {validationMessage}
+            </span>
+          ) : null}
         </label>
       </div>
     </div>
@@ -80,7 +98,7 @@ export function isValidPhoneNumber(value: string) {
   const parsed = parsePhoneNumber(value);
   if (!parsed.localNumber) return false;
 
-  const country = countryCodes.find((item) => item.value === parsed.countryCode) ?? countryCodes[0];
+  const country = getCountryByCode(parsed.countryCode);
   return (
     parsed.localNumber.length >= country.minLength &&
     parsed.localNumber.length <= country.maxLength &&
@@ -106,4 +124,32 @@ export function parsePhoneNumber(value: string) {
     countryCode: "+65",
     localNumber: cleaned.replace(/\D/g, "").replace(/^0+/, "")
   };
+}
+
+function getCountryByCode(countryCode: string) {
+  return countryCodes.find((item) => item.value === countryCode) ?? countryCodes[0];
+}
+
+function getPhoneNumberPattern(country: (typeof countryCodes)[number]) {
+  if (country.pattern) {
+    return country.pattern.source;
+  }
+
+  return `\\d{${country.minLength},${country.maxLength}}`;
+}
+
+function getPhoneValidationMessage(country: (typeof countryCodes)[number]) {
+  if (country.value === "+65") {
+    return "Enter a valid Singapore phone number with 8 digits, starting with 3, 6, 8, or 9.";
+  }
+
+  if (country.minLength === country.maxLength) {
+    return `Enter a valid ${country.label} phone number with ${country.minLength} digits.`;
+  }
+
+  return `Enter a valid ${country.label} phone number with ${country.minLength} to ${country.maxLength} digits.`;
+}
+
+function phoneInputId(label: string) {
+  return `${label.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "")}-phone-number`;
 }
