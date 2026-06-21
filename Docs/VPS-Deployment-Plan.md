@@ -76,12 +76,12 @@ openssl rand -base64 48
 
 ## 4. Production Docker Compose Changes
 
-Recommended production changes:
+The Docker Compose setup is production-oriented by default:
 
-- Remove public port mapping for database:
-  - remove `5432:5432`
-- Remove public port mapping for Redis:
-  - remove `6379:6379`
+- The web container builds the Next.js app and runs `next start`, not `next dev`.
+- The API and web containers default to `NODE_ENV=production`.
+- Web, API, PostgreSQL, and Redis bind to `127.0.0.1` by default.
+- Caddy or another host-level reverse proxy should expose only ports `80` and `443`.
 - Keep uploads mounted to a visible host folder:
   - `./data/uploads:/app/uploads`
 - Set `WEB_APP_URL` to the real domain:
@@ -89,6 +89,7 @@ Recommended production changes:
 - Set `NEXT_PUBLIC_API_URL` to the real API URL:
   - either `https://support.yourdomain.com/api` if using reverse proxy path routing
   - or `https://api.yourdomain.com` if using subdomain routing
+- Rebuild the web image after changing `NEXT_PUBLIC_API_URL`, because that value is included in the Next.js production build.
 
 ## 5. Reverse Proxy and HTTPS
 
@@ -118,6 +119,8 @@ For production, proxy:
 https://support.yourdomain.com -> localhost:13000
 https://api.yourdomain.com     -> localhost:14000
 ```
+
+With the default bind settings, these ports are reachable from the VPS itself and from Caddy on the VPS, but not directly from the public internet.
 
 ## 6. Upload Storage
 
@@ -160,6 +163,7 @@ Start services:
 
 ```bash
 docker compose up -d --build
+docker compose exec -T -w /app/apps/api api pnpm exec prisma migrate deploy --schema=prisma/schema.prisma
 ```
 
 Check services:

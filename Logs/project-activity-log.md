@@ -1251,3 +1251,12 @@ This file records meaningful project updates, decisions, and implementation step
 - Public-created machine logs now always save signature requirement as optional.
 - Kept the User signature required checkbox on the staff/admin machine log creation page.
 - Verified API and web type checks pass after the policy change.
+
+## 2026-06-21 - Production Web Container
+
+- Changed the web Docker image to build the Next.js app and run `next start` instead of `next dev`.
+- Passed `NEXT_PUBLIC_API_URL` into the Docker build so the production web bundle points at the configured API domain.
+- Forced API and web containers to run with `NODE_ENV=production`.
+- Bound web, API, PostgreSQL, and Redis ports to `127.0.0.1` by default for host-level reverse proxy deployment.
+- Updated `.env.example` and VPS deployment notes with production bind settings and migration steps.
+- Verified the production web image builds successfully and the running web container starts with `next start`.
