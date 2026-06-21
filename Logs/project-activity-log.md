@@ -1368,3 +1368,10 @@ This file records meaningful project updates, decisions, and implementation step
 - Added a production backup script that exports the database and archives `data/uploads`.
 - Added a guarded restore script that requires explicit confirmation before replacing live database and upload data.
 - Documented verification steps and a suggested daily cron backup schedule.
+
+## 2026-06-21 - WhatsApp Provider Foundation
+
+- Added Meta WhatsApp Cloud API provider support behind `WHATSAPP_PROVIDER=meta`.
+- Kept `WHATSAPP_PROVIDER=log` as the default safe mode that records notification attempts without sending messages.
+- WhatsApp notification logs now record `SENT`, `FAILED`, or `SKIPPED` based on provider outcome.
+- Added deployment documentation for configuring Meta phone number ID, access token, and provider mode.

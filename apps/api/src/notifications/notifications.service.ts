@@ -25,6 +25,12 @@ type WhatsAppLogInput = {
   message: string;
 };
 
+type WhatsAppSendResult = {
+  status: NotificationStatus;
+  providerMessageId?: string;
+  errorMessage?: string;
+};
+
 @Injectable()
 export class NotificationsService {
   constructor(private readonly prisma: PrismaService) {}
@@ -306,23 +312,130 @@ export class NotificationsService {
 
   private async logWhatsapp(input: WhatsAppLogInput) {
     const recipientPhone = this.cleanOptionalString(input.recipient.phone);
+    const recipientEmail = this.cleanOptionalString(input.recipient.email);
+    const recipientName = this.cleanOptionalString(input.recipient.name);
+    const messageSummary = this.truncate(input.message, 1000);
+
+    if (!recipientPhone) {
+      await this.prisma.notificationLog.create({
+        data: {
+          relatedType: input.relatedType,
+          relatedId: input.relatedId,
+          channel: NotificationChannel.WHATSAPP,
+          recipientName,
+          recipientEmail,
+          recipientPhone,
+          subject: input.subject,
+          messageSummary,
+          status: NotificationStatus.SKIPPED,
+          errorMessage: "Recipient phone number is missing. Notification was not sent."
+        }
+      });
+      return;
+    }
+
+    const sendResult = await this.sendWhatsappMessage(recipientPhone, input.message);
 
     await this.prisma.notificationLog.create({
       data: {
         relatedType: input.relatedType,
         relatedId: input.relatedId,
         channel: NotificationChannel.WHATSAPP,
-        recipientName: this.cleanOptionalString(input.recipient.name),
-        recipientEmail: this.cleanOptionalString(input.recipient.email),
+        recipientName,
+        recipientEmail,
         recipientPhone,
         subject: input.subject,
-        messageSummary: this.truncate(input.message, 1000),
-        status: NotificationStatus.SKIPPED,
-        errorMessage: recipientPhone
-          ? "WhatsApp provider is not configured yet. Notification was logged only."
-          : "Recipient phone number is missing. Notification was not sent."
+        messageSummary,
+        status: sendResult.status,
+        providerMessageId: sendResult.providerMessageId,
+        errorMessage: sendResult.errorMessage,
+        sentAt: sendResult.status === NotificationStatus.SENT ? new Date() : undefined
       }
     });
+  }
+
+  private async sendWhatsappMessage(recipientPhone: string, message: string): Promise<WhatsAppSendResult> {
+    const provider = this.cleanOptionalString(process.env.WHATSAPP_PROVIDER)?.toLowerCase() ?? "log";
+
+    if (provider === "log" || provider === "disabled") {
+      return {
+        status: NotificationStatus.SKIPPED,
+        errorMessage: "WhatsApp provider is not configured. Notification was logged only."
+      };
+    }
+
+    if (provider !== "meta") {
+      return {
+        status: NotificationStatus.SKIPPED,
+        errorMessage: `Unsupported WhatsApp provider: ${provider}.`
+      };
+    }
+
+    return this.sendMetaWhatsappMessage(recipientPhone, message);
+  }
+
+  private async sendMetaWhatsappMessage(recipientPhone: string, message: string): Promise<WhatsAppSendResult> {
+    const accessToken = this.cleanOptionalString(process.env.WHATSAPP_META_ACCESS_TOKEN);
+    const phoneNumberId = this.cleanOptionalString(process.env.WHATSAPP_META_PHONE_NUMBER_ID);
+    const graphApiVersion = this.cleanOptionalString(process.env.WHATSAPP_META_GRAPH_API_VERSION) ?? "v20.0";
+
+    if (!accessToken || !phoneNumberId) {
+      return {
+        status: NotificationStatus.SKIPPED,
+        errorMessage: "Meta WhatsApp credentials are missing. Set WHATSAPP_META_ACCESS_TOKEN and WHATSAPP_META_PHONE_NUMBER_ID."
+      };
+    }
+
+    const to = this.normalizeWhatsappPhone(recipientPhone);
+    if (!to) {
+      return {
+        status: NotificationStatus.FAILED,
+        errorMessage: "Recipient phone number must include country code and digits only."
+      };
+    }
+
+    try {
+      const response = await fetch(`https://graph.facebook.com/${graphApiVersion}/${phoneNumberId}/messages`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          messaging_product: "whatsapp",
+          recipient_type: "individual",
+          to,
+          type: "text",
+          text: {
+            preview_url: false,
+            body: message
+          }
+        })
+      });
+
+      const payload = await response.json().catch(() => null) as {
+        messages?: Array<{ id?: string }>;
+        error?: { message?: string; type?: string; code?: number };
+      } | null;
+
+      if (!response.ok) {
+        const errorMessage = payload?.error?.message ?? `Meta WhatsApp API returned HTTP ${response.status}.`;
+        return {
+          status: NotificationStatus.FAILED,
+          errorMessage: this.truncate(errorMessage, 1000)
+        };
+      }
+
+      return {
+        status: NotificationStatus.SENT,
+        providerMessageId: payload?.messages?.[0]?.id
+      };
+    } catch (error) {
+      return {
+        status: NotificationStatus.FAILED,
+        errorMessage: this.truncate(error instanceof Error ? error.message : "Unable to send WhatsApp message.", 1000)
+      };
+    }
   }
 
   private uniqueRecipients(recipients: Array<NotificationRecipient & { id?: string }>) {
@@ -342,6 +455,11 @@ export class NotificationsService {
   private cleanOptionalString(value: string | null | undefined) {
     const cleaned = value?.trim();
     return cleaned ? cleaned : undefined;
+  }
+
+  private normalizeWhatsappPhone(value: string) {
+    const digits = value.replace(/^\+/, "").replace(/\D/g, "");
+    return digits.length >= 7 && digits.length <= 15 ? digits : undefined;
   }
 
   private parseChannel(value: string) {
