@@ -1,5 +1,6 @@
 import { BadRequestException, Injectable } from "@nestjs/common";
 import { NotificationChannel, NotificationStatus, Prisma, TicketStatus } from "@prisma/client";
+import { parseRequiredPhoneNumber } from "../common/phone-number";
 import { PrismaService } from "../prisma/prisma.service";
 
 type ListNotificationLogsInput = {
@@ -19,7 +20,7 @@ type NotificationRecipient = {
 
 type WhatsAppLogInput = {
   relatedType: string;
-  relatedId: string;
+  relatedId?: string;
   recipient: NotificationRecipient;
   subject: string;
   message: string;
@@ -35,6 +36,13 @@ type WhatsAppSendResult = {
 type WhatsAppTemplateInput = {
   eventKey: string;
   parameters: string[];
+};
+
+type SendManualWhatsappInput = {
+  recipientName?: string;
+  recipientPhone?: string;
+  subject?: string;
+  message?: string;
 };
 
 @Injectable()
@@ -79,6 +87,33 @@ export class NotificationsService {
         total
       }
     };
+  }
+
+  async sendManualWhatsapp(input: SendManualWhatsappInput) {
+    const message = this.cleanOptionalString(input.message);
+    if (!message) {
+      throw new BadRequestException("Message is required.");
+    }
+
+    if (message.length > 1000) {
+      throw new BadRequestException("Message must be 1000 characters or less.");
+    }
+
+    const recipientPhone = parseRequiredPhoneNumber(input.recipientPhone, "Recipient phone");
+    const recipientName = this.cleanOptionalString(input.recipientName);
+    const subject = this.cleanOptionalString(input.subject) ?? "Manual WhatsApp test";
+
+    const log = await this.logWhatsapp({
+      relatedType: "ManualWhatsappTest",
+      recipient: {
+        name: recipientName,
+        phone: recipientPhone
+      },
+      subject,
+      message
+    });
+
+    return { data: log };
   }
 
   async logTicketCreated(ticketId: string) {
@@ -371,7 +406,7 @@ export class NotificationsService {
     const messageSummary = this.truncate(input.message, 1000);
 
     if (!recipientPhone) {
-      await this.prisma.notificationLog.create({
+      return this.prisma.notificationLog.create({
         data: {
           relatedType: input.relatedType,
           relatedId: input.relatedId,
@@ -385,12 +420,11 @@ export class NotificationsService {
           errorMessage: "Recipient phone number is missing. Notification was not sent."
         }
       });
-      return;
     }
 
     const sendResult = await this.sendWhatsappMessage(recipientPhone, input.message, input.template);
 
-    await this.prisma.notificationLog.create({
+    return this.prisma.notificationLog.create({
       data: {
         relatedType: input.relatedType,
         relatedId: input.relatedId,

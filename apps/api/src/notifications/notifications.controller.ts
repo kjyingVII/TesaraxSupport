@@ -1,4 +1,4 @@
-import { Controller, Get, Query } from "@nestjs/common";
+import { Body, Controller, Get, Post, Query } from "@nestjs/common";
 import { UserRole } from "@prisma/client";
 import { Roles } from "../auth/auth.decorators";
 import { NotificationsService } from "./notifications.service";
@@ -24,6 +24,21 @@ export class NotificationsController {
       search,
       page,
       pageSize
+    });
+  }
+
+  @Post("whatsapp-test")
+  sendWhatsappTest(
+    @Body("recipientName") recipientName?: string,
+    @Body("recipientPhone") recipientPhone?: string,
+    @Body("subject") subject?: string,
+    @Body("message") message?: string
+  ) {
+    return this.notificationsService.sendManualWhatsapp({
+      recipientName,
+      recipientPhone,
+      subject,
+      message
     });
   }
 }

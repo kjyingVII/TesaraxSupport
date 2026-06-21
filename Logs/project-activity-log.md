@@ -1395,3 +1395,9 @@ This file records meaningful project updates, decisions, and implementation step
 
 - Added WhatsApp provider, Meta credential, webhook, message mode, and template variables to the API service environment in `docker-compose.yml`.
 - Fixed VPS deployments where values existed in `.env` but were not visible inside the API container.
+
+## 2026-06-21 - Manual WhatsApp Test Sender
+
+- Added an admin/supervisor API endpoint to send manual WhatsApp test messages through the configured provider.
+- Added a Manual WhatsApp Test form to Admin > Notifications with recipient name, country-code phone input, subject, and message fields.
+- Manual test attempts are stored in notification logs with provider message ID and error details for troubleshooting.
