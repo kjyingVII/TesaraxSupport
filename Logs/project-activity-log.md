@@ -1382,3 +1382,11 @@ This file records meaningful project updates, decisions, and implementation step
 - Added per-event template env keys for ticket creation, ticket status changes, service report submission, and machine log notifications.
 - Kept plain text mode available for first credential testing and local verification.
 - Documented suggested Meta template bodies and the exact variable order required by the API.
+
+## 2026-06-21 - Meta WhatsApp Webhook Endpoint
+
+- Added public Meta WhatsApp webhook endpoint at `/api/webhooks/meta/whatsapp`.
+- Added webhook verification with `WHATSAPP_META_WEBHOOK_VERIFY_TOKEN`.
+- Added optional `x-hub-signature-256` verification when `WHATSAPP_META_APP_SECRET` is configured.
+- Added `WhatsAppWebhookEvent` storage for incoming Meta callback events.
+- Delivery status callbacks now update matching notification logs by Meta provider message ID.

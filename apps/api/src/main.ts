@@ -4,7 +4,12 @@ import { AppModule } from "./app.module";
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule, { bodyParser: false });
-  app.useBodyParser("json", { limit: "150mb" });
+  app.useBodyParser("json", {
+    limit: "150mb",
+    verify: (request: { rawBody?: Buffer }, _response: unknown, buffer: Buffer) => {
+      request.rawBody = Buffer.from(buffer);
+    }
+  });
   app.useBodyParser("urlencoded", { extended: true, limit: "150mb" });
   app.setGlobalPrefix("api");
   const allowedOrigins = (process.env.CORS_ORIGINS ?? process.env.WEB_APP_URL ?? "http://localhost:3000")

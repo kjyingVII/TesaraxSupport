@@ -19,6 +19,8 @@ WHATSAPP_PROVIDER=meta
 WHATSAPP_META_GRAPH_API_VERSION=v20.0
 WHATSAPP_META_PHONE_NUMBER_ID=your_meta_phone_number_id
 WHATSAPP_META_ACCESS_TOKEN=your_meta_access_token
+WHATSAPP_META_WEBHOOK_VERIFY_TOKEN=your_own_random_verify_token
+WHATSAPP_META_APP_SECRET=your_meta_app_secret
 WHATSAPP_META_MESSAGE_MODE=text
 ```
 
@@ -27,6 +29,35 @@ Then rebuild and restart the API:
 ```bash
 docker compose up -d --build api
 ```
+
+## Meta Webhook Endpoint
+
+Use this callback URL in Meta Business Manager:
+
+```text
+https://supportapi.tesarax.cloud/api/webhooks/meta/whatsapp
+```
+
+Use the same verify token that you set in `.env`:
+
+```env
+WHATSAPP_META_WEBHOOK_VERIFY_TOKEN=your_own_random_verify_token
+```
+
+The endpoint supports:
+
+- `GET /api/webhooks/meta/whatsapp`: Meta webhook verification
+- `POST /api/webhooks/meta/whatsapp`: WhatsApp callback events
+
+Incoming webhook events are stored in the database table `WhatsAppWebhookEvent`. Delivery status callbacks also update matching Admin > Notifications rows by Meta message ID.
+
+For stronger production security, set:
+
+```env
+WHATSAPP_META_APP_SECRET=your_meta_app_secret
+```
+
+When `WHATSAPP_META_APP_SECRET` is set, the API verifies Meta's `x-hub-signature-256` header and rejects unsigned or invalid webhook callbacks.
 
 ## Message Mode
 

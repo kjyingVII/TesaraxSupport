@@ -17,6 +17,7 @@ import { ServiceReportsModule } from "./service-reports/service-reports.module";
 import { SettingsModule } from "./settings/settings.module";
 import { TicketsModule } from "./tickets/tickets.module";
 import { UsersModule } from "./users/users.module";
+import { WebhooksModule } from "./webhooks/webhooks.module";
 
 @Module({
   imports: [
@@ -33,7 +34,8 @@ import { UsersModule } from "./users/users.module";
     ServiceReportsModule,
     SettingsModule,
     TicketsModule,
-    UsersModule
+    UsersModule,
+    WebhooksModule
   ],
   controllers: [AppController],
   providers: [

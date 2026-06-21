@@ -527,6 +527,21 @@ model NotificationLog {
   @@index([relatedType, relatedId, createdAt], map: "NotificationLog_relatedType_relatedId_createdAt_idx")
 }
 
+model WhatsAppWebhookEvent {
+  id                String   @id @default(uuid())
+  provider          String   @default("meta")
+  eventType         String
+  providerMessageId String?
+  senderPhone       String?
+  status            String?
+  payload           Json
+  receivedAt        DateTime @default(now())
+
+  @@index([provider, receivedAt], map: "WhatsAppWebhookEvent_provider_receivedAt_idx")
+  @@index([eventType, receivedAt], map: "WhatsAppWebhookEvent_eventType_receivedAt_idx")
+  @@index([providerMessageId], map: "WhatsAppWebhookEvent_providerMessageId_idx")
+}
+
 model SystemSetting {
   key       String   @id
   value     Json
