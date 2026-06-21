@@ -26,7 +26,7 @@ export function PhoneNumberInput({
   value,
   required,
   className,
-  inputClassName = "field-input h-11",
+  inputClassName = "field-input h-11 font-medium text-neutral-900 dark:text-neutral-100",
   onChange
 }: PhoneNumberInputProps) {
   const parsed = parsePhoneNumber(value);
@@ -43,22 +43,34 @@ export function PhoneNumberInput({
   return (
     <div className={className}>
       <span className="field-label">{label}</span>
-      <div className="grid grid-cols-[112px_minmax(0,1fr)] gap-2">
-        <select className={inputClassName} value={parsed.countryCode} onChange={(event) => updateCountryCode(event.target.value)}>
-          {countryCodes.map((country) => (
-            <option key={country.value} value={country.value}>
-              {country.label} {country.value}
-            </option>
-          ))}
-        </select>
-        <input
-          className={inputClassName}
-          inputMode="tel"
-          placeholder={parsed.countryCode === "+65" ? "91234567" : "Phone number"}
-          required={required}
-          value={parsed.localNumber}
-          onChange={(event) => updateLocalNumber(event.target.value)}
-        />
+      <div className="grid gap-2 sm:grid-cols-[136px_minmax(0,1fr)]">
+        <label className="block">
+          <span className="field-meta-label">Country code</span>
+          <select
+            aria-label={`${label} country code`}
+            className={`${inputClassName} mt-2`}
+            value={parsed.countryCode}
+            onChange={(event) => updateCountryCode(event.target.value)}
+          >
+            {countryCodes.map((country) => (
+              <option key={country.value} value={country.value}>
+                {country.label} {country.value}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="block">
+          <span className="field-meta-label">Phone number</span>
+          <input
+            aria-label={`${label} phone number`}
+            className={`${inputClassName} mt-2`}
+            inputMode="tel"
+            placeholder={parsed.countryCode === "+65" ? "91234567" : "Phone number"}
+            required={required}
+            value={parsed.localNumber}
+            onChange={(event) => updateLocalNumber(event.target.value)}
+          />
+        </label>
       </div>
     </div>
   );
