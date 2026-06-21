@@ -50,8 +50,12 @@ type LogForm = {
   nextServiceDueOverrideAt: string;
   requesterAcknowledgementRequired: boolean;
   loggedByRequesterName: string;
+  loggedByContactCountryCode: string;
+  loggedByContactPhone: string;
+  loggedByContactEmail: string;
   notifyCustomer: boolean;
   notifyRecipientName: string;
+  notifyRecipientCountryCode: string;
   notifyRecipientPhone: string;
   notifyRecipientEmail: string;
   notifyMessage: string;
@@ -69,14 +73,29 @@ const defaultLogForm: LogForm = {
   nextServiceDueOverrideAt: "",
   requesterAcknowledgementRequired: false,
   loggedByRequesterName: "",
+  loggedByContactCountryCode: "+65",
+  loggedByContactPhone: "",
+  loggedByContactEmail: "",
   notifyCustomer: false,
   notifyRecipientName: "",
+  notifyRecipientCountryCode: "+65",
   notifyRecipientPhone: "",
   notifyRecipientEmail: "",
   notifyMessage: ""
 };
 
 const bytesPerMb = 1024 * 1024;
+const countryCodes = [
+  { label: "SG", value: "+65", minLength: 8, maxLength: 8, pattern: /^[3689]\d{7}$/ },
+  { label: "MY", value: "+60", minLength: 8, maxLength: 10 },
+  { label: "ID", value: "+62", minLength: 8, maxLength: 12 },
+  { label: "TH", value: "+66", minLength: 8, maxLength: 9 },
+  { label: "PH", value: "+63", minLength: 10, maxLength: 10 },
+  { label: "VN", value: "+84", minLength: 9, maxLength: 10 },
+  { label: "CN", value: "+86", minLength: 11, maxLength: 11 },
+  { label: "IN", value: "+91", minLength: 10, maxLength: 10 },
+  { label: "US", value: "+1", minLength: 10, maxLength: 10 }
+];
 
 export function NewMachineLogPage({ machineId }: { machineId: string }) {
   const [machine, setMachine] = useState<MachineDetail | null>(null);
@@ -130,6 +149,10 @@ export function NewMachineLogPage({ machineId }: { machineId: string }) {
     setError(null);
 
     try {
+      const loggedByPhone = formatPhoneNumber(form.loggedByContactCountryCode, form.loggedByContactPhone, "Logged by contact number");
+      const notifyPhone = form.notifyCustomer
+        ? formatPhoneNumber(form.notifyRecipientCountryCode, form.notifyRecipientPhone, "Notify phone")
+        : undefined;
       validateAttachments(attachments, attachmentLimits.requestAttachmentMaxFileMb, attachmentLimits.requestAttachmentMaxTotalMb);
       const preparedAttachments = await Promise.all(
         attachments.map(async (attachment) => ({
@@ -153,10 +176,12 @@ export function NewMachineLogPage({ machineId }: { machineId: string }) {
           nextServiceDueOverrideAt: form.activityType === "MACHINE_MAINTENANCE" && form.nextServiceDueOverrideAt
             ? new Date(form.nextServiceDueOverrideAt).toISOString()
             : undefined,
+          requesterContactPhone: loggedByPhone,
+          requesterContactEmail: form.loggedByContactEmail,
           requesterAcknowledgementRequired: form.requesterAcknowledgementRequired,
           notifyCustomer: form.notifyCustomer,
           notifyRecipientName: form.notifyCustomer ? form.notifyRecipientName : undefined,
-          notifyRecipientPhone: form.notifyCustomer ? form.notifyRecipientPhone : undefined,
+          notifyRecipientPhone: notifyPhone,
           notifyRecipientEmail: form.notifyCustomer ? form.notifyRecipientEmail : undefined,
           notifyMessage: form.notifyCustomer ? form.notifyMessage : undefined,
           loggedByUserId: user?.id,
@@ -169,7 +194,9 @@ export function NewMachineLogPage({ machineId }: { machineId: string }) {
         ...defaultLogForm,
         activityType: form.activityType,
         workDate: toDateTimeLocal(new Date().toISOString()),
-        loggedByRequesterName: user?.name ?? ""
+        loggedByRequesterName: user?.name ?? "",
+        loggedByContactCountryCode: form.loggedByContactCountryCode,
+        notifyRecipientCountryCode: form.notifyRecipientCountryCode
       });
       setAttachments([]);
     } catch (err) {
@@ -272,7 +299,18 @@ export function NewMachineLogPage({ machineId }: { machineId: string }) {
                 onChange={(value) => updateForm("nextServiceDueOverrideAt", value)}
               />
             ) : null}
-            <TextInput label="Logged By" value={form.loggedByRequesterName} onChange={(value) => updateForm("loggedByRequesterName", value)} />
+            <div className="field-panel-subtle grid gap-3">
+              <p className="text-sm font-semibold">Logged By</p>
+              <TextInput label="Name" value={form.loggedByRequesterName} onChange={(value) => updateForm("loggedByRequesterName", value)} />
+              <PhoneInput
+                label="Contact Number"
+                countryCode={form.loggedByContactCountryCode}
+                phone={form.loggedByContactPhone}
+                onCountryCodeChange={(value) => updateForm("loggedByContactCountryCode", value)}
+                onPhoneChange={(value) => updateForm("loggedByContactPhone", value)}
+              />
+              <TextInput label="Email" type="email" value={form.loggedByContactEmail} onChange={(value) => updateForm("loggedByContactEmail", value)} />
+            </div>
 
             <div className="field-panel-subtle grid gap-3">
               <CheckboxInput
@@ -284,7 +322,14 @@ export function NewMachineLogPage({ machineId }: { machineId: string }) {
               {form.notifyCustomer ? (
                 <div className="grid gap-3">
                   <TextInput label="Notify Name" value={form.notifyRecipientName} onChange={(value) => updateForm("notifyRecipientName", value)} />
-                  <TextInput label="Notify Phone" value={form.notifyRecipientPhone} required onChange={(value) => updateForm("notifyRecipientPhone", value)} />
+                  <PhoneInput
+                    label="Notify Phone"
+                    countryCode={form.notifyRecipientCountryCode}
+                    phone={form.notifyRecipientPhone}
+                    required
+                    onCountryCodeChange={(value) => updateForm("notifyRecipientCountryCode", value)}
+                    onPhoneChange={(value) => updateForm("notifyRecipientPhone", value)}
+                  />
                   <TextInput label="Notify Email" type="email" value={form.notifyRecipientEmail} onChange={(value) => updateForm("notifyRecipientEmail", value)} />
                   <TextAreaInput label="Message Note" value={form.notifyMessage} onChange={(value) => updateForm("notifyMessage", value)} />
                 </div>
@@ -390,6 +435,50 @@ function TextInput({
   );
 }
 
+function PhoneInput({
+  label,
+  countryCode,
+  phone,
+  onCountryCodeChange,
+  onPhoneChange,
+  required
+}: {
+  label: string;
+  countryCode: string;
+  phone: string;
+  onCountryCodeChange: (value: string) => void;
+  onPhoneChange: (value: string) => void;
+  required?: boolean;
+}) {
+  return (
+    <div>
+      <span className="field-label">{label}</span>
+      <div className="grid grid-cols-[112px_minmax(0,1fr)] gap-2">
+        <select
+          className="field-input h-11"
+          value={countryCode}
+          onChange={(event) => onCountryCodeChange(event.target.value)}
+        >
+          {countryCodes.map((country) => (
+            <option key={country.value} value={country.value}>
+              {country.label} {country.value}
+            </option>
+          ))}
+        </select>
+        <input
+          className="field-input h-11"
+          inputMode="tel"
+          placeholder={countryCode === "+65" ? "91234567" : "Phone number"}
+          required={required}
+          value={phone}
+          onChange={(event) => onPhoneChange(event.target.value)}
+        />
+      </div>
+      <p className="field-muted mt-1 text-xs">Saved in international format, for example +6591234567.</p>
+    </div>
+  );
+}
+
 function TextAreaInput({
   label,
   value,
@@ -483,6 +572,24 @@ function validateAttachments(attachments: File[], maxFileMb: number, maxTotalMb:
   if (totalBytes > maxTotalBytes) {
     throw new Error(`Machine log attachments cannot exceed ${maxTotalMb} MB in total.`);
   }
+}
+
+function formatPhoneNumber(countryCode: string, localNumber: string, fieldName: string) {
+  const rawNumber = localNumber.trim();
+  if (!rawNumber) return undefined;
+
+  const country = countryCodes.find((item) => item.value === countryCode) ?? countryCodes[0];
+  const digits = rawNumber.replace(/\D/g, "").replace(/^0+/, "");
+
+  if (
+    digits.length < country.minLength ||
+    digits.length > country.maxLength ||
+    (country.pattern && !country.pattern.test(digits))
+  ) {
+    throw new Error(`${fieldName} is not valid for ${country.label}.`);
+  }
+
+  return `${country.value}${digits}`;
 }
 
 function formatBytes(value: number) {

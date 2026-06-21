@@ -125,8 +125,9 @@ export class MachineLogsService {
     const ticketId = this.cleanOptionalString(dto.ticketId);
     const serviceReportId = this.cleanOptionalString(dto.serviceReportId);
     const loggedByUserId = this.cleanOptionalString(dto.loggedByUserId);
+    const loggedByContactPhone = this.parseOptionalPhone(dto.requesterContactPhone, "Logged by contact number");
     const notifyCustomer = dto.notifyCustomer === true;
-    const notifyRecipientPhone = this.cleanOptionalString(dto.notifyRecipientPhone);
+    const notifyRecipientPhone = this.parseOptionalPhone(dto.notifyRecipientPhone, "Notify recipient phone");
 
     if (notifyCustomer && !notifyRecipientPhone) {
       throw new BadRequestException("Notify recipient phone is required when notifying customer.");
@@ -171,7 +172,7 @@ export class MachineLogsService {
           upgradeDescription: this.cleanOptionalString(dto.upgradeDescription),
           nextServiceDueOverrideAt,
           requesterConfirmedName: this.cleanOptionalString(dto.requesterConfirmedName),
-          requesterContactPhone: this.cleanOptionalString(dto.requesterContactPhone),
+          requesterContactPhone: loggedByContactPhone,
           requesterContactEmail: this.cleanOptionalString(dto.requesterContactEmail),
           requesterAcknowledgementRequired: dto.requesterAcknowledgementRequired === true,
           requesterConfirmedAt: this.parseOptionalDate(dto.requesterConfirmedAt, "requesterConfirmedAt"),
@@ -548,6 +549,17 @@ export class MachineLogsService {
   private cleanOptionalString(value: string | undefined) {
     const cleaned = value?.trim();
     return cleaned ? cleaned : undefined;
+  }
+
+  private parseOptionalPhone(value: string | undefined, fieldName: string) {
+    const cleaned = this.cleanOptionalString(value);
+    if (!cleaned) return undefined;
+
+    if (!/^\+[1-9]\d{6,14}$/.test(cleaned)) {
+      throw new BadRequestException(`${fieldName} must include country code and use international format, for example +6591234567.`);
+    }
+
+    return cleaned;
   }
 
   private addDays(date: Date, days: number) {

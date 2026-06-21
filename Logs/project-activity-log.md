@@ -1324,3 +1324,11 @@ This file records meaningful project updates, decisions, and implementation step
 - Removed redundant Requester Name, Contact Number, and Email fields from the technician/admin Add Machine Log page.
 - Kept Logged By as the staff log creator field and kept Notify Customer as the customer notification recipient section.
 - Updated the machine log detail page to show Logged By first, with legacy/public contact details only when they exist.
+
+## 2026-06-21 - Machine Log Phone Country Code Validation
+
+- Grouped staff machine log creator fields under Logged By with name, country-code contact number, and email.
+- Added country-code selectors with Singapore (+65) as the default for Logged By and Notify Customer phone numbers.
+- Added frontend phone formatting so staff-entered machine log contact numbers are saved in international format.
+- Added backend E.164 validation for machine log logged-by and notify-recipient phone numbers.
+- Updated machine log details to display Logged By name, contact number, and email as a grouped section.
