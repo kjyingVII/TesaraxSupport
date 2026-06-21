@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FormEvent, useEffect, useState } from "react";
+import { PhoneNumberInput } from "../../../../../components/phone-number-input";
 import { ThemeToggle } from "../../../../../components/theme-toggle";
 import { apiBaseUrl, apiRequest } from "../../../../../lib/api";
 import { getMachineAccessSession } from "../../../../../lib/machine-access";
@@ -440,7 +441,7 @@ export function PublicTicketPage({ publicId, ticketId }: { publicId: string; tic
               <form className="mt-5 grid gap-3 border-t border-[#d9dee3] pt-4 dark:border-[#2f3742]" onSubmit={submitComment}>
                 <div className="grid gap-3 sm:grid-cols-3">
                   <TextInput label="Name" value={commenterName} required onChange={setCommenterName} />
-                  <TextInput label="Phone" value={commenterPhone} onChange={setCommenterPhone} />
+                  <PhoneNumberInput label="Phone" value={commenterPhone} onChange={setCommenterPhone} />
                   <TextInput label="Email" type="email" value={commenterEmail} onChange={setCommenterEmail} />
                 </div>
                 <label className="block">

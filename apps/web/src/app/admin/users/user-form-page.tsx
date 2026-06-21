@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FormEvent, useEffect, useState } from "react";
 import { AdminMenu } from "../../../components/admin-menu";
+import { PhoneNumberInput } from "../../../components/phone-number-input";
 import { ThemeToggle } from "../../../components/theme-toggle";
 import { apiRequest } from "../../../lib/api";
 
@@ -175,7 +176,7 @@ export function UserFormPage({ userId }: { userId?: string }) {
             <form className="mt-4 grid gap-4" onSubmit={saveUser}>
               <TextInput label="Name" value={form.name} required onChange={(value) => updateField("name", value)} />
               <TextInput label="Email" type="email" value={form.email} required onChange={(value) => updateField("email", value)} />
-              <TextInput label="Phone" value={form.phone} onChange={(value) => updateField("phone", value)} />
+              <PhoneNumberInput label="Phone" value={form.phone} onChange={(value) => updateField("phone", value)} />
               <label className="block">
                 <span className="field-label">Role</span>
                 <select className="field-input h-11" value={form.role} onChange={(event) => updateField("role", event.target.value)}>

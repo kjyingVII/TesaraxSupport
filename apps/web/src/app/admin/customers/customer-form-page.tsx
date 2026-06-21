@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FormEvent, useEffect, useState } from "react";
 import { AdminMenu } from "../../../components/admin-menu";
+import { PhoneNumberInput } from "../../../components/phone-number-input";
 import { SearchableMultiSelect } from "../../../components/searchable-combobox";
 import { ThemeToggle } from "../../../components/theme-toggle";
 import { apiRequest } from "../../../lib/api";
@@ -219,7 +220,7 @@ export function CustomerFormPage({ customerId }: { customerId?: string }) {
               <TextInput label="Name" value={form.name} required onChange={(value) => updateField("name", value)} />
               <TextInput label="Contact Name" value={form.contactName} onChange={(value) => updateField("contactName", value)} />
               <TextInput label="Contact Email" type="email" value={form.contactEmail} onChange={(value) => updateField("contactEmail", value)} />
-              <TextInput label="Contact Phone" value={form.contactPhone} onChange={(value) => updateField("contactPhone", value)} />
+              <PhoneNumberInput label="Contact Phone" value={form.contactPhone} onChange={(value) => updateField("contactPhone", value)} />
               <TextAreaInput label="Address" value={form.address} onChange={(value) => updateField("address", value)} />
               <TextAreaInput label="Remarks" value={form.remarks} onChange={(value) => updateField("remarks", value)} />
               <button className="field-button-primary disabled:opacity-50" type="submit" disabled={saving || !form.name.trim()}>

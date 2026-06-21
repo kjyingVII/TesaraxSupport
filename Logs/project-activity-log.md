@@ -1332,3 +1332,10 @@ This file records meaningful project updates, decisions, and implementation step
 - Added frontend phone formatting so staff-entered machine log contact numbers are saved in international format.
 - Added backend E.164 validation for machine log logged-by and notify-recipient phone numbers.
 - Updated machine log details to display Logged By name, contact number, and email as a grouped section.
+
+## 2026-06-21 - Shared Contact Number Inputs
+
+- Added a reusable phone number input with country code selection and Singapore (+65) as the default.
+- Replaced editable contact number fields across admin, profile, public machine access, ticket request, ticket comment, acknowledgement, and machine log forms.
+- Removed the visible "Saved in international format" helper label from contact number inputs.
+- Kept submitted phone values in international format for notification and future WhatsApp integration compatibility.

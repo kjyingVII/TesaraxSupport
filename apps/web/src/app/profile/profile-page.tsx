@@ -2,6 +2,7 @@
 
 import { FormEvent, useEffect, useState } from "react";
 import { AdminMenu } from "../../components/admin-menu";
+import { PhoneNumberInput } from "../../components/phone-number-input";
 import { ThemeToggle } from "../../components/theme-toggle";
 import { apiRequest } from "../../lib/api";
 import { setAuthSession, getAccessToken, type AuthUser } from "../../lib/auth";
@@ -170,7 +171,7 @@ export function ProfilePage() {
               <form className="mt-4 grid gap-4" onSubmit={saveProfile}>
                 <TextInput label="Name" value={profile.name} required onChange={(value) => updateProfileField("name", value)} />
                 <TextInput label="Email" type="email" value={profile.email} required onChange={(value) => updateProfileField("email", value)} />
-                <TextInput label="Contact Number" value={profile.phone} onChange={(value) => updateProfileField("phone", value)} />
+                <PhoneNumberInput label="Contact Number" value={profile.phone} onChange={(value) => updateProfileField("phone", value)} />
                 <button
                   className="field-button-primary disabled:cursor-not-allowed disabled:opacity-50"
                   type="submit"

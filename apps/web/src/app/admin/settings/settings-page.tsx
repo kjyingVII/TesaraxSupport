@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { FormEvent, useEffect, useState } from "react";
 import { AdminMenu } from "../../../components/admin-menu";
+import { PhoneNumberInput } from "../../../components/phone-number-input";
 import { ThemeToggle } from "../../../components/theme-toggle";
 import { apiRequest } from "../../../lib/api";
 
@@ -152,7 +153,7 @@ export function SettingsPage() {
                 <TextInput label="Reminder Window Days" type="number" value={form.reminderWindowDays} required onChange={(value) => updateField("reminderWindowDays", value)} />
                 <TextInput label="Company Name" value={form.companyName} onChange={(value) => updateField("companyName", value)} />
                 <TextInput label="Support Email" type="email" value={form.supportEmail} onChange={(value) => updateField("supportEmail", value)} />
-                <TextInput label="Support Phone" value={form.supportPhone} onChange={(value) => updateField("supportPhone", value)} />
+                <PhoneNumberInput label="Support Phone" value={form.supportPhone} onChange={(value) => updateField("supportPhone", value)} />
                 <TextInput label="Request Attachment Max File MB" type="number" value={form.requestAttachmentMaxFileMb} required onChange={(value) => updateField("requestAttachmentMaxFileMb", value)} />
                 <TextInput label="Request Attachment Max Total MB" type="number" value={form.requestAttachmentMaxTotalMb} required onChange={(value) => updateField("requestAttachmentMaxTotalMb", value)} />
                 <TextInput label="Service Report Attachment Max File MB" type="number" value={form.serviceReportAttachmentMaxFileMb} required onChange={(value) => updateField("serviceReportAttachmentMaxFileMb", value)} />

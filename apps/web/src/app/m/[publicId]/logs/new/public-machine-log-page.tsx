@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FormEvent, useEffect, useState } from "react";
+import { PhoneNumberInput } from "../../../../../components/phone-number-input";
 import { ThemeToggle } from "../../../../../components/theme-toggle";
 import { apiRequest } from "../../../../../lib/api";
 import { getMachineAccessSession } from "../../../../../lib/machine-access";
@@ -269,7 +270,12 @@ export function PublicMachineLogPage({ publicId }: { publicId: string }) {
               />
             ) : null}
             <TextInput label="Name" value={form.requesterConfirmedName} required onChange={(value) => updateForm("requesterConfirmedName", value)} />
-            <TextInput label="Contact Number" value={form.requesterContactPhone} required onChange={(value) => updateForm("requesterContactPhone", value)} />
+            <PhoneNumberInput
+              label="Contact Number"
+              value={form.requesterContactPhone}
+              required
+              onChange={(value) => updateForm("requesterContactPhone", value)}
+            />
             <TextInput label="Email" type="email" value={form.requesterContactEmail} onChange={(value) => updateForm("requesterContactEmail", value)} />
             <TextInput label="Logged By" value={form.loggedByRequesterName} required onChange={(value) => updateForm("loggedByRequesterName", value)} />
 

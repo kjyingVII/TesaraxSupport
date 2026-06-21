@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FormEvent, useState } from "react";
+import { PhoneNumberInput } from "../../../../components/phone-number-input";
 import { ThemeToggle } from "../../../../components/theme-toggle";
 import { apiRequest } from "../../../../lib/api";
 import { setMachineAccessSession } from "../../../../lib/machine-access";
@@ -96,7 +97,7 @@ export function MachineAccessPage({ publicId }: { publicId: string }) {
             ) : null}
 
             <TextInput label="Name" value={requesterName} required onChange={setRequesterName} />
-            <TextInput label="Contact Number" value={requesterPhone} required onChange={setRequesterPhone} />
+            <PhoneNumberInput label="Contact Number" value={requesterPhone} required onChange={setRequesterPhone} />
             <TextInput label="Email" type="email" value={requesterEmail} onChange={setRequesterEmail} />
             <TextInput label="Machine Password" type="password" value={password} required onChange={setPassword} />
 

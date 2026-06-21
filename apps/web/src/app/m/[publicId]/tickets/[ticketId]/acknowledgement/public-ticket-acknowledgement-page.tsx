@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FormEvent, PointerEvent, ReactNode, useEffect, useMemo, useRef, useState } from "react";
+import { PhoneNumberInput } from "../../../../../../components/phone-number-input";
 import { ThemeToggle } from "../../../../../../components/theme-toggle";
 import { apiRequest } from "../../../../../../lib/api";
 import { getMachineAccessSession } from "../../../../../../lib/machine-access";
@@ -297,7 +298,7 @@ export function PublicTicketAcknowledgementPage({
                   </div>
 
                   <TextInput label="Name" value={requesterName} required onChange={setRequesterName} />
-                  <TextInput label="Contact Number" value={requesterPhone} required onChange={setRequesterPhone} />
+                  <PhoneNumberInput label="Contact Number" value={requesterPhone} required onChange={setRequesterPhone} />
                   <TextInput label="Email" type="email" value={requesterEmail} onChange={setRequesterEmail} />
 
                   <label className="block">

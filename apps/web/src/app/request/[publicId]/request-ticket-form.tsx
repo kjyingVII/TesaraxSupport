@@ -3,6 +3,7 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { PhoneNumberInput } from "../../../components/phone-number-input";
 import { ThemeToggle } from "../../../components/theme-toggle";
 import { apiRequest } from "../../../lib/api";
 import { getMachineAccessSession } from "../../../lib/machine-access";
@@ -352,7 +353,7 @@ export function RequestTicketForm({ publicId }: { publicId: string }) {
                   <TextInput label="Name" value={form.requesterName} required onChange={(value) => updateField("requesterName", value)} />
                   <TextInput label="Company" value={form.requesterCompany} onChange={(value) => updateField("requesterCompany", value)} />
                   <TextInput label="Department" value={form.requesterDepartment} onChange={(value) => updateField("requesterDepartment", value)} />
-                  <TextInput label="Phone" value={form.requesterPhone} onChange={(value) => updateField("requesterPhone", value)} />
+                  <PhoneNumberInput label="Phone" value={form.requesterPhone} onChange={(value) => updateField("requesterPhone", value)} />
                   <TextInput label="Email" type="email" value={form.requesterEmail} onChange={(value) => updateField("requesterEmail", value)} />
                 </FormPanel>
 
