@@ -121,7 +121,13 @@ export class NotificationsService {
       message
     });
 
-    return { data: log };
+    return {
+      data: {
+        ...log,
+        webhookEvents: [],
+        latestWebhookEvent: null
+      }
+    };
   }
 
   async logTicketCreated(ticketId: string) {

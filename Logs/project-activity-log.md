@@ -1407,3 +1407,8 @@ This file records meaningful project updates, decisions, and implementation step
 - Enriched notification log API responses with recent WhatsApp webhook events matched by Meta provider message ID.
 - Added latest webhook status to Admin > Notifications list rows and detail panel.
 - Added expandable webhook delivery history with raw callback payloads for troubleshooting sent, delivered, read, and failed states.
+
+## 2026-06-21 - Manual WhatsApp Result Shape Fix
+
+- Fixed the manual WhatsApp test response to include empty webhook delivery fields.
+- Added frontend fallbacks so notification detail rendering does not crash if a log has no webhook event array.

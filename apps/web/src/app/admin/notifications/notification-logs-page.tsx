@@ -22,8 +22,8 @@ type NotificationLog = {
   errorMessage: string | null;
   sentAt: string | null;
   createdAt: string;
-  latestWebhookEvent: WhatsAppWebhookEvent | null;
-  webhookEvents: WhatsAppWebhookEvent[];
+  latestWebhookEvent?: WhatsAppWebhookEvent | null;
+  webhookEvents?: WhatsAppWebhookEvent[];
 };
 
 type WhatsAppWebhookEvent = {
@@ -288,7 +288,7 @@ export function NotificationLogsPage() {
                         {log.recipientName ?? "Unnamed recipient"} {log.recipientPhone ? `/ ${log.recipientPhone}` : ""}
                       </p>
                       <p className="mt-1 text-xs text-[#5f6368] dark:text-[#a8b0ba]">
-                        Webhook: {webhookStatusLabel(log.latestWebhookEvent)}
+                        Webhook: {webhookStatusLabel(log.latestWebhookEvent ?? null)}
                       </p>
                       {log.errorMessage ? <p className="mt-2 text-xs text-amber-700 dark:text-amber-300">{log.errorMessage}</p> : null}
                     </div>
@@ -310,13 +310,13 @@ export function NotificationLogsPage() {
                 <Detail label="Email" value={selectedLog.recipientEmail ?? "None"} />
                 <Detail label="Related Record" value={`${selectedLog.relatedType ?? "General"} / ${selectedLog.relatedId ?? "None"}`} />
                 <Detail label="Provider Message ID" value={selectedLog.providerMessageId ?? "None"} />
-                <Detail label="Latest Webhook Status" value={webhookStatusLabel(selectedLog.latestWebhookEvent)} />
+                <Detail label="Latest Webhook Status" value={webhookStatusLabel(selectedLog.latestWebhookEvent ?? null)} />
                 <Detail label="Created" value={new Date(selectedLog.createdAt).toLocaleString()} />
                 <Detail label="Sent" value={selectedLog.sentAt ? new Date(selectedLog.sentAt).toLocaleString() : "Not sent"} />
                 <MessageBlock title="Subject" value={selectedLog.subject ?? "None"} />
                 <MessageBlock title="Message" value={selectedLog.messageSummary ?? "None"} />
                 <MessageBlock title="Error" value={selectedLog.errorMessage ?? "None"} />
-                <WebhookEventsBlock events={selectedLog.webhookEvents} />
+                <WebhookEventsBlock events={selectedLog.webhookEvents ?? []} />
               </div>
             ) : (
               <p className="field-muted mt-4">Select a notification record.</p>
