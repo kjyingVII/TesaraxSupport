@@ -3,6 +3,7 @@ import { UserRole } from "@prisma/client";
 import { CurrentUser, Roles } from "../auth/auth.decorators";
 import { CreateMachineDto } from "./dto/create-machine.dto";
 import { UpdateMachineDto } from "./dto/update-machine.dto";
+import { UpdateMachineTechniciansDto } from "./dto/update-machine-technicians.dto";
 import { UpdateServiceReminderDto } from "./dto/update-service-reminder.dto";
 import { MachinesService } from "./machines.service";
 
@@ -45,6 +46,22 @@ export class MachinesController {
   @Roles(UserRole.ADMIN, UserRole.SUPERVISOR)
   update(@Param("id") id: string, @Body() dto: UpdateMachineDto, @CurrentUser() user: { id: string }) {
     return this.machinesService.update(id, dto, user.id);
+  }
+
+  @Get(":id/technicians")
+  @Roles(UserRole.ADMIN, UserRole.SUPERVISOR, UserRole.TECHNICIAN)
+  listTechnicians(@Param("id") id: string) {
+    return this.machinesService.listTechnicians(id);
+  }
+
+  @Patch(":id/technicians")
+  @Roles(UserRole.ADMIN, UserRole.SUPERVISOR)
+  updateTechnicians(
+    @Param("id") id: string,
+    @Body() dto: UpdateMachineTechniciansDto,
+    @CurrentUser() user: { id: string }
+  ) {
+    return this.machinesService.updateTechnicians(id, dto, user.id);
   }
 
   @Get(":id/qr-code")

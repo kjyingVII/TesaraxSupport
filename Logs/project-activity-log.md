@@ -1268,3 +1268,12 @@ This file records meaningful project updates, decisions, and implementation step
 - Updated technician ticket workbench direct acknowledgement links to display and copy the full requester message.
 - Updated full machine log acknowledgement link generation to create and copy a full customer-ready message.
 - Verified web type check and production web build pass after the message workflow change.
+
+## 2026-06-21 - Customer and Machine Technician Assignments
+
+- Added database tables for customer technician assignments and machine technician assignments.
+- Added admin/supervisor API endpoints to list and update assigned technicians for customers and machines.
+- Added customer edit page controls to assign one or more customer technicians.
+- Added machine edit page controls to assign one or more machine technicians.
+- Added audit log entries when customer or machine technician assignments are changed.
+- Verified the migration applies locally, API and web type checks pass, and assignment endpoints save successfully.

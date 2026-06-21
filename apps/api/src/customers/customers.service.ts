@@ -1,8 +1,9 @@
 import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
-import { Prisma } from "@prisma/client";
+import { Prisma, UserRole } from "@prisma/client";
 import { AuditService } from "../audit/audit.service";
 import { PrismaService } from "../prisma/prisma.service";
 import { CreateCustomerDto } from "./dto/create-customer.dto";
+import { UpdateCustomerTechniciansDto } from "./dto/update-customer-technicians.dto";
 import { UpdateCustomerDto } from "./dto/update-customer.dto";
 
 type ListCustomersInput = {
@@ -85,6 +86,25 @@ export class CustomersService {
       include: {
         machines: {
           orderBy: { createdAt: "desc" }
+        },
+        technicianAssignments: {
+          include: {
+            technician: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+                phone: true,
+                role: true,
+                isActive: true
+              }
+            }
+          },
+          orderBy: {
+            technician: {
+              name: "asc"
+            }
+          }
         }
       }
     });
@@ -94,6 +114,83 @@ export class CustomersService {
     }
 
     return { data: customer };
+  }
+
+  async listTechnicians(id: string) {
+    await this.ensureExists(id);
+
+    const assignments = await this.prisma.customerTechnicianAssignment.findMany({
+      where: { customerId: id },
+      include: {
+        technician: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            phone: true,
+            role: true,
+            isActive: true
+          }
+        }
+      },
+      orderBy: {
+        technician: {
+          name: "asc"
+        }
+      }
+    });
+
+    return { data: assignments };
+  }
+
+  async updateTechnicians(id: string, dto: UpdateCustomerTechniciansDto, actorUserId?: string) {
+    const before = await this.listTechnicians(id);
+    const technicianIds = this.uniqueStrings(dto.technicianIds ?? []);
+
+    for (const technicianId of technicianIds) {
+      await this.ensureActiveTechnicianExists(technicianId);
+    }
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.customerTechnicianAssignment.deleteMany({
+        where: {
+          customerId: id,
+          technicianId: {
+            notIn: technicianIds
+          }
+        }
+      });
+
+      for (const technicianId of technicianIds) {
+        await tx.customerTechnicianAssignment.upsert({
+          where: {
+            customerId_technicianId: {
+              customerId: id,
+              technicianId
+            }
+          },
+          update: {},
+          create: {
+            customerId: id,
+            technicianId,
+            assignedByUserId: actorUserId
+          }
+        });
+      }
+    });
+
+    const after = await this.listTechnicians(id);
+
+    await this.auditService.write({
+      actorUserId,
+      action: "UPDATE_CUSTOMER_TECHNICIANS",
+      entityType: "Customer",
+      entityId: id,
+      beforeData: before.data,
+      afterData: after.data
+    });
+
+    return after;
   }
 
   async update(id: string, dto: UpdateCustomerDto, actorUserId?: string) {
@@ -163,6 +260,25 @@ export class CustomersService {
     }
 
     return customer;
+  }
+
+  private async ensureActiveTechnicianExists(id: string) {
+    const technician = await this.prisma.user.findFirst({
+      where: {
+        id,
+        role: UserRole.TECHNICIAN,
+        isActive: true
+      },
+      select: { id: true }
+    });
+
+    if (!technician) {
+      throw new NotFoundException("Active technician not found.");
+    }
+  }
+
+  private uniqueStrings(values: string[]) {
+    return Array.from(new Set(values.map((value) => value.trim()).filter(Boolean)));
   }
 
   private parsePositiveInteger(value: string | undefined, fallback: number) {

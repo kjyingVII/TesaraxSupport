@@ -1,5 +1,5 @@
 import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
-import { Prisma } from "@prisma/client";
+import { Prisma, UserRole } from "@prisma/client";
 import { randomBytes } from "crypto";
 import { AuditService } from "../audit/audit.service";
 import { AuthService } from "../auth/auth.service";
@@ -7,6 +7,7 @@ import { PrismaService } from "../prisma/prisma.service";
 import { SettingsService } from "../settings/settings.service";
 import { CreateMachineDto } from "./dto/create-machine.dto";
 import { UpdateMachineDto } from "./dto/update-machine.dto";
+import { UpdateMachineTechniciansDto } from "./dto/update-machine-technicians.dto";
 import { UpdateServiceReminderDto } from "./dto/update-service-reminder.dto";
 
 type ListMachinesInput = {
@@ -135,6 +136,25 @@ export class MachinesService {
         logs: {
           orderBy: { workDate: "desc" },
           take: 10
+        },
+        technicianAssignments: {
+          include: {
+            technician: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+                phone: true,
+                role: true,
+                isActive: true
+              }
+            }
+          },
+          orderBy: {
+            technician: {
+              name: "asc"
+            }
+          }
         }
       }
     });
@@ -144,6 +164,83 @@ export class MachinesService {
     }
 
     return { data: this.serializeMachine(machine) };
+  }
+
+  async listTechnicians(id: string) {
+    await this.ensureMachineExists(id);
+
+    const assignments = await this.prisma.machineTechnicianAssignment.findMany({
+      where: { machineId: id },
+      include: {
+        technician: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            phone: true,
+            role: true,
+            isActive: true
+          }
+        }
+      },
+      orderBy: {
+        technician: {
+          name: "asc"
+        }
+      }
+    });
+
+    return { data: assignments };
+  }
+
+  async updateTechnicians(id: string, dto: UpdateMachineTechniciansDto, actorUserId?: string) {
+    const before = await this.listTechnicians(id);
+    const technicianIds = this.uniqueStrings(dto.technicianIds ?? []);
+
+    for (const technicianId of technicianIds) {
+      await this.ensureActiveTechnicianExists(technicianId);
+    }
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.machineTechnicianAssignment.deleteMany({
+        where: {
+          machineId: id,
+          technicianId: {
+            notIn: technicianIds
+          }
+        }
+      });
+
+      for (const technicianId of technicianIds) {
+        await tx.machineTechnicianAssignment.upsert({
+          where: {
+            machineId_technicianId: {
+              machineId: id,
+              technicianId
+            }
+          },
+          update: {},
+          create: {
+            machineId: id,
+            technicianId,
+            assignedByUserId: actorUserId
+          }
+        });
+      }
+    });
+
+    const after = await this.listTechnicians(id);
+
+    await this.auditService.write({
+      actorUserId,
+      action: "UPDATE_MACHINE_TECHNICIANS",
+      entityType: "Machine",
+      entityId: id,
+      beforeData: before.data,
+      afterData: after.data
+    });
+
+    return after;
   }
 
   async update(id: string, dto: UpdateMachineDto, actorUserId?: string) {
@@ -279,6 +376,21 @@ export class MachinesService {
     }
   }
 
+  private async ensureActiveTechnicianExists(id: string) {
+    const technician = await this.prisma.user.findFirst({
+      where: {
+        id,
+        role: UserRole.TECHNICIAN,
+        isActive: true
+      },
+      select: { id: true }
+    });
+
+    if (!technician) {
+      throw new NotFoundException("Active technician not found.");
+    }
+  }
+
   private async ensureMachineExists(id: string) {
     const machine = await this.prisma.machine.findUnique({
       where: { id },
@@ -409,5 +521,9 @@ export class MachinesService {
     if (value === null) return null;
     const cleaned = value?.trim();
     return cleaned ? cleaned : null;
+  }
+
+  private uniqueStrings(values: string[]) {
+    return Array.from(new Set(values.map((value) => value.trim()).filter(Boolean)));
   }
 }

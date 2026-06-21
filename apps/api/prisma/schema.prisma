@@ -104,6 +104,10 @@ model User {
   assignmentsMade     TicketAssignment[]    @relation("AssignedBy")
   assignmentsReceived TicketAssignment[]    @relation("AssignedTo")
   assignmentsUnassigned TicketAssignment[]  @relation("UnassignedBy")
+  customerAssignments CustomerTechnicianAssignment[] @relation("CustomerTechnician")
+  customerAssignmentsAssigned CustomerTechnicianAssignment[] @relation("CustomerTechnicianAssignedBy")
+  machineAssignments  MachineTechnicianAssignment[]  @relation("MachineTechnician")
+  machineAssignmentsAssigned MachineTechnicianAssignment[] @relation("MachineTechnicianAssignedBy")
   attachments         Attachment[]
   auditLogs           AuditLog[]
   createdAt           DateTime              @default(now())
@@ -123,6 +127,7 @@ model Customer {
   remarks      String?
   isActive     Boolean   @default(true)
   machines     Machine[]
+  technicianAssignments CustomerTechnicianAssignment[]
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
 
@@ -153,6 +158,7 @@ model Machine {
   logs                        MachineLog[]
   documents                   Attachment[]
   serviceReminderLogs         ServiceReminderLog[]
+  technicianAssignments       MachineTechnicianAssignment[]
   createdAt                   DateTime             @default(now())
   updatedAt                   DateTime             @updatedAt
 
@@ -253,6 +259,38 @@ model TicketAssignment {
   @@index([unassignedByUserId])
   @@index([isActive])
   @@index([isLead])
+}
+
+model CustomerTechnicianAssignment {
+  id             String   @id @default(uuid())
+  customerId     String
+  customer       Customer @relation(fields: [customerId], references: [id])
+  technicianId   String
+  technician     User     @relation("CustomerTechnician", fields: [technicianId], references: [id])
+  assignedByUserId String?
+  assignedByUser User?    @relation("CustomerTechnicianAssignedBy", fields: [assignedByUserId], references: [id])
+  createdAt      DateTime @default(now())
+
+  @@unique([customerId, technicianId])
+  @@index([customerId])
+  @@index([technicianId])
+  @@index([assignedByUserId])
+}
+
+model MachineTechnicianAssignment {
+  id             String   @id @default(uuid())
+  machineId      String
+  machine        Machine  @relation(fields: [machineId], references: [id])
+  technicianId   String
+  technician     User     @relation("MachineTechnician", fields: [technicianId], references: [id])
+  assignedByUserId String?
+  assignedByUser User?    @relation("MachineTechnicianAssignedBy", fields: [assignedByUserId], references: [id])
+  createdAt      DateTime @default(now())
+
+  @@unique([machineId, technicianId])
+  @@index([machineId])
+  @@index([technicianId])
+  @@index([assignedByUserId])
 }
 
 model ServiceReport {

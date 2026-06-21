@@ -22,6 +22,24 @@ type CustomerResponse = {
   data: Customer;
 };
 
+type Technician = {
+  id: string;
+  name: string;
+  email: string;
+  phone: string | null;
+};
+
+type TechnicianListResponse = {
+  data: Technician[];
+};
+
+type TechnicianAssignmentResponse = {
+  data: Array<{
+    technicianId: string;
+    technician: Technician;
+  }>;
+};
+
 const emptyForm = {
   name: "",
   contactName: "",
@@ -38,6 +56,9 @@ export function CustomerFormPage({ customerId }: { customerId?: string }) {
   const [form, setForm] = useState(emptyForm);
   const [loading, setLoading] = useState(isEdit);
   const [saving, setSaving] = useState(false);
+  const [savingTechnicians, setSavingTechnicians] = useState(false);
+  const [technicians, setTechnicians] = useState<Technician[]>([]);
+  const [selectedTechnicianIds, setSelectedTechnicianIds] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
 
@@ -51,8 +72,14 @@ export function CustomerFormPage({ customerId }: { customerId?: string }) {
     setError(null);
 
     try {
-      const response = await apiRequest<CustomerResponse>(`/api/customers/${id}`);
+      const [response, technicianResponse, assignmentResponse] = await Promise.all([
+        apiRequest<CustomerResponse>(`/api/customers/${id}`),
+        apiRequest<TechnicianListResponse>("/api/tickets/technicians"),
+        apiRequest<TechnicianAssignmentResponse>(`/api/customers/${id}/technicians`)
+      ]);
       setCustomer(response.data);
+      setTechnicians(technicianResponse.data);
+      setSelectedTechnicianIds(assignmentResponse.data.map((assignment) => assignment.technicianId));
       setForm({
         name: response.data.name,
         contactName: response.data.contactName ?? "",
@@ -127,8 +154,38 @@ export function CustomerFormPage({ customerId }: { customerId?: string }) {
     }
   }
 
+  async function saveTechnicianAssignments() {
+    if (!customerId) return;
+    setSavingTechnicians(true);
+    setError(null);
+    setMessage(null);
+
+    try {
+      const response = await apiRequest<TechnicianAssignmentResponse>(`/api/customers/${customerId}/technicians`, {
+        method: "PATCH",
+        body: JSON.stringify({
+          technicianIds: selectedTechnicianIds
+        })
+      });
+      setSelectedTechnicianIds(response.data.map((assignment) => assignment.technicianId));
+      setMessage("Customer technicians updated.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unable to save customer technicians.");
+    } finally {
+      setSavingTechnicians(false);
+    }
+  }
+
   function updateField(field: keyof typeof form, value: string) {
     setForm((current) => ({ ...current, [field]: value }));
+  }
+
+  function toggleTechnician(technicianId: string) {
+    setSelectedTechnicianIds((current) =>
+      current.includes(technicianId)
+        ? current.filter((id) => id !== technicianId)
+        : [...current, technicianId]
+    );
   }
 
   return (
@@ -184,8 +241,65 @@ export function CustomerFormPage({ customerId }: { customerId?: string }) {
             </button>
           ) : null}
         </section>
+
+        {customerId && !loading ? (
+          <section className="field-panel mt-5">
+            <h2 className="field-section-title">Customer Technicians</h2>
+            <p className="field-muted mt-2">
+              These technicians will be notified when a ticket is lodged for any machine under this customer.
+            </p>
+            <TechnicianCheckboxList
+              technicians={technicians}
+              selectedIds={selectedTechnicianIds}
+              onToggle={toggleTechnician}
+            />
+            <button
+              className="field-button-primary mt-4 disabled:opacity-50"
+              type="button"
+              disabled={savingTechnicians}
+              onClick={saveTechnicianAssignments}
+            >
+              {savingTechnicians ? "Saving..." : "Save Customer Technicians"}
+            </button>
+          </section>
+        ) : null}
       </section>
     </main>
+  );
+}
+
+function TechnicianCheckboxList({
+  technicians,
+  selectedIds,
+  onToggle
+}: {
+  technicians: Technician[];
+  selectedIds: string[];
+  onToggle: (technicianId: string) => void;
+}) {
+  if (technicians.length === 0) {
+    return <p className="field-muted mt-4">No active technicians found.</p>;
+  }
+
+  return (
+    <div className="mt-4 grid gap-2">
+      {technicians.map((technician) => (
+        <label key={technician.id} className="flex items-start gap-3 rounded-md border border-[#d9dee3] bg-[#fbfcfd] p-3 text-sm dark:border-[#2f3742] dark:bg-[#1f242d]">
+          <input
+            className="mt-1 h-4 w-4"
+            type="checkbox"
+            checked={selectedIds.includes(technician.id)}
+            onChange={() => onToggle(technician.id)}
+          />
+          <span>
+            <span className="font-medium">{technician.name}</span>
+            <span className="field-muted mt-1 block">
+              {technician.email}{technician.phone ? ` / ${technician.phone}` : ""}
+            </span>
+          </span>
+        </label>
+      ))}
+    </div>
   );
 }
 
