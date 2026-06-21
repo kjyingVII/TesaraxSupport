@@ -1287,3 +1287,9 @@ This file records meaningful project updates, decisions, and implementation step
 - Replaced the machine form customer dropdown with a searchable single-select.
 - Replaced ticket workbench technician assignment and lead technician controls with searchable selectors.
 - Verified web type check and production web build pass after the combobox update.
+
+## 2026-06-21 - Single Combobox Dropdown Behavior
+
+- Changed searchable single-select comboboxes so the option list opens only when the user clicks or focuses the box.
+- Kept the technician assignment multi-select list behavior unchanged.
+- Added focus-out handling so the single-select option list closes after a selection or when the user leaves the field.

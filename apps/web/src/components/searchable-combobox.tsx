@@ -35,40 +35,63 @@ export function SearchableSingleSelect({
   onChange
 }: SearchableSingleSelectProps) {
   const [query, setQuery] = useState("");
+  const [isOpen, setIsOpen] = useState(false);
   const selected = options.find((option) => option.value === value);
   const filtered = useMemo(() => filterOptions(options, query), [options, query]);
 
   return (
-    <div>
+    <div
+      onBlur={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget)) {
+          setIsOpen(false);
+        }
+      }}
+    >
       <label className="block">
         <span className="field-label">{label}</span>
         <input
+          aria-expanded={isOpen}
+          aria-haspopup="listbox"
           className="field-input h-11"
           value={query}
           placeholder={selected ? selected.label : placeholder}
           required={required && !value}
-          onChange={(event) => setQuery(event.target.value)}
+          role="combobox"
+          onChange={(event) => {
+            setQuery(event.target.value);
+            setIsOpen(true);
+          }}
+          onClick={() => setIsOpen(true)}
+          onFocus={() => setIsOpen(true)}
         />
       </label>
-      <div className="mt-2 max-h-60 overflow-auto rounded-md border border-[#d9dee3] bg-white dark:border-[#2f3742] dark:bg-[#0f1115]">
-        {filtered.length === 0 ? <p className="field-muted p-3 text-sm">No matching option.</p> : null}
-        {filtered.map((option) => (
-          <button
-            key={option.value}
-            className={`block w-full px-3 py-2 text-left text-sm transition hover:bg-cyan-50 dark:hover:bg-[#1f242d] ${
-              option.value === value ? "bg-cyan-50 dark:bg-[#1f242d]" : ""
-            }`}
-            type="button"
-            onClick={() => {
-              onChange(option.value);
-              setQuery("");
-            }}
-          >
-            <span className="font-medium">{option.label}</span>
-            {option.description ? <span className="field-muted mt-1 block text-xs">{option.description}</span> : null}
-          </button>
-        ))}
-      </div>
+      {isOpen ? (
+        <div
+          className="mt-2 max-h-60 overflow-auto rounded-md border border-[#d9dee3] bg-white dark:border-[#2f3742] dark:bg-[#0f1115]"
+          role="listbox"
+        >
+          {filtered.length === 0 ? <p className="field-muted p-3 text-sm">No matching option.</p> : null}
+          {filtered.map((option) => (
+            <button
+              key={option.value}
+              className={`block w-full px-3 py-2 text-left text-sm transition hover:bg-cyan-50 dark:hover:bg-[#1f242d] ${
+                option.value === value ? "bg-cyan-50 dark:bg-[#1f242d]" : ""
+              }`}
+              role="option"
+              type="button"
+              aria-selected={option.value === value}
+              onClick={() => {
+                onChange(option.value);
+                setQuery("");
+                setIsOpen(false);
+              }}
+            >
+              <span className="font-medium">{option.label}</span>
+              {option.description ? <span className="field-muted mt-1 block text-xs">{option.description}</span> : null}
+            </button>
+          ))}
+        </div>
+      ) : null}
       {selected ? (
         <p className="field-muted mt-2 text-sm">
           Selected: <span className="font-medium text-neutral-800 dark:text-neutral-100">{selected.label}</span>
