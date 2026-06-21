@@ -1355,3 +1355,9 @@ This file records meaningful project updates, decisions, and implementation step
 - Applied backend email validation to login, user/profile, customer, system settings, machine log, public machine access, ticket request/comment, and acknowledgement flows.
 - Confirmed editable frontend email fields already use native email inputs.
 - Invalid email addresses now return HTTP 400 when requests bypass the browser UI.
+
+## 2026-06-21 - Production Database Indexes
+
+- Added composite Prisma indexes for common production list, filter, and timeline queries.
+- Added a migration to create indexes for tickets, machines, machine logs, assignments, comments, attachments, audit logs, notification logs, service reminders, acknowledgements, customers, and users.
+- Used idempotent index creation in the SQL migration so existing earlier indexes remain safe during deployment.

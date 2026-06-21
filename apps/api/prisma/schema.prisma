@@ -115,6 +115,7 @@ model User {
 
   @@index([role])
   @@index([isActive])
+  @@index([role, isActive, createdAt], map: "User_role_isActive_createdAt_idx")
 }
 
 model Customer {
@@ -133,6 +134,7 @@ model Customer {
 
   @@index([name])
   @@index([isActive])
+  @@index([isActive, createdAt], map: "Customer_isActive_createdAt_idx")
 }
 
 model Machine {
@@ -166,6 +168,9 @@ model Machine {
   @@index([serialNumber])
   @@index([nextServiceDueAt])
   @@index([isActive])
+  @@index([customerId, createdAt], map: "Machine_customerId_createdAt_idx")
+  @@index([isActive, createdAt], map: "Machine_isActive_createdAt_idx")
+  @@index([isActive, nextServiceDueAt], map: "Machine_isActive_nextServiceDueAt_idx")
 }
 
 model Ticket {
@@ -202,6 +207,11 @@ model Ticket {
   @@index([priority])
   @@index([assignedTechnicianId])
   @@index([createdAt])
+  @@index([updatedAt])
+  @@index([status, createdAt], map: "Ticket_status_createdAt_idx")
+  @@index([machineId, createdAt], map: "Ticket_machineId_createdAt_idx")
+  @@index([assignedTechnicianId, createdAt], map: "Ticket_assignedTechnicianId_createdAt_idx")
+  @@index([priority, createdAt], map: "Ticket_priority_createdAt_idx")
 }
 
 model TicketStatusHistory {
@@ -219,6 +229,7 @@ model TicketStatusHistory {
   @@index([ticketId])
   @@index([changedByUserId])
   @@index([createdAt])
+  @@index([ticketId, createdAt], map: "TicketStatusHistory_ticketId_createdAt_idx")
 }
 
 model TicketComment {
@@ -235,6 +246,8 @@ model TicketComment {
 
   @@index([ticketId])
   @@index([createdByUserId])
+  @@index([ticketId, createdAt], map: "TicketComment_ticketId_createdAt_idx")
+  @@index([ticketId, visibility, createdAt], map: "TicketComment_ticketId_visibility_createdAt_idx")
 }
 
 model TicketAssignment {
@@ -259,6 +272,9 @@ model TicketAssignment {
   @@index([unassignedByUserId])
   @@index([isActive])
   @@index([isLead])
+  @@index([ticketId, isActive], map: "TicketAssignment_ticketId_isActive_idx")
+  @@index([assignedToUserId, isActive], map: "TicketAssignment_assignedToUserId_isActive_idx")
+  @@index([isActive, isLead], map: "TicketAssignment_isActive_isLead_idx")
 }
 
 model CustomerTechnicianAssignment {
@@ -316,6 +332,8 @@ model ServiceReport {
 
   @@index([ticketId])
   @@index([technicianId])
+  @@index([ticketId, createdAt], map: "ServiceReport_ticketId_createdAt_idx")
+  @@index([technicianId, createdAt], map: "ServiceReport_technicianId_createdAt_idx")
 }
 
 model MachineLog {
@@ -359,6 +377,12 @@ model MachineLog {
   @@index([serviceReportId])
   @@index([activityType])
   @@index([workDate])
+  @@index([title])
+  @@index([notifyCustomer])
+  @@index([machineId, workDate], map: "MachineLog_machineId_workDate_idx")
+  @@index([machineId, activityType, workDate], map: "MachineLog_machineId_activityType_workDate_idx")
+  @@index([ticketId, workDate], map: "MachineLog_ticketId_workDate_idx")
+  @@index([serviceReportId, workDate], map: "MachineLog_serviceReportId_workDate_idx")
 }
 
 model Acknowledgement {
@@ -388,6 +412,8 @@ model Acknowledgement {
   @@index([machineLogId])
   @@index([acknowledgementTokenHash])
   @@index([tokenExpiresAt])
+  @@index([ticketId, createdAt], map: "Acknowledgement_ticketId_createdAt_idx")
+  @@index([response, createdAt], map: "Acknowledgement_response_createdAt_idx")
 }
 
 model Attachment {
@@ -424,6 +450,11 @@ model Attachment {
   @@index([machineId])
   @@index([acknowledgementId])
   @@index([uploadedByUserId])
+  @@index([ticketId, createdAt], map: "Attachment_ticketId_createdAt_idx")
+  @@index([ticketCommentId, createdAt], map: "Attachment_ticketCommentId_createdAt_idx")
+  @@index([serviceReportId, createdAt], map: "Attachment_serviceReportId_createdAt_idx")
+  @@index([machineLogId, createdAt], map: "Attachment_machineLogId_createdAt_idx")
+  @@index([machineId, relatedType, createdAt], map: "Attachment_machineId_relatedType_createdAt_idx")
 }
 
 model ServiceReminderLog {
@@ -444,6 +475,8 @@ model ServiceReminderLog {
   @@index([machineId])
   @@index([dueDate])
   @@index([status])
+  @@index([machineId, dueDate], map: "ServiceReminderLog_machineId_dueDate_idx")
+  @@index([status, dueDate], map: "ServiceReminderLog_status_dueDate_idx")
 }
 
 model AuditLog {
@@ -464,6 +497,9 @@ model AuditLog {
   @@index([entityType, entityId])
   @@index([action])
   @@index([createdAt])
+  @@index([actorUserId, createdAt], map: "AuditLog_actorUserId_createdAt_idx")
+  @@index([entityType, createdAt], map: "AuditLog_entityType_createdAt_idx")
+  @@index([action, createdAt], map: "AuditLog_action_createdAt_idx")
 }
 
 model NotificationLog {
@@ -486,6 +522,9 @@ model NotificationLog {
   @@index([channel])
   @@index([status])
   @@index([createdAt])
+  @@index([status, createdAt], map: "NotificationLog_status_createdAt_idx")
+  @@index([channel, status, createdAt], map: "NotificationLog_channel_status_createdAt_idx")
+  @@index([relatedType, relatedId, createdAt], map: "NotificationLog_relatedType_relatedId_createdAt_idx")
 }
 
 model SystemSetting {
