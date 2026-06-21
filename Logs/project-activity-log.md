@@ -1361,3 +1361,10 @@ This file records meaningful project updates, decisions, and implementation step
 - Added composite Prisma indexes for common production list, filter, and timeline queries.
 - Added a migration to create indexes for tickets, machines, machine logs, assignments, comments, attachments, audit logs, notification logs, service reminders, acknowledgements, customers, and users.
 - Used idempotent index creation in the SQL migration so existing earlier indexes remain safe during deployment.
+
+## 2026-06-21 - Backup And Restore Guide
+
+- Added deployment documentation for backing up and restoring PostgreSQL data and uploaded files.
+- Added a production backup script that exports the database and archives `data/uploads`.
+- Added a guarded restore script that requires explicit confirmation before replacing live database and upload data.
+- Documented verification steps and a suggested daily cron backup schedule.
