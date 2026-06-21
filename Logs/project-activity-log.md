@@ -1294,3 +1294,4 @@ This file records meaningful project updates, decisions, and implementation step
 - Kept the technician assignment multi-select list behavior unchanged.
 - Added focus-out handling so the single-select option list closes after a selection or when the user leaves the field.
 - Refined the single-select behavior so auto-focused fields do not show the option list until the user clicks or starts typing.
+- Changed selected single-select text to render as the input value instead of placeholder text so it uses a clearer normal text color.

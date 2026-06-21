@@ -38,6 +38,7 @@ export function SearchableSingleSelect({
   const [isOpen, setIsOpen] = useState(false);
   const selected = options.find((option) => option.value === value);
   const filtered = useMemo(() => filterOptions(options, query), [options, query]);
+  const displayValue = isOpen ? query : selected?.label ?? query;
 
   return (
     <div
@@ -53,15 +54,18 @@ export function SearchableSingleSelect({
           aria-expanded={isOpen}
           aria-haspopup="listbox"
           className="field-input h-11"
-          value={query}
-          placeholder={selected ? selected.label : placeholder}
+          value={displayValue}
+          placeholder={placeholder}
           required={required && !value}
           role="combobox"
           onChange={(event) => {
             setQuery(event.target.value);
             setIsOpen(true);
           }}
-          onClick={() => setIsOpen(true)}
+          onClick={() => {
+            setQuery("");
+            setIsOpen(true);
+          }}
         />
       </label>
       {isOpen ? (
