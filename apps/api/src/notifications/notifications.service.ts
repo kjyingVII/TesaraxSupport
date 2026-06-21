@@ -79,8 +79,16 @@ export class NotificationsService {
       this.prisma.notificationLog.count({ where })
     ]);
 
+    const webhookEventsByProviderMessageId = await this.getWebhookEventsByProviderMessageId(
+      items.map((item) => item.providerMessageId).filter(Boolean)
+    );
+
     return {
-      data: items,
+      data: items.map((item) => ({
+        ...item,
+        webhookEvents: item.providerMessageId ? webhookEventsByProviderMessageId.get(item.providerMessageId) ?? [] : [],
+        latestWebhookEvent: item.providerMessageId ? webhookEventsByProviderMessageId.get(item.providerMessageId)?.[0] ?? null : null
+      })),
       meta: {
         page,
         pageSize,
@@ -602,6 +610,38 @@ export class NotificationsService {
     }
 
     return unique;
+  }
+
+  private async getWebhookEventsByProviderMessageId(providerMessageIds: Array<string | null>) {
+    const uniqueProviderMessageIds = [...new Set(providerMessageIds.filter(Boolean))] as string[];
+    const eventsByProviderMessageId = new Map<string, Array<{
+      id: string;
+      eventType: string;
+      providerMessageId: string | null;
+      senderPhone: string | null;
+      status: string | null;
+      receivedAt: Date;
+      payload: Prisma.JsonValue;
+    }>>();
+
+    if (!uniqueProviderMessageIds.length) return eventsByProviderMessageId;
+
+    const events = await this.prisma.whatsAppWebhookEvent.findMany({
+      where: {
+        providerMessageId: { in: uniqueProviderMessageIds }
+      },
+      orderBy: { receivedAt: "desc" },
+      take: uniqueProviderMessageIds.length * 10
+    });
+
+    for (const event of events) {
+      if (!event.providerMessageId) continue;
+      const groupedEvents = eventsByProviderMessageId.get(event.providerMessageId) ?? [];
+      if (groupedEvents.length < 10) groupedEvents.push(event);
+      eventsByProviderMessageId.set(event.providerMessageId, groupedEvents);
+    }
+
+    return eventsByProviderMessageId;
   }
 
   private cleanOptionalString(value: string | null | undefined) {

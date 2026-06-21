@@ -1401,3 +1401,9 @@ This file records meaningful project updates, decisions, and implementation step
 - Added an admin/supervisor API endpoint to send manual WhatsApp test messages through the configured provider.
 - Added a Manual WhatsApp Test form to Admin > Notifications with recipient name, country-code phone input, subject, and message fields.
 - Manual test attempts are stored in notification logs with provider message ID and error details for troubleshooting.
+
+## 2026-06-21 - WhatsApp Webhook Delivery Visibility
+
+- Enriched notification log API responses with recent WhatsApp webhook events matched by Meta provider message ID.
+- Added latest webhook status to Admin > Notifications list rows and detail panel.
+- Added expandable webhook delivery history with raw callback payloads for troubleshooting sent, delivered, read, and failed states.

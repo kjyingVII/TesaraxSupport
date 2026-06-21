@@ -22,6 +22,18 @@ type NotificationLog = {
   errorMessage: string | null;
   sentAt: string | null;
   createdAt: string;
+  latestWebhookEvent: WhatsAppWebhookEvent | null;
+  webhookEvents: WhatsAppWebhookEvent[];
+};
+
+type WhatsAppWebhookEvent = {
+  id: string;
+  eventType: string;
+  providerMessageId: string | null;
+  senderPhone: string | null;
+  status: string | null;
+  receivedAt: string;
+  payload: unknown;
 };
 
 type NotificationLogListResponse = {
@@ -275,6 +287,9 @@ export function NotificationLogsPage() {
                       <p className="mt-1 text-xs text-[#5f6368] dark:text-[#a8b0ba]">
                         {log.recipientName ?? "Unnamed recipient"} {log.recipientPhone ? `/ ${log.recipientPhone}` : ""}
                       </p>
+                      <p className="mt-1 text-xs text-[#5f6368] dark:text-[#a8b0ba]">
+                        Webhook: {webhookStatusLabel(log.latestWebhookEvent)}
+                      </p>
                       {log.errorMessage ? <p className="mt-2 text-xs text-amber-700 dark:text-amber-300">{log.errorMessage}</p> : null}
                     </div>
                     <span className="text-xs text-[#5f6368] dark:text-[#a8b0ba]">{new Date(log.createdAt).toLocaleString()}</span>
@@ -295,11 +310,13 @@ export function NotificationLogsPage() {
                 <Detail label="Email" value={selectedLog.recipientEmail ?? "None"} />
                 <Detail label="Related Record" value={`${selectedLog.relatedType ?? "General"} / ${selectedLog.relatedId ?? "None"}`} />
                 <Detail label="Provider Message ID" value={selectedLog.providerMessageId ?? "None"} />
+                <Detail label="Latest Webhook Status" value={webhookStatusLabel(selectedLog.latestWebhookEvent)} />
                 <Detail label="Created" value={new Date(selectedLog.createdAt).toLocaleString()} />
                 <Detail label="Sent" value={selectedLog.sentAt ? new Date(selectedLog.sentAt).toLocaleString() : "Not sent"} />
                 <MessageBlock title="Subject" value={selectedLog.subject ?? "None"} />
                 <MessageBlock title="Message" value={selectedLog.messageSummary ?? "None"} />
                 <MessageBlock title="Error" value={selectedLog.errorMessage ?? "None"} />
+                <WebhookEventsBlock events={selectedLog.webhookEvents} />
               </div>
             ) : (
               <p className="field-muted mt-4">Select a notification record.</p>
@@ -309,6 +326,37 @@ export function NotificationLogsPage() {
       </section>
     </main>
   );
+}
+
+function WebhookEventsBlock({ events }: { events: WhatsAppWebhookEvent[] }) {
+  return (
+    <div>
+      <p className="field-meta-label">Webhook Delivery History</p>
+      {events.length === 0 ? (
+        <p className="field-muted mt-2 rounded-md bg-[#eef3f6] p-3 text-xs dark:bg-[#0f1115]">
+          No webhook callbacks received for this provider message ID yet.
+        </p>
+      ) : (
+        <div className="mt-2 grid gap-2">
+          {events.map((event) => (
+            <details key={event.id} className="rounded-md border border-[#d9dee3] bg-[#eef3f6] p-3 text-xs dark:border-[#2f3742] dark:bg-[#0f1115]">
+              <summary className="cursor-pointer font-semibold">
+                {event.eventType} / {event.status ?? "No status"} / {new Date(event.receivedAt).toLocaleString()}
+              </summary>
+              <pre className="mt-2 max-h-56 overflow-auto whitespace-pre-wrap break-all text-neutral-800 dark:text-neutral-100">
+                {JSON.stringify(event.payload, null, 2)}
+              </pre>
+            </details>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function webhookStatusLabel(event: WhatsAppWebhookEvent | null) {
+  if (!event) return "No callback yet";
+  return `${event.status ?? event.eventType} at ${new Date(event.receivedAt).toLocaleString()}`;
 }
 
 function Detail({ label, value }: { label: string; value: string }) {
