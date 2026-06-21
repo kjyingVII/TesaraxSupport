@@ -1293,3 +1293,4 @@ This file records meaningful project updates, decisions, and implementation step
 - Changed searchable single-select comboboxes so the option list opens only when the user clicks or focuses the box.
 - Kept the technician assignment multi-select list behavior unchanged.
 - Added focus-out handling so the single-select option list closes after a selection or when the user leaves the field.
+- Refined the single-select behavior so auto-focused fields do not show the option list until the user clicks or starts typing.

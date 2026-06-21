@@ -62,7 +62,6 @@ export function SearchableSingleSelect({
             setIsOpen(true);
           }}
           onClick={() => setIsOpen(true)}
-          onFocus={() => setIsOpen(true)}
         />
       </label>
       {isOpen ? (
