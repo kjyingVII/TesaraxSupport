@@ -1375,3 +1375,10 @@ This file records meaningful project updates, decisions, and implementation step
 - Kept `WHATSAPP_PROVIDER=log` as the default safe mode that records notification attempts without sending messages.
 - WhatsApp notification logs now record `SENT`, `FAILED`, or `SKIPPED` based on provider outcome.
 - Added deployment documentation for configuring Meta phone number ID, access token, and provider mode.
+
+## 2026-06-21 - Meta WhatsApp Template Mode
+
+- Added optional Meta WhatsApp template mode with `WHATSAPP_META_MESSAGE_MODE=template`.
+- Added per-event template env keys for ticket creation, ticket status changes, service report submission, and machine log notifications.
+- Kept plain text mode available for first credential testing and local verification.
+- Documented suggested Meta template bodies and the exact variable order required by the API.

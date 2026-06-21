@@ -23,12 +23,18 @@ type WhatsAppLogInput = {
   recipient: NotificationRecipient;
   subject: string;
   message: string;
+  template?: WhatsAppTemplateInput;
 };
 
 type WhatsAppSendResult = {
   status: NotificationStatus;
   providerMessageId?: string;
   errorMessage?: string;
+};
+
+type WhatsAppTemplateInput = {
+  eventKey: string;
+  parameters: string[];
 };
 
 @Injectable()
@@ -141,7 +147,16 @@ export class NotificationsService {
         email: ticket.requesterEmail
       },
       subject: `Ticket submitted: ${ticket.ticketNumber}`,
-      message: requesterMessage
+      message: requesterMessage,
+      template: {
+        eventKey: "ticket_created_requester",
+        parameters: [
+          ticket.ticketNumber,
+          ticket.machine.machineName,
+          ticket.machine.serialNumber,
+          ticket.issueTitle
+        ]
+      }
     });
 
     const technicianRecipients = this.uniqueRecipients([
@@ -163,7 +178,17 @@ export class NotificationsService {
             `Location: ${ticket.machine.location}`,
             `Priority: ${ticket.priority}`,
             `Issue: ${ticket.issueTitle}`
-          ].join("\n")
+          ].join("\n"),
+          template: {
+            eventKey: "ticket_created_technician",
+            parameters: [
+              ticket.ticketNumber,
+              ticket.machine.customer.name,
+              ticket.machine.machineName,
+              ticket.priority,
+              ticket.issueTitle
+            ]
+          }
         })
       )
     );
@@ -203,7 +228,17 @@ export class NotificationsService {
         `Ticket ${ticket.ticketNumber} status has changed from ${fromStatus} to ${toStatus}.`,
         `Machine: ${ticket.machine.machineName} (${ticket.machine.serialNumber})`,
         `Issue: ${ticket.issueTitle}`
-      ].join("\n")
+      ].join("\n"),
+      template: {
+        eventKey: "ticket_status_changed",
+        parameters: [
+          ticket.ticketNumber,
+          fromStatus,
+          toStatus,
+          ticket.machine.machineName,
+          ticket.issueTitle
+        ]
+      }
     });
   }
 
@@ -253,7 +288,16 @@ export class NotificationsService {
         `Machine: ${serviceReport.ticket.machine.machineName} (${serviceReport.ticket.machine.serialNumber})`,
         `Result: ${serviceReport.resolutionStatus}`,
         "Please review and acknowledge the service report."
-      ].join("\n")
+      ].join("\n"),
+      template: {
+        eventKey: "service_report_submitted",
+        parameters: [
+          serviceReport.ticket.ticketNumber,
+          serviceReport.technician.name,
+          serviceReport.ticket.machine.machineName,
+          serviceReport.resolutionStatus
+        ]
+      }
     });
   }
 
@@ -306,7 +350,17 @@ export class NotificationsService {
         `Title: ${machineLog.title}`,
         `Summary: ${machineLog.workSummary}`,
         machineLog.notifyMessage ? `Note: ${machineLog.notifyMessage}` : null
-      ].filter(Boolean).join("\n")
+      ].filter(Boolean).join("\n"),
+      template: {
+        eventKey: "machine_log_created",
+        parameters: [
+          machineLog.machine.machineName,
+          machineLog.machine.serialNumber,
+          machineLog.activityType,
+          machineLog.title,
+          machineLog.workDate.toISOString()
+        ]
+      }
     });
   }
 
@@ -334,7 +388,7 @@ export class NotificationsService {
       return;
     }
 
-    const sendResult = await this.sendWhatsappMessage(recipientPhone, input.message);
+    const sendResult = await this.sendWhatsappMessage(recipientPhone, input.message, input.template);
 
     await this.prisma.notificationLog.create({
       data: {
@@ -354,7 +408,11 @@ export class NotificationsService {
     });
   }
 
-  private async sendWhatsappMessage(recipientPhone: string, message: string): Promise<WhatsAppSendResult> {
+  private async sendWhatsappMessage(
+    recipientPhone: string,
+    message: string,
+    template?: WhatsAppTemplateInput
+  ): Promise<WhatsAppSendResult> {
     const provider = this.cleanOptionalString(process.env.WHATSAPP_PROVIDER)?.toLowerCase() ?? "log";
 
     if (provider === "log" || provider === "disabled") {
@@ -371,13 +429,18 @@ export class NotificationsService {
       };
     }
 
-    return this.sendMetaWhatsappMessage(recipientPhone, message);
+    return this.sendMetaWhatsappMessage(recipientPhone, message, template);
   }
 
-  private async sendMetaWhatsappMessage(recipientPhone: string, message: string): Promise<WhatsAppSendResult> {
+  private async sendMetaWhatsappMessage(
+    recipientPhone: string,
+    message: string,
+    template?: WhatsAppTemplateInput
+  ): Promise<WhatsAppSendResult> {
     const accessToken = this.cleanOptionalString(process.env.WHATSAPP_META_ACCESS_TOKEN);
     const phoneNumberId = this.cleanOptionalString(process.env.WHATSAPP_META_PHONE_NUMBER_ID);
     const graphApiVersion = this.cleanOptionalString(process.env.WHATSAPP_META_GRAPH_API_VERSION) ?? "v20.0";
+    const messageMode = this.cleanOptionalString(process.env.WHATSAPP_META_MESSAGE_MODE)?.toLowerCase() ?? "text";
 
     if (!accessToken || !phoneNumberId) {
       return {
@@ -395,22 +458,33 @@ export class NotificationsService {
     }
 
     try {
+      const requestBody = messageMode === "template"
+        ? this.buildMetaTemplateBody(to, template)
+        : {
+            messaging_product: "whatsapp",
+            recipient_type: "individual",
+            to,
+            type: "text",
+            text: {
+              preview_url: false,
+              body: message
+            }
+          };
+
+      if ("errorMessage" in requestBody) {
+        return {
+          status: NotificationStatus.SKIPPED,
+          errorMessage: requestBody.errorMessage
+        };
+      }
+
       const response = await fetch(`https://graph.facebook.com/${graphApiVersion}/${phoneNumberId}/messages`, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${accessToken}`,
           "Content-Type": "application/json"
         },
-        body: JSON.stringify({
-          messaging_product: "whatsapp",
-          recipient_type: "individual",
-          to,
-          type: "text",
-          text: {
-            preview_url: false,
-            body: message
-          }
-        })
+        body: JSON.stringify(requestBody)
       });
 
       const payload = await response.json().catch(() => null) as {
@@ -436,6 +510,50 @@ export class NotificationsService {
         errorMessage: this.truncate(error instanceof Error ? error.message : "Unable to send WhatsApp message.", 1000)
       };
     }
+  }
+
+  private buildMetaTemplateBody(to: string, template?: WhatsAppTemplateInput) {
+    if (!template) {
+      return {
+        errorMessage: "WhatsApp template mode is enabled, but this notification does not provide template data."
+      };
+    }
+
+    const templateName = this.getMetaTemplateName(template.eventKey);
+    if (!templateName) {
+      return {
+        errorMessage: `WhatsApp template mode is enabled, but no template is configured for ${template.eventKey}.`
+      };
+    }
+
+    const languageCode = this.cleanOptionalString(process.env.WHATSAPP_META_TEMPLATE_LANGUAGE) ?? "en";
+
+    return {
+      messaging_product: "whatsapp",
+      recipient_type: "individual",
+      to,
+      type: "template",
+      template: {
+        name: templateName,
+        language: {
+          code: languageCode
+        },
+        components: [
+          {
+            type: "body",
+            parameters: template.parameters.map((parameter) => ({
+              type: "text",
+              text: this.truncate(String(parameter), 1024)
+            }))
+          }
+        ]
+      }
+    };
+  }
+
+  private getMetaTemplateName(eventKey: string) {
+    const envKey = `WHATSAPP_META_TEMPLATE_${eventKey.toUpperCase()}`;
+    return this.cleanOptionalString(process.env[envKey]);
   }
 
   private uniqueRecipients(recipients: Array<NotificationRecipient & { id?: string }>) {
