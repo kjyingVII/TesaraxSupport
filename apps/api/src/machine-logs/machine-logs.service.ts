@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
 import { MachineActivityType, Prisma } from "@prisma/client";
 import { AttachmentsService } from "../attachments/attachments.service";
+import { NotificationsService } from "../notifications/notifications.service";
 import { PrismaService } from "../prisma/prisma.service";
 import { CreateMachineLogDto } from "./dto/create-machine-log.dto";
 
@@ -39,7 +40,8 @@ type TimelineItem = {
 export class MachineLogsService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly attachmentsService: AttachmentsService
+    private readonly attachmentsService: AttachmentsService,
+    private readonly notificationsService: NotificationsService
   ) {}
 
   async listLogs(machineId: string, input: ListMachineLogsInput) {
@@ -123,6 +125,12 @@ export class MachineLogsService {
     const ticketId = this.cleanOptionalString(dto.ticketId);
     const serviceReportId = this.cleanOptionalString(dto.serviceReportId);
     const loggedByUserId = this.cleanOptionalString(dto.loggedByUserId);
+    const notifyCustomer = dto.notifyCustomer === true;
+    const notifyRecipientPhone = this.cleanOptionalString(dto.notifyRecipientPhone);
+
+    if (notifyCustomer && !notifyRecipientPhone) {
+      throw new BadRequestException("Notify recipient phone is required when notifying customer.");
+    }
 
     if (ticketId) {
       await this.ensureTicketBelongsToMachine(ticketId, machineId);
@@ -167,6 +175,11 @@ export class MachineLogsService {
           requesterContactEmail: this.cleanOptionalString(dto.requesterContactEmail),
           requesterAcknowledgementRequired: dto.requesterAcknowledgementRequired === true,
           requesterConfirmedAt: this.parseOptionalDate(dto.requesterConfirmedAt, "requesterConfirmedAt"),
+          notifyCustomer,
+          notifyRecipientName: this.cleanOptionalString(dto.notifyRecipientName),
+          notifyRecipientPhone,
+          notifyRecipientEmail: this.cleanOptionalString(dto.notifyRecipientEmail),
+          notifyMessage: this.cleanOptionalString(dto.notifyMessage),
           loggedByUserId,
           loggedByRequesterName: this.cleanOptionalString(dto.loggedByRequesterName)
         },
@@ -203,6 +216,8 @@ export class MachineLogsService {
       uploadedByUserId: loggedByUserId,
       uploadedByRequesterName: this.cleanOptionalString(dto.loggedByRequesterName) ?? this.cleanOptionalString(dto.requesterConfirmedName)
     });
+
+    await this.notificationsService.logMachineLogCreated(log.id);
 
     return { data: log };
   }

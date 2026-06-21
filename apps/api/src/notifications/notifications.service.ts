@@ -14,6 +14,7 @@ type ListNotificationLogsInput = {
 type NotificationRecipient = {
   name?: string | null;
   phone?: string | null;
+  email?: string | null;
 };
 
 type WhatsAppLogInput = {
@@ -76,6 +77,7 @@ export class NotificationsService {
         ticketNumber: true,
         requesterName: true,
         requesterPhone: true,
+        requesterEmail: true,
         issueTitle: true,
         priority: true,
         machine: {
@@ -129,7 +131,8 @@ export class NotificationsService {
       relatedId: ticket.id,
       recipient: {
         name: ticket.requesterName,
-        phone: ticket.requesterPhone
+        phone: ticket.requesterPhone,
+        email: ticket.requesterEmail
       },
       subject: `Ticket submitted: ${ticket.ticketNumber}`,
       message: requesterMessage
@@ -168,6 +171,7 @@ export class NotificationsService {
         ticketNumber: true,
         requesterName: true,
         requesterPhone: true,
+        requesterEmail: true,
         issueTitle: true,
         machine: {
           select: {
@@ -185,7 +189,8 @@ export class NotificationsService {
       relatedId: ticket.id,
       recipient: {
         name: ticket.requesterName,
-        phone: ticket.requesterPhone
+        phone: ticket.requesterPhone,
+        email: ticket.requesterEmail
       },
       subject: `Ticket status updated: ${ticket.ticketNumber}`,
       message: [
@@ -213,6 +218,7 @@ export class NotificationsService {
             ticketNumber: true,
             requesterName: true,
             requesterPhone: true,
+            requesterEmail: true,
             issueTitle: true,
             machine: {
               select: {
@@ -245,6 +251,59 @@ export class NotificationsService {
     });
   }
 
+  async logMachineLogCreated(machineLogId: string) {
+    const machineLog = await this.prisma.machineLog.findUnique({
+      where: { id: machineLogId },
+      select: {
+        id: true,
+        activityType: true,
+        workDate: true,
+        title: true,
+        workSummary: true,
+        notifyCustomer: true,
+        notifyRecipientName: true,
+        notifyRecipientPhone: true,
+        notifyRecipientEmail: true,
+        notifyMessage: true,
+        machine: {
+          select: {
+            machineName: true,
+            serialNumber: true,
+            location: true,
+            customer: {
+              select: {
+                name: true
+              }
+            }
+          }
+        }
+      }
+    });
+
+    if (!machineLog?.notifyCustomer) return;
+
+    await this.logWhatsapp({
+      relatedType: "MachineLog",
+      relatedId: machineLog.id,
+      recipient: {
+        name: machineLog.notifyRecipientName,
+        phone: machineLog.notifyRecipientPhone,
+        email: machineLog.notifyRecipientEmail
+      },
+      subject: `Machine log added: ${machineLog.title}`,
+      message: [
+        `A machine log has been added for ${machineLog.machine.machineName} (${machineLog.machine.serialNumber}).`,
+        `Customer: ${machineLog.machine.customer.name}`,
+        `Location: ${machineLog.machine.location}`,
+        `Type: ${machineLog.activityType}`,
+        `Work time: ${machineLog.workDate.toISOString()}`,
+        `Title: ${machineLog.title}`,
+        `Summary: ${machineLog.workSummary}`,
+        machineLog.notifyMessage ? `Note: ${machineLog.notifyMessage}` : null
+      ].filter(Boolean).join("\n")
+    });
+  }
+
   private async logWhatsapp(input: WhatsAppLogInput) {
     const recipientPhone = this.cleanOptionalString(input.recipient.phone);
 
@@ -254,6 +313,7 @@ export class NotificationsService {
         relatedId: input.relatedId,
         channel: NotificationChannel.WHATSAPP,
         recipientName: this.cleanOptionalString(input.recipient.name),
+        recipientEmail: this.cleanOptionalString(input.recipient.email),
         recipientPhone,
         subject: input.subject,
         messageSummary: this.truncate(input.message, 1000),

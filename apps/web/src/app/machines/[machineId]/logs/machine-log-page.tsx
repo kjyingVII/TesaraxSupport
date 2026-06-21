@@ -49,6 +49,12 @@ type MachineLogDetail = {
   requesterContactPhone: string | null;
   requesterContactEmail: string | null;
   requesterAcknowledgementRequired: boolean;
+  notifyCustomer: boolean;
+  notifyRecipientName: string | null;
+  notifyRecipientPhone: string | null;
+  notifyRecipientEmail: string | null;
+  notifyMessage: string | null;
+  notifiedAt: string | null;
   loggedByRequesterName: string | null;
   ticket: {
     ticketNumber: string;
@@ -582,6 +588,17 @@ function MachineLogDetailPanel({
       <InfoLine label="Contact Number" value={detail.requesterContactPhone || "Not recorded"} />
       <InfoLine label="Email" value={detail.requesterContactEmail || "Not recorded"} />
       <InfoLine label="User Signature Required" value={detail.requesterAcknowledgementRequired ? "Yes" : "No"} />
+      <div className="field-panel-subtle">
+        <p className="text-sm font-semibold">Customer Notification</p>
+        <div className="mt-3 grid gap-2 sm:grid-cols-2">
+          <InfoLine label="Notify Customer" value={detail.notifyCustomer ? "Yes" : "No"} />
+          <InfoLine label="Notification Logged At" value={detail.notifiedAt ? formatDateTime(detail.notifiedAt) : "Not sent"} />
+          <InfoLine label="Notify Name" value={detail.notifyRecipientName || "Not recorded"} />
+          <InfoLine label="Notify Phone" value={detail.notifyRecipientPhone || "Not recorded"} />
+          <InfoLine label="Notify Email" value={detail.notifyRecipientEmail || "Not recorded"} />
+          <InfoLine label="Message Note" value={detail.notifyMessage || "None"} />
+        </div>
+      </div>
       <div className="field-panel-subtle">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>

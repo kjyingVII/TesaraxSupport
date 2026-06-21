@@ -17,6 +17,11 @@ export type CreateMachineLogDto = {
   requesterContactEmail?: string;
   requesterAcknowledgementRequired?: boolean;
   requesterConfirmedAt?: string;
+  notifyCustomer?: boolean;
+  notifyRecipientName?: string;
+  notifyRecipientPhone?: string;
+  notifyRecipientEmail?: string;
+  notifyMessage?: string;
   loggedByUserId?: string;
   loggedByRequesterName?: string;
   attachments?: UploadTicketAttachmentDto[];

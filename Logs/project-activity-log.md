@@ -1310,3 +1310,11 @@ This file records meaningful project updates, decisions, and implementation step
 - Added a Notifications item to the admin navigation menu.
 - Added the `/admin/notifications` page for viewing notification attempts, recipient details, message summaries, and skip/failure reasons.
 - Built the page in the same operational style as the audit log viewer so admins can validate WhatsApp notification readiness before enabling a provider.
+
+## 2026-06-21 - Machine Log Customer Notification Fields
+
+- Added separate machine log notification recipient fields so the logger identity is not reused as the customer notification target.
+- Added a Notify Customer section to the staff machine log form with recipient name, phone, email, and message note fields.
+- Machine log creation now writes a WhatsApp notification log attempt when Notify Customer is selected.
+- Machine log detail view now shows customer notification settings and recipient details.
+- Added a database migration for the new machine log notification fields and applied it locally.

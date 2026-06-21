@@ -53,6 +53,11 @@ type LogForm = {
   requesterContactEmail: string;
   requesterAcknowledgementRequired: boolean;
   loggedByRequesterName: string;
+  notifyCustomer: boolean;
+  notifyRecipientName: string;
+  notifyRecipientPhone: string;
+  notifyRecipientEmail: string;
+  notifyMessage: string;
 };
 
 const defaultLogForm: LogForm = {
@@ -69,7 +74,12 @@ const defaultLogForm: LogForm = {
   requesterContactPhone: "",
   requesterContactEmail: "",
   requesterAcknowledgementRequired: false,
-  loggedByRequesterName: ""
+  loggedByRequesterName: "",
+  notifyCustomer: false,
+  notifyRecipientName: "",
+  notifyRecipientPhone: "",
+  notifyRecipientEmail: "",
+  notifyMessage: ""
 };
 
 const bytesPerMb = 1024 * 1024;
@@ -153,6 +163,11 @@ export function NewMachineLogPage({ machineId }: { machineId: string }) {
           requesterContactPhone: form.requesterContactPhone,
           requesterContactEmail: form.requesterContactEmail,
           requesterAcknowledgementRequired: form.requesterAcknowledgementRequired,
+          notifyCustomer: form.notifyCustomer,
+          notifyRecipientName: form.notifyCustomer ? form.notifyRecipientName : undefined,
+          notifyRecipientPhone: form.notifyCustomer ? form.notifyRecipientPhone : undefined,
+          notifyRecipientEmail: form.notifyCustomer ? form.notifyRecipientEmail : undefined,
+          notifyMessage: form.notifyCustomer ? form.notifyMessage : undefined,
           loggedByUserId: user?.id,
           loggedByRequesterName: form.loggedByRequesterName,
           attachments: preparedAttachments
@@ -269,12 +284,31 @@ export function NewMachineLogPage({ machineId }: { machineId: string }) {
             <TextInput label="Requester Name" value={form.requesterConfirmedName} onChange={(value) => updateForm("requesterConfirmedName", value)} />
             <TextInput label="Contact Number" value={form.requesterContactPhone} onChange={(value) => updateForm("requesterContactPhone", value)} />
             <TextInput label="Email" type="email" value={form.requesterContactEmail} onChange={(value) => updateForm("requesterContactEmail", value)} />
+            <TextInput label="Logged By" value={form.loggedByRequesterName} onChange={(value) => updateForm("loggedByRequesterName", value)} />
+
+            <div className="field-panel-subtle grid gap-3">
+              <CheckboxInput
+                label="Notify customer"
+                description="Create a WhatsApp notification log for a customer contact after this machine log is saved."
+                checked={form.notifyCustomer}
+                onChange={(value) => updateForm("notifyCustomer", value)}
+              />
+              {form.notifyCustomer ? (
+                <div className="grid gap-3">
+                  <TextInput label="Notify Name" value={form.notifyRecipientName} onChange={(value) => updateForm("notifyRecipientName", value)} />
+                  <TextInput label="Notify Phone" value={form.notifyRecipientPhone} required onChange={(value) => updateForm("notifyRecipientPhone", value)} />
+                  <TextInput label="Notify Email" type="email" value={form.notifyRecipientEmail} onChange={(value) => updateForm("notifyRecipientEmail", value)} />
+                  <TextAreaInput label="Message Note" value={form.notifyMessage} onChange={(value) => updateForm("notifyMessage", value)} />
+                </div>
+              ) : null}
+            </div>
+
             <CheckboxInput
               label="User signature required"
+              description="Mark this if the user must sign this machine log later."
               checked={form.requesterAcknowledgementRequired}
               onChange={(value) => updateForm("requesterAcknowledgementRequired", value)}
             />
-            <TextInput label="Logged By" value={form.loggedByRequesterName} onChange={(value) => updateForm("loggedByRequesterName", value)} />
             <div className="field-panel-subtle grid gap-3">
               <div>
                 <p className="text-sm font-medium">Attachments</p>
@@ -394,10 +428,12 @@ function TextAreaInput({
 
 function CheckboxInput({
   label,
+  description,
   checked,
   onChange
 }: {
   label: string;
+  description?: string;
   checked: boolean;
   onChange: (value: boolean) => void;
 }) {
@@ -411,9 +447,7 @@ function CheckboxInput({
       />
       <span>
         <span className="font-medium">{label}</span>
-        <span className="field-muted mt-1 block">
-          Mark this if the user must sign this machine log later.
-        </span>
+        {description ? <span className="field-muted mt-1 block">{description}</span> : null}
       </span>
     </label>
   );

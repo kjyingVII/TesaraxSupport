@@ -340,6 +340,12 @@ model MachineLog {
   requesterContactEmail      String?
   requesterAcknowledgementRequired Boolean      @default(false)
   requesterConfirmedAt       DateTime?
+  notifyCustomer             Boolean       @default(false)
+  notifyRecipientName        String?
+  notifyRecipientPhone       String?
+  notifyRecipientEmail       String?
+  notifyMessage              String?
+  notifiedAt                 DateTime?
   loggedByUserId             String?
   loggedByUser               User?          @relation("MachineLogUser", fields: [loggedByUserId], references: [id])
   loggedByRequesterName      String?
