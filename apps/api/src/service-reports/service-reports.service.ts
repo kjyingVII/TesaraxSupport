@@ -2,6 +2,7 @@ import { BadRequestException, Injectable, NotFoundException } from "@nestjs/comm
 import { Prisma, ServiceResolutionStatus, TicketStatus, UserRole } from "@prisma/client";
 import { createHash, randomBytes } from "crypto";
 import { AuditService } from "../audit/audit.service";
+import { NotificationsService } from "../notifications/notifications.service";
 import { PrismaService } from "../prisma/prisma.service";
 import { UpsertServiceReportDto } from "./dto/upsert-service-report.dto";
 
@@ -9,7 +10,8 @@ import { UpsertServiceReportDto } from "./dto/upsert-service-report.dto";
 export class ServiceReportsService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly auditService: AuditService
+    private readonly auditService: AuditService,
+    private readonly notificationsService: NotificationsService
   ) {}
 
   async upsertForTicket(ticketId: string, dto: UpsertServiceReportDto, actorUser: { id: string; role: UserRole }) {
@@ -116,6 +118,8 @@ export class ServiceReportsService {
         acknowledgementId: report.acknowledgement?.id
       }
     });
+
+    await this.notificationsService.logServiceReportSubmitted(report.id);
 
     return { data: report };
   }

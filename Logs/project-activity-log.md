@@ -1295,3 +1295,11 @@ This file records meaningful project updates, decisions, and implementation step
 - Added focus-out handling so the single-select option list closes after a selection or when the user leaves the field.
 - Refined the single-select behavior so auto-focused fields do not show the option list until the user clicks or starts typing.
 - Changed selected single-select text to render as the input value instead of placeholder text so it uses a clearer normal text color.
+
+## 2026-06-21 - WhatsApp Notification Log Foundation
+
+- Added a backend notifications module with a log-only WhatsApp notification service.
+- Ticket creation now logs WhatsApp notification attempts for the requester, assigned machine technicians, and assigned customer technicians.
+- Ticket status changes now log a requester WhatsApp notification attempt.
+- Service report submission now logs a requester WhatsApp notification attempt.
+- Notifications are marked skipped until a real WhatsApp provider is configured, keeping production behavior safe while preserving traceability.

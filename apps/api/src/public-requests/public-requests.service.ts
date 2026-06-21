@@ -17,6 +17,7 @@ import { AttachmentsService } from "../attachments/attachments.service";
 import { AuthService } from "../auth/auth.service";
 import { CreateMachineLogDto } from "../machine-logs/dto/create-machine-log.dto";
 import { MachineLogsService } from "../machine-logs/machine-logs.service";
+import { NotificationsService } from "../notifications/notifications.service";
 import { PrismaService } from "../prisma/prisma.service";
 import { SettingsService } from "../settings/settings.service";
 import { CreatePublicTicketCommentDto } from "./dto/create-public-ticket-comment.dto";
@@ -46,6 +47,7 @@ export class PublicRequestsService {
     private readonly attachmentsService: AttachmentsService,
     private readonly authService: AuthService,
     private readonly machineLogsService: MachineLogsService,
+    private readonly notificationsService: NotificationsService,
     private readonly settingsService: SettingsService
   ) {}
 
@@ -617,6 +619,8 @@ export class PublicRequestsService {
     await this.attachmentsService.saveTicketAttachments(ticket.id, preparedAttachments, {
       uploadedByRequesterName: requesterName
     });
+
+    await this.notificationsService.logTicketCreated(ticket.id);
 
     return {
       data: {

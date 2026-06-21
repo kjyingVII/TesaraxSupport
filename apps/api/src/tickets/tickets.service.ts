@@ -2,6 +2,7 @@ import { BadRequestException, Injectable, NotFoundException } from "@nestjs/comm
 import { Prisma, TicketCommentVisibility, TicketPriority, TicketStatus, UserRole } from "@prisma/client";
 import { AuditService } from "../audit/audit.service";
 import { AttachmentsService } from "../attachments/attachments.service";
+import { NotificationsService } from "../notifications/notifications.service";
 import { PrismaService } from "../prisma/prisma.service";
 import { SettingsService } from "../settings/settings.service";
 import { AssignTicketDto } from "./dto/assign-ticket.dto";
@@ -28,6 +29,7 @@ export class TicketsService {
     private readonly prisma: PrismaService,
     private readonly auditService: AuditService,
     private readonly attachmentsService: AttachmentsService,
+    private readonly notificationsService: NotificationsService,
     private readonly settingsService: SettingsService
   ) {}
 
@@ -352,6 +354,8 @@ export class TicketsService {
         closedAt: ticket.closedAt
       }
     });
+
+    await this.notificationsService.logTicketStatusChanged(id, current.status, ticket.status);
 
     return { data: ticket };
   }
