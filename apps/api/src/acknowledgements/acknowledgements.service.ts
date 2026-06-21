@@ -3,6 +3,7 @@ import { AcknowledgementResponse, Prisma, ServiceResolutionStatus, TicketStatus 
 import { createHash, randomBytes } from "crypto";
 import { AuditService } from "../audit/audit.service";
 import { AttachmentsService } from "../attachments/attachments.service";
+import { parseOptionalEmail } from "../common/email";
 import { parseRequiredPhoneNumber } from "../common/phone-number";
 import { PrismaService } from "../prisma/prisma.service";
 import { AcceptAcknowledgementDto } from "./dto/accept-acknowledgement.dto";
@@ -347,7 +348,7 @@ export class AcknowledgementsService {
 
     const requesterName = this.requiredString(dto.requesterName, "Requester name is required.");
     const requesterPhone = parseRequiredPhoneNumber(dto.requesterPhone, "Contact number");
-    const requesterEmail = this.cleanOptionalString(dto.requesterEmail);
+    const requesterEmail = parseOptionalEmail(dto.requesterEmail, "Email");
     const signatureDataUrl = this.cleanOptionalString(dto.signatureDataUrl);
     const providedSignatureAttachmentId = this.cleanOptionalString(dto.signatureAttachmentId);
 
@@ -432,7 +433,7 @@ export class AcknowledgementsService {
 
     const requesterName = this.requiredString(dto.requesterName, "Requester name is required.");
     const requesterPhone = parseRequiredPhoneNumber(dto.requesterPhone, "Contact number");
-    const requesterEmail = this.cleanOptionalString(dto.requesterEmail);
+    const requesterEmail = parseOptionalEmail(dto.requesterEmail, "Email");
     const comment = this.requiredString(dto.comment, "Follow-up comment is required.");
 
     const result = await this.prisma.$transaction(async (tx) => {

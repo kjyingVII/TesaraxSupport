@@ -1,5 +1,6 @@
 import { BadRequestException, Injectable, UnauthorizedException } from "@nestjs/common";
 import { createHmac, pbkdf2Sync, randomBytes, timingSafeEqual } from "crypto";
+import { parseRequiredEmail } from "../common/email";
 import { PrismaService } from "../prisma/prisma.service";
 import { LoginDto } from "./dto/login.dto";
 
@@ -16,7 +17,7 @@ export class AuthService {
   constructor(private readonly prisma: PrismaService) {}
 
   async login(dto: LoginDto) {
-    const email = this.requiredString(dto.email, "Email is required.").toLowerCase();
+    const email = parseRequiredEmail(dto.email, "Email");
     const password = this.requiredString(dto.password, "Password is required.");
 
     const user = await this.prisma.user.findUnique({

@@ -2,6 +2,7 @@ import { BadRequestException, ConflictException, Injectable, NotFoundException }
 import { Prisma, UserRole } from "@prisma/client";
 import { AuditService } from "../audit/audit.service";
 import { AuthService } from "../auth/auth.service";
+import { parseRequiredEmail } from "../common/email";
 import { parseNullablePhoneNumber } from "../common/phone-number";
 import { PrismaService } from "../prisma/prisma.service";
 import { ChangeOwnPasswordDto } from "./dto/change-own-password.dto";
@@ -71,7 +72,7 @@ export class UsersService {
 
   async create(dto: CreateUserDto, actorUserId?: string) {
     const name = this.requiredString(dto.name, "User name is required.");
-    const email = this.requiredString(dto.email, "Email is required.").toLowerCase();
+    const email = parseRequiredEmail(dto.email, "Email");
     const role = this.parseRole(dto.role);
     const password = this.requiredPassword(dto.password);
 
@@ -127,7 +128,7 @@ export class UsersService {
     }
 
     if (dto.email !== undefined) {
-      const email = this.requiredString(dto.email, "Email cannot be empty.").toLowerCase();
+      const email = parseRequiredEmail(dto.email, "Email");
       await this.ensureEmailAvailable(email, id);
       data.email = email;
     }
@@ -207,7 +208,7 @@ export class UsersService {
     }
 
     if (dto.email !== undefined) {
-      const email = this.requiredString(dto.email, "Email cannot be empty.").toLowerCase();
+      const email = parseRequiredEmail(dto.email, "Email");
       await this.ensureEmailAvailable(email, id);
       data.email = email;
     }

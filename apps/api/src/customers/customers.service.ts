@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
 import { Prisma, UserRole } from "@prisma/client";
 import { AuditService } from "../audit/audit.service";
+import { parseNullableEmail, parseOptionalEmail } from "../common/email";
 import { parseNullablePhoneNumber, parseOptionalPhoneNumber } from "../common/phone-number";
 import { PrismaService } from "../prisma/prisma.service";
 import { CreateCustomerDto } from "./dto/create-customer.dto";
@@ -71,7 +72,7 @@ export class CustomersService {
       data: {
         name,
         contactName: this.cleanOptionalString(dto.contactName),
-        contactEmail: this.cleanOptionalString(dto.contactEmail),
+        contactEmail: parseOptionalEmail(dto.contactEmail, "Contact email"),
         contactPhone: parseOptionalPhoneNumber(dto.contactPhone, "Contact phone"),
         address: this.cleanOptionalString(dto.address),
         remarks: this.cleanOptionalString(dto.remarks)
@@ -208,7 +209,7 @@ export class CustomersService {
     }
 
     if (dto.contactName !== undefined) data.contactName = this.cleanNullableString(dto.contactName);
-    if (dto.contactEmail !== undefined) data.contactEmail = this.cleanNullableString(dto.contactEmail);
+    if (dto.contactEmail !== undefined) data.contactEmail = parseNullableEmail(dto.contactEmail, "Contact email");
     if (dto.contactPhone !== undefined) data.contactPhone = parseNullablePhoneNumber(dto.contactPhone, "Contact phone");
     if (dto.address !== undefined) data.address = this.cleanNullableString(dto.address);
     if (dto.remarks !== undefined) data.remarks = this.cleanNullableString(dto.remarks);

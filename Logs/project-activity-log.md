@@ -1348,3 +1348,10 @@ This file records meaningful project updates, decisions, and implementation step
 - Applied backend phone validation to customer, user/profile, system settings, machine log, public machine access, ticket request/comment, and acknowledgement flows.
 - Invalid phone numbers now return HTTP 400 even when requests bypass the browser UI.
 - Verified invalid customer and public machine access phone submissions are rejected locally.
+
+## 2026-06-21 - Backend Email Validation
+
+- Added a shared backend email validator that trims and lowercases accepted email values.
+- Applied backend email validation to login, user/profile, customer, system settings, machine log, public machine access, ticket request/comment, and acknowledgement flows.
+- Confirmed editable frontend email fields already use native email inputs.
+- Invalid email addresses now return HTTP 400 when requests bypass the browser UI.

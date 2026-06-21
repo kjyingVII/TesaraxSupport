@@ -15,6 +15,7 @@ import { FollowUpAcknowledgementDto } from "../acknowledgements/dto/follow-up-ac
 import { AuditService } from "../audit/audit.service";
 import { AttachmentsService } from "../attachments/attachments.service";
 import { AuthService } from "../auth/auth.service";
+import { parseOptionalEmail } from "../common/email";
 import { parseOptionalPhoneNumber, parseRequiredPhoneNumber } from "../common/phone-number";
 import { CreateMachineLogDto } from "../machine-logs/dto/create-machine-log.dto";
 import { MachineLogsService } from "../machine-logs/machine-logs.service";
@@ -128,7 +129,7 @@ export class PublicRequestsService {
 
     const requesterName = this.requiredString(dto.requesterName, "Requester name is required.");
     const requesterPhone = parseRequiredPhoneNumber(dto.requesterPhone, "Requester phone");
-    const requesterEmail = this.cleanOptionalString(dto.requesterEmail);
+    const requesterEmail = parseOptionalEmail(dto.requesterEmail, "Requester email");
     const password = this.requiredString(dto.password, "Machine password is required.");
 
     if (!this.authService.verifyUserPassword(password, machine.machineAccessPasswordHash)) {
@@ -315,7 +316,7 @@ export class PublicRequestsService {
       nextServiceDueOverrideAt: dto.nextServiceDueOverrideAt,
       requesterConfirmedName: this.cleanOptionalString(dto.requesterConfirmedName) ?? access.requesterName,
       requesterContactPhone: parseOptionalPhoneNumber(dto.requesterContactPhone, "Contact number") ?? access.requesterPhone,
-      requesterContactEmail: this.cleanOptionalString(dto.requesterContactEmail) ?? access.requesterEmail,
+      requesterContactEmail: parseOptionalEmail(dto.requesterContactEmail, "Contact email") ?? access.requesterEmail,
       requesterAcknowledgementRequired: false,
       requesterConfirmedAt: dto.requesterConfirmedAt,
       loggedByRequesterName: this.cleanOptionalString(dto.loggedByRequesterName) ?? access.requesterName,
@@ -477,7 +478,7 @@ export class PublicRequestsService {
 
     const requesterName = this.requiredString(dto.requesterName, "Requester name is required.");
     const requesterPhone = parseRequiredPhoneNumber(dto.requesterPhone, "Contact number");
-    const requesterEmail = this.cleanOptionalString(dto.requesterEmail);
+    const requesterEmail = parseOptionalEmail(dto.requesterEmail, "Email");
     const signatureDataUrl = this.cleanOptionalString(dto.signatureDataUrl);
 
     if (!signatureDataUrl) {
@@ -575,7 +576,7 @@ export class PublicRequestsService {
     const issueCategory = this.requiredString(dto.issueCategory, "Issue category is required.");
     const priority = this.parsePriority(dto.priority);
     const requesterPhone = parseOptionalPhoneNumber(dto.requesterPhone, "Requester phone");
-    const requesterEmail = this.cleanOptionalString(dto.requesterEmail);
+    const requesterEmail = parseOptionalEmail(dto.requesterEmail, "Requester email");
 
     if (!requesterPhone && !requesterEmail) {
       throw new BadRequestException("Requester phone or email is required.");
@@ -922,7 +923,7 @@ export class PublicRequestsService {
 
     const requesterName = this.requiredString(dto.requesterName, "Requester name is required.");
     const requesterPhone = parseRequiredPhoneNumber(dto.requesterPhone, "Contact number");
-    const requesterEmail = this.cleanOptionalString(dto.requesterEmail);
+    const requesterEmail = parseOptionalEmail(dto.requesterEmail, "Email");
     const signatureDataUrl = this.cleanOptionalString(dto.signatureDataUrl);
 
     if (!signatureDataUrl) {
@@ -1050,7 +1051,7 @@ export class PublicRequestsService {
 
     const requesterName = this.requiredString(dto.requesterName, "Requester name is required.");
     const requesterPhone = parseRequiredPhoneNumber(dto.requesterPhone, "Contact number");
-    const requesterEmail = this.cleanOptionalString(dto.requesterEmail);
+    const requesterEmail = parseOptionalEmail(dto.requesterEmail, "Email");
     const comment = this.requiredString(dto.comment, "Follow-up comment is required.");
 
     const result = await this.prisma.$transaction(async (tx) => {
@@ -1139,7 +1140,7 @@ export class PublicRequestsService {
     const requesterName = this.requiredString(dto.requesterName, "Requester name is required.");
     const commentText = this.requiredString(dto.comment, "Comment is required.");
     const requesterPhone = parseOptionalPhoneNumber(dto.requesterPhone, "Contact number") ?? access.requesterPhone;
-    const requesterEmail = this.cleanOptionalString(dto.requesterEmail) ?? access.requesterEmail;
+    const requesterEmail = parseOptionalEmail(dto.requesterEmail, "Email") ?? access.requesterEmail;
     const preparedAttachments = await this.attachmentsService.prepareTicketAttachments(dto.attachments);
 
     const comment = await this.prisma.ticketComment.create({
@@ -1508,7 +1509,7 @@ export class PublicRequestsService {
 
   private async ensureRequesterCanAccessTicket(ticketId: string, dto: CreatePublicTicketCommentDto) {
     const requesterPhone = parseOptionalPhoneNumber(dto.requesterPhone, "Requester phone");
-    const requesterEmail = this.cleanOptionalString(dto.requesterEmail)?.toLowerCase();
+    const requesterEmail = parseOptionalEmail(dto.requesterEmail, "Requester email");
 
     if (!requesterPhone && !requesterEmail) {
       throw new BadRequestException("Requester phone or email is required.");

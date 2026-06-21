@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
 import { MachineActivityType, Prisma } from "@prisma/client";
 import { AttachmentsService } from "../attachments/attachments.service";
+import { parseOptionalEmail } from "../common/email";
 import { parseOptionalPhoneNumber } from "../common/phone-number";
 import { NotificationsService } from "../notifications/notifications.service";
 import { PrismaService } from "../prisma/prisma.service";
@@ -174,13 +175,13 @@ export class MachineLogsService {
           nextServiceDueOverrideAt,
           requesterConfirmedName: this.cleanOptionalString(dto.requesterConfirmedName),
           requesterContactPhone: loggedByContactPhone,
-          requesterContactEmail: this.cleanOptionalString(dto.requesterContactEmail),
+          requesterContactEmail: parseOptionalEmail(dto.requesterContactEmail, "Logged by email"),
           requesterAcknowledgementRequired: dto.requesterAcknowledgementRequired === true,
           requesterConfirmedAt: this.parseOptionalDate(dto.requesterConfirmedAt, "requesterConfirmedAt"),
           notifyCustomer,
           notifyRecipientName: this.cleanOptionalString(dto.notifyRecipientName),
           notifyRecipientPhone,
-          notifyRecipientEmail: this.cleanOptionalString(dto.notifyRecipientEmail),
+          notifyRecipientEmail: parseOptionalEmail(dto.notifyRecipientEmail, "Notify recipient email"),
           notifyMessage: this.cleanOptionalString(dto.notifyMessage),
           loggedByUserId,
           loggedByRequesterName: this.cleanOptionalString(dto.loggedByRequesterName)
