@@ -1260,3 +1260,11 @@ This file records meaningful project updates, decisions, and implementation step
 - Bound web, API, PostgreSQL, and Redis ports to `127.0.0.1` by default for host-level reverse proxy deployment.
 - Updated `.env.example` and VPS deployment notes with production bind settings and migration steps.
 - Verified the production web image builds successfully and the running web container starts with `next start`.
+
+## 2026-06-21 - Copy-Ready Acknowledgement Messages
+
+- Added reusable frontend acknowledgement message builders for service reports and machine logs.
+- Updated the service report submitted page to show a full ready-to-send acknowledgement message with Copy Message and Copy Link actions.
+- Updated technician ticket workbench direct acknowledgement links to display and copy the full requester message.
+- Updated full machine log acknowledgement link generation to create and copy a full customer-ready message.
+- Verified web type check and production web build pass after the message workflow change.

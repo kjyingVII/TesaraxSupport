@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { ThemeToggle } from "../../../../../../components/theme-toggle";
+import { buildServiceReportAcknowledgementMessage } from "../../../../../../lib/acknowledgement-message";
 import { apiRequest } from "../../../../../../lib/api";
 import { getAuthUser } from "../../../../../../lib/auth";
 
@@ -12,8 +13,36 @@ type AcknowledgementLinkResponse = {
   };
 };
 
+type TicketDetailResponse = {
+  data: {
+    ticketNumber: string;
+    issueTitle: string;
+    machine: {
+      machineName: string;
+      model: string;
+      serialNumber: string;
+      location: string;
+      customer: {
+        name: string;
+      };
+    };
+    serviceReports: Array<{
+      id: string;
+      diagnosis: string;
+      actionTaken: string;
+      resolutionStatus: string;
+      serviceStartAt: string;
+      serviceEndAt: string;
+      technician?: {
+        name: string;
+      };
+    }>;
+  };
+};
+
 export function ServiceReportSubmittedPage({ ticketId, reportId }: { ticketId: string; reportId: string }) {
   const [acknowledgementUrl, setAcknowledgementUrl] = useState("");
+  const [acknowledgementMessage, setAcknowledgementMessage] = useState("");
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -31,23 +60,36 @@ export function ServiceReportSubmittedPage({ ticketId, reportId }: { ticketId: s
       const stored = window.sessionStorage.getItem(directLinkStorageKey(reportId));
       if (stored) {
         setAcknowledgementUrl(stored);
-        setLoading(false);
+        try {
+          const ticketResponse = await apiRequest<TicketDetailResponse>(`/api/tickets/${ticketId}`);
+          if (!mounted) return;
+          setAcknowledgementMessage(buildServiceReportMessage(stored, ticketResponse.data, reportId));
+        } catch (err) {
+          if (!mounted) return;
+          setError(err instanceof Error ? err.message : "Unable to prepare acknowledgement message.");
+        } finally {
+          if (mounted) setLoading(false);
+        }
         return;
       }
 
       try {
         const user = getAuthUser();
-        const response = await apiRequest<AcknowledgementLinkResponse>(
-          `/api/service-reports/${reportId}/acknowledgement-link`,
-          {
-            method: "POST",
-            body: JSON.stringify({
-              submittedByUserId: user?.id
-            })
-          }
-        );
+        const [response, ticketResponse] = await Promise.all([
+          apiRequest<AcknowledgementLinkResponse>(
+            `/api/service-reports/${reportId}/acknowledgement-link`,
+            {
+              method: "POST",
+              body: JSON.stringify({
+                submittedByUserId: user?.id
+              })
+            }
+          ),
+          apiRequest<TicketDetailResponse>(`/api/tickets/${ticketId}`)
+        ]);
         if (!mounted) return;
         setAcknowledgementUrl(response.data.acknowledgementUrl);
+        setAcknowledgementMessage(buildServiceReportMessage(response.data.acknowledgementUrl, ticketResponse.data, reportId));
         window.sessionStorage.setItem(directLinkStorageKey(reportId), response.data.acknowledgementUrl);
       } catch (err) {
         if (!mounted) return;
@@ -72,6 +114,17 @@ export function ServiceReportSubmittedPage({ ticketId, reportId }: { ticketId: s
       setMessage("Acknowledgement link copied.");
     } catch {
       setMessage("Copy failed. Select and copy the link manually.");
+    }
+  }
+
+  async function copyMessage() {
+    if (!acknowledgementMessage) return;
+
+    try {
+      await navigator.clipboard.writeText(acknowledgementMessage);
+      setMessage("Acknowledgement message copied.");
+    } catch {
+      setMessage("Copy failed. Select and copy the message manually.");
     }
   }
 
@@ -110,7 +163,18 @@ export function ServiceReportSubmittedPage({ ticketId, reportId }: { ticketId: s
             <div className="field-panel-subtle mt-5 text-sm">
               <p className="field-meta-label">Link</p>
               <p className="mt-2 break-all font-medium text-neutral-800 dark:text-neutral-100">{acknowledgementUrl}</p>
+              {acknowledgementMessage ? (
+                <>
+                  <p className="field-meta-label mt-4">Ready Message</p>
+                  <pre className="mt-2 whitespace-pre-wrap rounded-md border border-[#d9dee3] bg-white p-3 text-sm leading-6 text-neutral-800 dark:border-[#2f3742] dark:bg-[#0f1115] dark:text-neutral-100">
+                    {acknowledgementMessage}
+                  </pre>
+                </>
+              ) : null}
               <div className="mt-4 flex flex-wrap gap-2">
+                <button className="field-button-primary" type="button" onClick={copyMessage}>
+                  Copy Message
+                </button>
                 <button className="field-button-primary" type="button" onClick={copyLink}>
                   Copy Link
                 </button>
@@ -131,4 +195,29 @@ export function ServiceReportSubmittedPage({ ticketId, reportId }: { ticketId: s
 
 function directLinkStorageKey(reportId: string) {
   return `service-report-acknowledgement-link:${reportId}`;
+}
+
+function buildServiceReportMessage(
+  acknowledgementUrl: string,
+  ticket: TicketDetailResponse["data"],
+  reportId: string
+) {
+  const report = ticket.serviceReports.find((item) => item.id === reportId) ?? ticket.serviceReports[0];
+
+  return buildServiceReportAcknowledgementMessage({
+    acknowledgementUrl,
+    ticketNumber: ticket.ticketNumber,
+    customerName: ticket.machine.customer.name,
+    machineName: ticket.machine.machineName,
+    model: ticket.machine.model,
+    serialNumber: ticket.machine.serialNumber,
+    location: ticket.machine.location,
+    issueTitle: ticket.issueTitle,
+    serviceStartAt: report?.serviceStartAt,
+    serviceEndAt: report?.serviceEndAt,
+    technicianName: report?.technician?.name,
+    diagnosis: report?.diagnosis,
+    actionTaken: report?.actionTaken,
+    resolutionStatus: report?.resolutionStatus
+  });
 }

@@ -3,6 +3,7 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { AdminMenu } from "../../../../components/admin-menu";
 import { ThemeToggle } from "../../../../components/theme-toggle";
+import { buildMachineLogAcknowledgementMessage } from "../../../../lib/acknowledgement-message";
 import { apiBaseUrl, apiRequest } from "../../../../lib/api";
 import { getAccessToken } from "../../../../lib/auth";
 
@@ -473,7 +474,7 @@ export function MachineLogPage({ machineId }: { machineId: string }) {
               </p>
             ) : null}
             {!loadingDetail && selectedDetail?.kind === "MACHINE_LOG" ? (
-              <MachineLogDetailPanel machineId={machineId} detail={selectedDetail.data} />
+              <MachineLogDetailPanel machine={machine} machineId={machineId} detail={selectedDetail.data} />
             ) : null}
             {!loadingDetail && selectedDetail?.kind === "TICKET" ? (
               <TicketDetailPanel detail={selectedDetail.data} />
@@ -485,11 +486,21 @@ export function MachineLogPage({ machineId }: { machineId: string }) {
   );
 }
 
-function MachineLogDetailPanel({ machineId, detail }: { machineId: string; detail: MachineLogDetail }) {
+function MachineLogDetailPanel({
+  machine,
+  machineId,
+  detail
+}: {
+  machine: MachineDetail | null;
+  machineId: string;
+  detail: MachineLogDetail;
+}) {
   const [linkStatus, setLinkStatus] = useState<string | null>(null);
+  const [acknowledgementUrl, setAcknowledgementUrl] = useState<string | null>(null);
+  const [acknowledgementMessage, setAcknowledgementMessage] = useState<string | null>(null);
   const [creatingLink, setCreatingLink] = useState(false);
 
-  async function copyAcknowledgementLink() {
+  async function createAcknowledgementLink() {
     setCreatingLink(true);
     setLinkStatus(null);
 
@@ -503,12 +514,50 @@ function MachineLogDetailPanel({ machineId, detail }: { machineId: string; detai
         body: JSON.stringify({})
       });
 
-      await navigator.clipboard.writeText(response.data.acknowledgementUrl);
-      setLinkStatus("Acknowledgement link copied.");
+      const readyMessage = buildMachineLogAcknowledgementMessage({
+        acknowledgementUrl: response.data.acknowledgementUrl,
+        customerName: machine?.customer.name ?? "Not recorded",
+        machineName: machine?.machineName ?? "Not recorded",
+        model: machine?.model,
+        serialNumber: machine?.serialNumber,
+        location: machine?.location,
+        activityType: activityTypeLabel(detail.activityType),
+        title: detail.title,
+        workDate: detail.workDate,
+        workEndAt: detail.workEndAt,
+        summary: detail.workSummary
+      });
+
+      setAcknowledgementUrl(response.data.acknowledgementUrl);
+      setAcknowledgementMessage(readyMessage);
+      await navigator.clipboard.writeText(readyMessage);
+      setLinkStatus("Acknowledgement message copied.");
     } catch (err) {
       setLinkStatus(err instanceof Error ? err.message : "Unable to create acknowledgement link.");
     } finally {
       setCreatingLink(false);
+    }
+  }
+
+  async function copyAcknowledgementMessage() {
+    if (!acknowledgementMessage) return;
+
+    try {
+      await navigator.clipboard.writeText(acknowledgementMessage);
+      setLinkStatus("Acknowledgement message copied.");
+    } catch {
+      setLinkStatus("Copy failed. Select and copy the message manually.");
+    }
+  }
+
+  async function copyAcknowledgementUrl() {
+    if (!acknowledgementUrl) return;
+
+    try {
+      await navigator.clipboard.writeText(acknowledgementUrl);
+      setLinkStatus("Acknowledgement link copied.");
+    } catch {
+      setLinkStatus("Copy failed. Select and copy the link manually.");
     }
   }
 
@@ -548,12 +597,28 @@ function MachineLogDetailPanel({ machineId, detail }: { machineId: string; detai
               className="field-button-secondary disabled:cursor-not-allowed disabled:opacity-50"
               type="button"
               disabled={creatingLink}
-              onClick={copyAcknowledgementLink}
+              onClick={createAcknowledgementLink}
             >
-              {creatingLink ? "Creating..." : "Copy Acknowledgement Link"}
+              {creatingLink ? "Creating..." : "Create Acknowledgement Message"}
             </button>
           ) : null}
         </div>
+        {acknowledgementMessage ? (
+          <div className="mt-3 rounded-md border border-[#d9dee3] bg-white p-3 text-sm dark:border-[#2f3742] dark:bg-[#0f1115]">
+            <p className="field-meta-label">Ready Message</p>
+            <pre className="mt-2 max-h-72 overflow-auto whitespace-pre-wrap text-xs leading-5 text-neutral-800 dark:text-neutral-100">
+              {acknowledgementMessage}
+            </pre>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <button className="field-button-secondary min-h-10" type="button" onClick={copyAcknowledgementMessage}>
+                Copy Message
+              </button>
+              <button className="field-button-secondary min-h-10" type="button" onClick={copyAcknowledgementUrl}>
+                Copy Link
+              </button>
+            </div>
+          </div>
+        ) : null}
         {detail.acknowledgement?.response ? (
           <div className="mt-3 grid gap-2 sm:grid-cols-2">
             <InfoLine label="Contact Number" value={detail.acknowledgement.requesterPhone || "Not recorded"} />

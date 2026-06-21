@@ -4,6 +4,7 @@ import Link from "next/link";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { AdminMenu } from "../../../components/admin-menu";
 import { ThemeToggle } from "../../../components/theme-toggle";
+import { buildServiceReportAcknowledgementMessage } from "../../../lib/acknowledgement-message";
 import { apiBaseUrl, apiRequest } from "../../../lib/api";
 import { getAccessToken, getAuthUser, type AuthUser } from "../../../lib/auth";
 
@@ -488,6 +489,15 @@ export function TicketWorkbench() {
       setActionMessage("Acknowledgement link copied.");
     } catch {
       setActionMessage("Acknowledgement link generated. Copy it from the Open acknowledgement form button.");
+    }
+  }
+
+  async function copyAcknowledgementMessage(text: string) {
+    try {
+      await navigator.clipboard.writeText(text);
+      setActionMessage("Acknowledgement message copied.");
+    } catch {
+      setActionMessage("Copy failed. Select and copy the message manually.");
     }
   }
 
@@ -1120,7 +1130,12 @@ export function TicketWorkbench() {
                                         {actionBusy ? "Generating..." : "Get Direct Acknowledgement Link"}
                                       </button>
                                       {acknowledgementReportId === report.id && acknowledgementUrl ? (
-                                        <DirectAcknowledgementLink url={acknowledgementUrl} onCopy={copyAcknowledgementUrl} />
+                                        <DirectAcknowledgementLink
+                                          url={acknowledgementUrl}
+                                          message={buildTicketServiceReportMessage(acknowledgementUrl, selectedTicket, report)}
+                                          onCopy={copyAcknowledgementUrl}
+                                          onCopyMessage={copyAcknowledgementMessage}
+                                        />
                                       ) : null}
                                     </div>
                                   ) : null}
@@ -1156,7 +1171,12 @@ export function TicketWorkbench() {
                                     {actionBusy ? "Generating..." : "Get Direct Acknowledgement Link"}
                                   </button>
                                   {acknowledgementReportId === report.id && acknowledgementUrl ? (
-                                    <DirectAcknowledgementLink url={acknowledgementUrl} onCopy={copyAcknowledgementUrl} />
+                                    <DirectAcknowledgementLink
+                                      url={acknowledgementUrl}
+                                      message={buildTicketServiceReportMessage(acknowledgementUrl, selectedTicket, report)}
+                                      onCopy={copyAcknowledgementUrl}
+                                      onCopyMessage={copyAcknowledgementMessage}
+                                    />
                                   ) : null}
                                 </div>
                               )}
@@ -1244,11 +1264,24 @@ function InfoLine({ label, value }: { label: string; value: string }) {
   );
 }
 
-function DirectAcknowledgementLink({ url, onCopy }: { url: string; onCopy: () => void }) {
+function DirectAcknowledgementLink({
+  url,
+  message,
+  onCopy,
+  onCopyMessage
+}: {
+  url: string;
+  message: string;
+  onCopy: () => void;
+  onCopyMessage: (message: string) => void;
+}) {
   return (
     <div className="rounded-md border border-emerald-300 bg-emerald-50 p-3 text-sm dark:border-emerald-900 dark:bg-emerald-950">
       <p className="font-medium text-emerald-950 dark:text-emerald-100">Direct link ready</p>
       <p className="mt-1 break-all text-xs text-emerald-900 dark:text-emerald-100">{url}</p>
+      <pre className="mt-3 max-h-72 overflow-auto whitespace-pre-wrap rounded-md border border-emerald-200 bg-white p-3 text-xs leading-5 text-neutral-800 dark:border-emerald-900 dark:bg-[#0f1115] dark:text-neutral-100">
+        {message}
+      </pre>
       <div className="mt-3 flex flex-wrap gap-2">
         <a
           className="inline-flex min-h-9 items-center rounded-md border border-emerald-300 px-3 font-medium underline-offset-4 hover:underline dark:border-emerald-800"
@@ -1261,6 +1294,13 @@ function DirectAcknowledgementLink({ url, onCopy }: { url: string; onCopy: () =>
         <button
           className="inline-flex min-h-9 items-center rounded-md border border-emerald-300 px-3 font-medium underline-offset-4 hover:underline dark:border-emerald-800"
           type="button"
+          onClick={() => onCopyMessage(message)}
+        >
+          Copy message
+        </button>
+        <button
+          className="inline-flex min-h-9 items-center rounded-md border border-emerald-300 px-3 font-medium underline-offset-4 hover:underline dark:border-emerald-800"
+          type="button"
           onClick={onCopy}
         >
           Copy link
@@ -1268,6 +1308,29 @@ function DirectAcknowledgementLink({ url, onCopy }: { url: string; onCopy: () =>
       </div>
     </div>
   );
+}
+
+function buildTicketServiceReportMessage(
+  acknowledgementUrl: string,
+  ticket: TicketDetail,
+  report: TicketDetail["serviceReports"][number]
+) {
+  return buildServiceReportAcknowledgementMessage({
+    acknowledgementUrl,
+    ticketNumber: ticket.ticketNumber,
+    customerName: ticket.machine.customer.name,
+    machineName: ticket.machine.machineName,
+    model: ticket.machine.model,
+    serialNumber: ticket.machine.serialNumber,
+    location: ticket.machine.location,
+    issueTitle: ticket.issueTitle,
+    serviceStartAt: report.serviceStartAt,
+    serviceEndAt: report.serviceEndAt,
+    technicianName: report.technician?.name,
+    diagnosis: report.diagnosis,
+    actionTaken: report.actionTaken,
+    resolutionStatus: report.resolutionStatus
+  });
 }
 
 function SignaturePreview({ attachmentId }: { attachmentId: string | null }) {
