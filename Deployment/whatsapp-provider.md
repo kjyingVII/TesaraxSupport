@@ -1,6 +1,6 @@
 # WhatsApp Provider Setup
 
-The system can send WhatsApp notifications through Meta WhatsApp Cloud API.
+The system can send WhatsApp notifications through either Twilio WhatsApp or Meta WhatsApp Cloud API.
 
 By default, WhatsApp is in log-only mode:
 
@@ -9,6 +9,44 @@ WHATSAPP_PROVIDER=log
 ```
 
 In log-only mode, notification attempts are saved in Admin > Notifications with status `SKIPPED`.
+
+## Enable Twilio WhatsApp
+
+Twilio can be used while Meta app review is still pending. Set these values in `.env`:
+
+```env
+WHATSAPP_PROVIDER=twilio
+TWILIO_ACCOUNT_SID=your_twilio_account_sid
+TWILIO_AUTH_TOKEN=your_twilio_auth_token
+TWILIO_WHATSAPP_FROM=whatsapp:+14155238886
+TWILIO_WHATSAPP_STATUS_CALLBACK_URL=https://supportapi.tesarax.cloud/api/webhooks/twilio/whatsapp/status
+```
+
+For Twilio Sandbox testing, `TWILIO_WHATSAPP_FROM` is normally:
+
+```env
+TWILIO_WHATSAPP_FROM=whatsapp:+14155238886
+```
+
+The receiving phone number must join your Twilio WhatsApp Sandbox before sandbox messages can arrive.
+
+Then rebuild and restart the API:
+
+```bash
+docker compose up -d --build api
+```
+
+Test from Admin > Notifications using the Manual WhatsApp Test form.
+
+## Twilio Status Callback Endpoint
+
+Use this status callback URL in Twilio, or set it in `.env` as shown above:
+
+```text
+https://supportapi.tesarax.cloud/api/webhooks/twilio/whatsapp/status
+```
+
+Twilio status callbacks are stored in `WhatsAppWebhookEvent` with provider `twilio`. Matching Admin > Notifications rows are updated by Twilio message SID.
 
 ## Enable Meta WhatsApp Cloud API
 

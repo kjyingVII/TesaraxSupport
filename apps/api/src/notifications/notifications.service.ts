@@ -470,6 +470,10 @@ export class NotificationsService {
       };
     }
 
+    if (provider === "twilio") {
+      return this.sendTwilioWhatsappMessage(recipientPhone, message);
+    }
+
     if (provider !== "meta") {
       return {
         status: NotificationStatus.SKIPPED,
@@ -478,6 +482,70 @@ export class NotificationsService {
     }
 
     return this.sendMetaWhatsappMessage(recipientPhone, message, template);
+  }
+
+  private async sendTwilioWhatsappMessage(recipientPhone: string, message: string): Promise<WhatsAppSendResult> {
+    const accountSid = this.cleanOptionalString(process.env.TWILIO_ACCOUNT_SID);
+    const authToken = this.cleanOptionalString(process.env.TWILIO_AUTH_TOKEN);
+    const from = this.formatTwilioWhatsappAddress(process.env.TWILIO_WHATSAPP_FROM);
+
+    if (!accountSid || !authToken || !from) {
+      return {
+        status: NotificationStatus.SKIPPED,
+        errorMessage: "Twilio WhatsApp credentials are missing. Set TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, and TWILIO_WHATSAPP_FROM."
+      };
+    }
+
+    const to = this.formatTwilioWhatsappAddress(recipientPhone);
+    if (!to) {
+      return {
+        status: NotificationStatus.FAILED,
+        errorMessage: "Recipient phone number must include country code and digits only."
+      };
+    }
+
+    const body = new URLSearchParams({
+      From: from,
+      To: to,
+      Body: message
+    });
+    const statusCallbackUrl = this.cleanOptionalString(process.env.TWILIO_WHATSAPP_STATUS_CALLBACK_URL);
+    if (statusCallbackUrl) body.set("StatusCallback", statusCallbackUrl);
+
+    try {
+      const response = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`, {
+        method: "POST",
+        headers: {
+          Authorization: `Basic ${Buffer.from(`${accountSid}:${authToken}`).toString("base64")}`,
+          "Content-Type": "application/x-www-form-urlencoded"
+        },
+        body
+      });
+
+      const payload = await response.json().catch(() => null) as {
+        sid?: string;
+        message?: string;
+        code?: number;
+        status?: string;
+      } | null;
+
+      if (!response.ok) {
+        return {
+          status: NotificationStatus.FAILED,
+          errorMessage: this.truncate(payload?.message ?? `Twilio API returned HTTP ${response.status}.`, 1000)
+        };
+      }
+
+      return {
+        status: NotificationStatus.SENT,
+        providerMessageId: payload?.sid
+      };
+    } catch (error) {
+      return {
+        status: NotificationStatus.FAILED,
+        errorMessage: this.truncate(error instanceof Error ? error.message : "Unable to send Twilio WhatsApp message.", 1000)
+      };
+    }
   }
 
   private async sendMetaWhatsappMessage(
@@ -658,6 +726,15 @@ export class NotificationsService {
   private normalizeWhatsappPhone(value: string) {
     const digits = value.replace(/^\+/, "").replace(/\D/g, "");
     return digits.length >= 7 && digits.length <= 15 ? digits : undefined;
+  }
+
+  private formatTwilioWhatsappAddress(value: string | null | undefined) {
+    const cleaned = this.cleanOptionalString(value);
+    if (!cleaned) return undefined;
+
+    const phone = cleaned.replace(/^whatsapp:/i, "");
+    const digits = this.normalizeWhatsappPhone(phone);
+    return digits ? `whatsapp:+${digits}` : undefined;
   }
 
   private parseChannel(value: string) {

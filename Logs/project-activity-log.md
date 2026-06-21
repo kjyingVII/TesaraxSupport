@@ -1418,3 +1418,11 @@ This file records meaningful project updates, decisions, and implementation step
 - Added a public `/privacy` page for Meta app privacy policy requirements.
 - Included support-system data collection, WhatsApp notification, access, retention, security, and contact details.
 - Added a homepage footer link to the privacy policy for easy public access.
+
+## 2026-06-22 - Twilio WhatsApp Provider
+
+- Added `WHATSAPP_PROVIDER=twilio` as an alternative provider while Meta app review is pending.
+- Added Twilio Account SID, Auth Token, WhatsApp From, and Status Callback URL environment variables.
+- Added Twilio WhatsApp sending through the existing notification service so all current notification events can use Twilio.
+- Added a Twilio WhatsApp status callback endpoint at `/api/webhooks/twilio/whatsapp/status`.
+- Documented Twilio setup steps and sandbox notes in the WhatsApp provider deployment guide.
