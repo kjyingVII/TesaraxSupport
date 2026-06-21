@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FormEvent, useEffect, useState } from "react";
 import { AdminMenu } from "../../../components/admin-menu";
+import { SearchableMultiSelect } from "../../../components/searchable-combobox";
 import { ThemeToggle } from "../../../components/theme-toggle";
 import { apiRequest } from "../../../lib/api";
 
@@ -180,14 +181,6 @@ export function CustomerFormPage({ customerId }: { customerId?: string }) {
     setForm((current) => ({ ...current, [field]: value }));
   }
 
-  function toggleTechnician(technicianId: string) {
-    setSelectedTechnicianIds((current) =>
-      current.includes(technicianId)
-        ? current.filter((id) => id !== technicianId)
-        : [...current, technicianId]
-    );
-  }
-
   return (
     <main className="field-page">
       <section className="field-shell max-w-3xl">
@@ -248,10 +241,17 @@ export function CustomerFormPage({ customerId }: { customerId?: string }) {
             <p className="field-muted mt-2">
               These technicians will be notified when a ticket is lodged for any machine under this customer.
             </p>
-            <TechnicianCheckboxList
-              technicians={technicians}
-              selectedIds={selectedTechnicianIds}
-              onToggle={toggleTechnician}
+            <SearchableMultiSelect
+              label="Technicians"
+              options={technicians.map((technician) => ({
+                value: technician.id,
+                label: technician.name,
+                description: `${technician.email}${technician.phone ? ` / ${technician.phone}` : ""}`
+              }))}
+              selectedValues={selectedTechnicianIds}
+              placeholder="Search technician by name, email, or phone"
+              emptyText="No matching technician."
+              onChange={setSelectedTechnicianIds}
             />
             <button
               className="field-button-primary mt-4 disabled:opacity-50"
@@ -265,41 +265,6 @@ export function CustomerFormPage({ customerId }: { customerId?: string }) {
         ) : null}
       </section>
     </main>
-  );
-}
-
-function TechnicianCheckboxList({
-  technicians,
-  selectedIds,
-  onToggle
-}: {
-  technicians: Technician[];
-  selectedIds: string[];
-  onToggle: (technicianId: string) => void;
-}) {
-  if (technicians.length === 0) {
-    return <p className="field-muted mt-4">No active technicians found.</p>;
-  }
-
-  return (
-    <div className="mt-4 grid gap-2">
-      {technicians.map((technician) => (
-        <label key={technician.id} className="flex items-start gap-3 rounded-md border border-[#d9dee3] bg-[#fbfcfd] p-3 text-sm dark:border-[#2f3742] dark:bg-[#1f242d]">
-          <input
-            className="mt-1 h-4 w-4"
-            type="checkbox"
-            checked={selectedIds.includes(technician.id)}
-            onChange={() => onToggle(technician.id)}
-          />
-          <span>
-            <span className="font-medium">{technician.name}</span>
-            <span className="field-muted mt-1 block">
-              {technician.email}{technician.phone ? ` / ${technician.phone}` : ""}
-            </span>
-          </span>
-        </label>
-      ))}
-    </div>
   );
 }
 

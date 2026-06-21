@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { AdminMenu } from "../../../components/admin-menu";
+import { SearchableMultiSelect, SearchableSingleSelect } from "../../../components/searchable-combobox";
 import { ThemeToggle } from "../../../components/theme-toggle";
 import { buildServiceReportAcknowledgementMessage } from "../../../lib/acknowledgement-message";
 import { apiBaseUrl, apiRequest } from "../../../lib/api";
@@ -501,23 +502,6 @@ export function TicketWorkbench() {
     }
   }
 
-  function toggleAssignedTechnician(technicianId: string) {
-    setAssignmentTechnicianIds((current) => {
-      if (current.includes(technicianId)) {
-        const next = current.filter((id) => id !== technicianId);
-        if (leadTechnicianId === technicianId) {
-          setLeadTechnicianId(next[0] ?? "");
-        }
-        return next;
-      }
-
-      if (!leadTechnicianId) {
-        setLeadTechnicianId(technicianId);
-      }
-      return [...current, technicianId];
-    });
-  }
-
   async function saveAssignments(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!selectedTicket) return;
@@ -835,46 +819,39 @@ export function TicketWorkbench() {
 
                   {canManageAssignments ? (
                     <form className="mt-2 grid gap-3 border-t border-[#d9dee3] pt-4 dark:border-[#2f3742]" onSubmit={saveAssignments}>
-                      <div className="grid gap-2">
-                        {technicians.length === 0 ? <p className="field-muted">No active technicians found.</p> : null}
-                        {technicians.map((technician) => {
-                          const checked = assignmentTechnicianIds.includes(technician.id);
+                      <SearchableMultiSelect
+                        label="Assigned Technicians"
+                        options={technicians.map((technician) => ({
+                          value: technician.id,
+                          label: technician.name,
+                          description: `${technician.email}${technician.phone ? ` / ${technician.phone}` : ""}`
+                        }))}
+                        selectedValues={assignmentTechnicianIds}
+                        placeholder="Search technician by name, email, or phone"
+                        emptyText="No matching technician."
+                        onChange={(values) => {
+                          setAssignmentTechnicianIds(values);
+                          if (leadTechnicianId && !values.includes(leadTechnicianId)) {
+                            setLeadTechnicianId(values[0] ?? "");
+                          } else if (!leadTechnicianId && values.length > 0) {
+                            setLeadTechnicianId(values[0]);
+                          }
+                        }}
+                      />
 
-                          return (
-                            <label key={technician.id} className="field-panel-subtle flex items-start gap-3 text-sm">
-                              <input
-                                className="mt-1"
-                                type="checkbox"
-                                checked={checked}
-                                onChange={() => toggleAssignedTechnician(technician.id)}
-                              />
-                              <span className="min-w-0 flex-1">
-                                <span className="block font-medium">{technician.name}</span>
-                                <span className="mt-1 block text-xs text-[#5f6368] dark:text-[#a8b0ba]">{technician.email}</span>
-                              </span>
-                            </label>
-                          );
-                        })}
-                      </div>
-
-                      <label className="block">
-                        <span className="field-label">Lead Technician</span>
-                        <select
-                          className="field-input h-11"
-                          value={leadTechnicianId}
-                          disabled={assignmentTechnicianIds.length === 0}
-                          onChange={(event) => setLeadTechnicianId(event.target.value)}
-                        >
-                          {assignmentTechnicianIds.length === 0 ? <option value="">No lead technician</option> : null}
-                          {technicians
-                            .filter((technician) => assignmentTechnicianIds.includes(technician.id))
-                            .map((technician) => (
-                              <option key={technician.id} value={technician.id}>
-                                {technician.name}
-                              </option>
-                            ))}
-                        </select>
-                      </label>
+                      <SearchableSingleSelect
+                        label="Lead Technician"
+                        value={leadTechnicianId}
+                        options={technicians
+                          .filter((technician) => assignmentTechnicianIds.includes(technician.id))
+                          .map((technician) => ({
+                            value: technician.id,
+                            label: technician.name,
+                            description: `${technician.email}${technician.phone ? ` / ${technician.phone}` : ""}`
+                          }))}
+                        placeholder={assignmentTechnicianIds.length === 0 ? "Assign technicians first" : "Search lead technician"}
+                        onChange={setLeadTechnicianId}
+                      />
 
                       <label className="block">
                         <span className="field-label">Assignment Note</span>

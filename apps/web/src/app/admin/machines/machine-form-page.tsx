@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FormEvent, useEffect, useState } from "react";
 import { AdminMenu } from "../../../components/admin-menu";
+import { SearchableMultiSelect, SearchableSingleSelect } from "../../../components/searchable-combobox";
 import { ThemeToggle } from "../../../components/theme-toggle";
 import { apiRequest } from "../../../lib/api";
 
@@ -212,14 +213,6 @@ export function MachineFormPage({ machineId }: { machineId?: string }) {
     }
   }
 
-  function toggleTechnician(technicianId: string) {
-    setSelectedTechnicianIds((current) =>
-      current.includes(technicianId)
-        ? current.filter((id) => id !== technicianId)
-        : [...current, technicianId]
-    );
-  }
-
   return (
     <main className="field-page">
       <section className="field-shell max-w-3xl">
@@ -255,13 +248,18 @@ export function MachineFormPage({ machineId }: { machineId?: string }) {
 
           {!loading ? (
             <form className="mt-4 grid gap-4" onSubmit={saveMachine}>
-              <label className="block">
-                <span className="field-label">Customer</span>
-                <select className="field-input h-11" value={form.customerId} required onChange={(event) => updateField("customerId", event.target.value)}>
-                  <option value="">Select customer</option>
-                  {customers.map((customer) => <option key={customer.id} value={customer.id}>{customer.name}</option>)}
-                </select>
-              </label>
+              <SearchableSingleSelect
+                label="Customer"
+                value={form.customerId}
+                options={customers.map((customer) => ({
+                  value: customer.id,
+                  label: customer.name,
+                  description: customer.isActive ? "Active" : "Inactive"
+                }))}
+                placeholder="Search customer"
+                required
+                onChange={(value) => updateField("customerId", value)}
+              />
               <TextInput label="Machine Name" value={form.machineName} required onChange={(value) => updateField("machineName", value)} />
               <TextInput label="Model" value={form.model} required onChange={(value) => updateField("model", value)} />
               <TextInput label="Serial Number" value={form.serialNumber} required onChange={(value) => updateField("serialNumber", value)} />
@@ -296,10 +294,17 @@ export function MachineFormPage({ machineId }: { machineId?: string }) {
             <p className="field-muted mt-2">
               These technicians will be notified when a ticket is lodged for this machine.
             </p>
-            <TechnicianCheckboxList
-              technicians={technicians}
-              selectedIds={selectedTechnicianIds}
-              onToggle={toggleTechnician}
+            <SearchableMultiSelect
+              label="Technicians"
+              options={technicians.map((technician) => ({
+                value: technician.id,
+                label: technician.name,
+                description: `${technician.email}${technician.phone ? ` / ${technician.phone}` : ""}`
+              }))}
+              selectedValues={selectedTechnicianIds}
+              placeholder="Search technician by name, email, or phone"
+              emptyText="No matching technician."
+              onChange={setSelectedTechnicianIds}
             />
             <button
               className="field-button-primary mt-4 disabled:opacity-50"
@@ -313,41 +318,6 @@ export function MachineFormPage({ machineId }: { machineId?: string }) {
         ) : null}
       </section>
     </main>
-  );
-}
-
-function TechnicianCheckboxList({
-  technicians,
-  selectedIds,
-  onToggle
-}: {
-  technicians: Technician[];
-  selectedIds: string[];
-  onToggle: (technicianId: string) => void;
-}) {
-  if (technicians.length === 0) {
-    return <p className="field-muted mt-4">No active technicians found.</p>;
-  }
-
-  return (
-    <div className="mt-4 grid gap-2">
-      {technicians.map((technician) => (
-        <label key={technician.id} className="flex items-start gap-3 rounded-md border border-[#d9dee3] bg-[#fbfcfd] p-3 text-sm dark:border-[#2f3742] dark:bg-[#1f242d]">
-          <input
-            className="mt-1 h-4 w-4"
-            type="checkbox"
-            checked={selectedIds.includes(technician.id)}
-            onChange={() => onToggle(technician.id)}
-          />
-          <span>
-            <span className="font-medium">{technician.name}</span>
-            <span className="field-muted mt-1 block">
-              {technician.email}{technician.phone ? ` / ${technician.phone}` : ""}
-            </span>
-          </span>
-        </label>
-      ))}
-    </div>
   );
 }
 

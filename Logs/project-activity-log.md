@@ -1277,3 +1277,13 @@ This file records meaningful project updates, decisions, and implementation step
 - Added machine edit page controls to assign one or more machine technicians.
 - Added audit log entries when customer or machine technician assignments are changed.
 - Verified the migration applies locally, API and web type checks pass, and assignment endpoints save successfully.
+
+## 2026-06-21 - Searchable Assignment Comboboxes
+
+- Added a reusable searchable combobox component for single-select and multi-select fields.
+- Search results prioritize options that start with the typed text, then show remaining options that contain the text.
+- Replaced customer technician assignment checkboxes with a searchable multi-select.
+- Replaced machine technician assignment checkboxes with a searchable multi-select.
+- Replaced the machine form customer dropdown with a searchable single-select.
+- Replaced ticket workbench technician assignment and lead technician controls with searchable selectors.
+- Verified web type check and production web build pass after the combobox update.
