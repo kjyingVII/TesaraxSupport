@@ -1390,3 +1390,8 @@ This file records meaningful project updates, decisions, and implementation step
 - Added optional `x-hub-signature-256` verification when `WHATSAPP_META_APP_SECRET` is configured.
 - Added `WhatsAppWebhookEvent` storage for incoming Meta callback events.
 - Delivery status callbacks now update matching notification logs by Meta provider message ID.
+
+## 2026-06-21 - WhatsApp Docker Environment Wiring
+
+- Added WhatsApp provider, Meta credential, webhook, message mode, and template variables to the API service environment in `docker-compose.yml`.
+- Fixed VPS deployments where values existed in `.env` but were not visible inside the API container.
