@@ -1412,3 +1412,9 @@ This file records meaningful project updates, decisions, and implementation step
 
 - Fixed the manual WhatsApp test response to include empty webhook delivery fields.
 - Added frontend fallbacks so notification detail rendering does not crash if a log has no webhook event array.
+
+## 2026-06-22 - Public Privacy Policy Page
+
+- Added a public `/privacy` page for Meta app privacy policy requirements.
+- Included support-system data collection, WhatsApp notification, access, retention, security, and contact details.
+- Added a homepage footer link to the privacy policy for easy public access.

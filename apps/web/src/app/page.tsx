@@ -143,6 +143,12 @@ export default function HomePage() {
             </div>
           </section>
         )}
+
+        <footer className="mt-8 text-sm text-[#5f6368] dark:text-[#a8b0ba]">
+          <Link className="field-link" href="/privacy">
+            Privacy Policy
+          </Link>
+        </footer>
       </section>
     </main>
   );
