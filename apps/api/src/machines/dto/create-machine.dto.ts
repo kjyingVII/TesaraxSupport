@@ -4,6 +4,7 @@ export type CreateMachineDto = {
   model?: string;
   serialNumber?: string;
   location?: string;
+  supportCompanyName?: string;
   serviceReminderIntervalDays?: number;
   nextServiceDueAt?: string;
   installationDate?: string;

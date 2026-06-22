@@ -1433,7 +1433,8 @@ This file records meaningful project updates, decisions, and implementation step
 - Reused the original acknowledgement URL created during service report submission instead of regenerating a second link in the frontend submit flow.
 - Made the message sign-off use Settings > Company Name, with `Tesarax Support` as the fallback.
 
-## 2026-06-22 - Customer Company Message Sign-Off
+## 2026-06-22 - Machine Support Company Message Sign-Off
 
-- Changed ticket, ticket status, service report, and machine log acknowledgement message sign-offs to use the machine customer/company name.
-- Kept `Tesarax Support` as the fallback only when a message does not have machine customer context.
+- Added a per-machine Support Company Name for ticket, ticket status, service report, and machine log acknowledgement message sign-offs.
+- Messages fall back to Admin Settings > Company Name, then `Tesarax Support`, when the machine support company is blank.
+- Added Support Company Name to the admin machine add/edit form and machine list.

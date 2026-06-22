@@ -2,6 +2,7 @@ import { BadRequestException, Injectable } from "@nestjs/common";
 import { NotificationChannel, NotificationStatus, Prisma, TicketStatus } from "@prisma/client";
 import { parseRequiredPhoneNumber } from "../common/phone-number";
 import { PrismaService } from "../prisma/prisma.service";
+import { SettingsService } from "../settings/settings.service";
 
 type ListNotificationLogsInput = {
   channel?: string;
@@ -47,7 +48,10 @@ type SendManualWhatsappInput = {
 
 @Injectable()
 export class NotificationsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly settingsService: SettingsService
+  ) {}
 
   async list(input: ListNotificationLogsInput) {
     const page = this.parsePositiveInteger(input.page, 1);
@@ -144,6 +148,7 @@ export class NotificationsService {
         machine: {
           select: {
             machineName: true,
+            supportCompanyName: true,
             serialNumber: true,
             location: true,
             customer: {
@@ -180,6 +185,7 @@ export class NotificationsService {
 
     if (!ticket) return;
 
+    const signOffName = await this.getMessageSignOffName(ticket.machine.supportCompanyName);
     const requesterMessage = [
       `Ticket ${ticket.ticketNumber} has been submitted.`,
       `Machine: ${ticket.machine.machineName} (${ticket.machine.serialNumber})`,
@@ -187,7 +193,7 @@ export class NotificationsService {
       "Our support team will review and update the ticket status.",
       "",
       "Thank you.",
-      ticket.machine.customer.name
+      signOffName
     ].join("\n");
 
     await this.logWhatsapp({
@@ -260,6 +266,7 @@ export class NotificationsService {
           select: {
             machineName: true,
             serialNumber: true,
+            supportCompanyName: true,
             customer: {
               select: {
                 name: true
@@ -272,6 +279,7 @@ export class NotificationsService {
 
     if (!ticket) return;
 
+    const signOffName = await this.getMessageSignOffName(ticket.machine.supportCompanyName);
     await this.logWhatsapp({
       relatedType: "Ticket",
       relatedId: ticket.id,
@@ -287,7 +295,7 @@ export class NotificationsService {
         `Issue: ${ticket.issueTitle}`,
         "",
         "Thank you.",
-        ticket.machine.customer.name
+        signOffName
       ].join("\n"),
       template: {
         eventKey: "ticket_status_changed",
@@ -329,6 +337,7 @@ export class NotificationsService {
               select: {
                 machineName: true,
                 model: true,
+                supportCompanyName: true,
                 serialNumber: true,
                 location: true,
                 customer: {
@@ -345,7 +354,7 @@ export class NotificationsService {
 
     if (!serviceReport) return;
 
-    const signOffName = serviceReport.ticket.machine.customer.name;
+    const signOffName = await this.getMessageSignOffName(serviceReport.ticket.machine.supportCompanyName);
     const message = acknowledgementUrl
       ? this.buildServiceReportAcknowledgementMessage({
           acknowledgementUrl,
@@ -415,6 +424,7 @@ export class NotificationsService {
             machineName: true,
             serialNumber: true,
             location: true,
+            supportCompanyName: true,
             customer: {
               select: {
                 name: true
@@ -426,6 +436,8 @@ export class NotificationsService {
     });
 
     if (!machineLog?.notifyCustomer) return;
+
+    const signOffName = await this.getMessageSignOffName(machineLog.machine.supportCompanyName);
 
     await this.logWhatsapp({
       relatedType: "MachineLog",
@@ -444,7 +456,10 @@ export class NotificationsService {
         `Work time: ${machineLog.workDate.toISOString()}`,
         `Title: ${machineLog.title}`,
         `Summary: ${machineLog.workSummary}`,
-        machineLog.notifyMessage ? `Note: ${machineLog.notifyMessage}` : null
+        machineLog.notifyMessage ? `Note: ${machineLog.notifyMessage}` : null,
+        "",
+        "Thank you.",
+        signOffName
       ].filter(Boolean).join("\n"),
       template: {
         eventKey: "machine_log_created",
@@ -781,6 +796,14 @@ export class NotificationsService {
       hour: "2-digit",
       minute: "2-digit"
     }).format(value);
+  }
+
+  private async getMessageSignOffName(machineSupportCompanyName?: string | null) {
+    const supportCompanyName = this.cleanOptionalString(machineSupportCompanyName);
+    if (supportCompanyName) return supportCompanyName;
+
+    const settings = await this.settingsService.getCurrentSettings();
+    return settings.companyName ?? "Tesarax Support";
   }
 
   private uniqueRecipients(recipients: Array<NotificationRecipient & { id?: string }>) {

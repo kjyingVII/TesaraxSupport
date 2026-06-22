@@ -4,6 +4,7 @@ export type UpdateMachineDto = {
   model?: string;
   serialNumber?: string;
   location?: string;
+  supportCompanyName?: string | null;
   serviceReminderIntervalDays?: number;
   lastServiceAt?: string | null;
   nextServiceDueAt?: string | null;

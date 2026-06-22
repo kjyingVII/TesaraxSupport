@@ -13,6 +13,7 @@ type MachineDetail = {
   model: string;
   serialNumber: string;
   location: string;
+  supportCompanyName: string | null;
   serviceReminderIntervalDays: number;
   lastServiceAt: string | null;
   nextServiceDueAt: string | null;
@@ -169,6 +170,12 @@ type MachineDocumentsResponse = {
   data: MachineDocument[];
 };
 
+type SettingsResponse = {
+  data: {
+    companyName: string | null;
+  };
+};
+
 type SelectedDetail =
   | { kind: "MACHINE_LOG"; item: TimelineItem; data: MachineLogDetail }
   | { kind: "TICKET"; item: TimelineItem; data: TicketDetail };
@@ -192,6 +199,7 @@ export function MachineLogPage({ machineId }: { machineId: string }) {
   const [documents, setDocuments] = useState<MachineDocument[]>([]);
   const [documentFile, setDocumentFile] = useState<File | null>(null);
   const [uploadingDocument, setUploadingDocument] = useState(false);
+  const [defaultSignOffName, setDefaultSignOffName] = useState<string | null>(null);
   const [type, setType] = useState("");
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
@@ -225,13 +233,15 @@ export function MachineLogPage({ machineId }: { machineId: string }) {
     if (nextSearch.trim()) params.set("search", nextSearch.trim());
 
     try {
-      const [machineResponse, timelineResponse] = await Promise.all([
+      const [machineResponse, timelineResponse, settingsResponse] = await Promise.all([
         apiRequest<MachineResponse>(`/api/machines/${machineId}`),
-        apiRequest<TimelineResponse>(`/api/machines/${machineId}/timeline?${params.toString()}`)
+        apiRequest<TimelineResponse>(`/api/machines/${machineId}/timeline?${params.toString()}`),
+        loadSignOffSettings()
       ]);
       setMachine(machineResponse.data);
       setItems(timelineResponse.data);
       setMeta(timelineResponse.meta);
+      setDefaultSignOffName(settingsResponse.data.companyName);
       await loadDocuments();
       setSelectedDetail(null);
     } catch (err) {
@@ -480,7 +490,7 @@ export function MachineLogPage({ machineId }: { machineId: string }) {
               </p>
             ) : null}
             {!loadingDetail && selectedDetail?.kind === "MACHINE_LOG" ? (
-              <MachineLogDetailPanel machine={machine} machineId={machineId} detail={selectedDetail.data} />
+              <MachineLogDetailPanel machine={machine} machineId={machineId} detail={selectedDetail.data} defaultSignOffName={defaultSignOffName} />
             ) : null}
             {!loadingDetail && selectedDetail?.kind === "TICKET" ? (
               <TicketDetailPanel detail={selectedDetail.data} />
@@ -492,14 +502,24 @@ export function MachineLogPage({ machineId }: { machineId: string }) {
   );
 }
 
+async function loadSignOffSettings(): Promise<SettingsResponse> {
+  try {
+    return await apiRequest<SettingsResponse>("/api/settings");
+  } catch {
+    return { data: { companyName: null } };
+  }
+}
+
 function MachineLogDetailPanel({
   machine,
   machineId,
-  detail
+  detail,
+  defaultSignOffName
 }: {
   machine: MachineDetail | null;
   machineId: string;
   detail: MachineLogDetail;
+  defaultSignOffName: string | null;
 }) {
   const [linkStatus, setLinkStatus] = useState<string | null>(null);
   const [acknowledgementUrl, setAcknowledgementUrl] = useState<string | null>(null);
@@ -532,7 +552,7 @@ function MachineLogDetailPanel({
         workDate: detail.workDate,
         workEndAt: detail.workEndAt,
         summary: detail.workSummary,
-        signOffName: machine?.customer.name
+        signOffName: machine?.supportCompanyName || defaultSignOffName
       });
 
       setAcknowledgementUrl(response.data.acknowledgementUrl);

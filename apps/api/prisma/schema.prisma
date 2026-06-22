@@ -146,6 +146,7 @@ model Machine {
   model                       String
   serialNumber                String
   location                    String
+  supportCompanyName          String?
   qrCodeUrl                   String?
   machineAccessPasswordHash   String?
   machineAccessPasswordUpdatedAt DateTime?

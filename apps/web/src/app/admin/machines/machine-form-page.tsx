@@ -17,6 +17,7 @@ type Machine = {
   model: string;
   serialNumber: string;
   location: string;
+  supportCompanyName: string | null;
   qrCodeUrl: string | null;
   serviceReminderIntervalDays: number;
   nextServiceDueAt: string | null;
@@ -52,6 +53,7 @@ const emptyForm = {
   model: "",
   serialNumber: "",
   location: "",
+  supportCompanyName: "",
   serviceReminderIntervalDays: "90",
   nextServiceDueAt: "",
   internalRemarks: "",
@@ -104,6 +106,7 @@ export function MachineFormPage({ machineId }: { machineId?: string }) {
           model: machineResponse.data.model,
           serialNumber: machineResponse.data.serialNumber,
           location: machineResponse.data.location,
+          supportCompanyName: machineResponse.data.supportCompanyName ?? "",
           serviceReminderIntervalDays: String(machineResponse.data.serviceReminderIntervalDays),
           nextServiceDueAt: machineResponse.data.nextServiceDueAt ? toDateTimeLocal(machineResponse.data.nextServiceDueAt) : "",
           internalRemarks: machineResponse.data.internalRemarks ?? "",
@@ -136,6 +139,7 @@ export function MachineFormPage({ machineId }: { machineId?: string }) {
         model: string;
         serialNumber: string;
         location: string;
+        supportCompanyName: string | null;
         serviceReminderIntervalDays: number;
         nextServiceDueAt: string | null;
         internalRemarks: string | null;
@@ -146,6 +150,7 @@ export function MachineFormPage({ machineId }: { machineId?: string }) {
         model: form.model,
         serialNumber: form.serialNumber,
         location: form.location,
+        supportCompanyName: form.supportCompanyName || null,
         serviceReminderIntervalDays: Number(form.serviceReminderIntervalDays),
         nextServiceDueAt: form.nextServiceDueAt ? new Date(form.nextServiceDueAt).toISOString() : null,
         internalRemarks: form.internalRemarks || null
@@ -264,6 +269,7 @@ export function MachineFormPage({ machineId }: { machineId?: string }) {
               <TextInput label="Model" value={form.model} required onChange={(value) => updateField("model", value)} />
               <TextInput label="Serial Number" value={form.serialNumber} required onChange={(value) => updateField("serialNumber", value)} />
               <TextInput label="Location" value={form.location} required onChange={(value) => updateField("location", value)} />
+              <TextInput label="Support Company Name" value={form.supportCompanyName} onChange={(value) => updateField("supportCompanyName", value)} />
               <TextInput label="Machine Maintenance Interval Days" type="number" value={form.serviceReminderIntervalDays} required onChange={(value) => updateField("serviceReminderIntervalDays", value)} />
               <TextInput label="Next Machine Maintenance Due" type="datetime-local" value={form.nextServiceDueAt} onChange={(value) => updateField("nextServiceDueAt", value)} />
               <TextInput label={isEdit ? "New Machine Access Password" : "Machine Access Password"} type="password" value={form.machineAccessPassword} required={!isEdit} onChange={(value) => updateField("machineAccessPassword", value)} />

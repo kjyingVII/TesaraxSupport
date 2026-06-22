@@ -44,6 +44,7 @@ export class MachinesService {
         { model: { contains: search, mode: "insensitive" } },
         { serialNumber: { contains: search, mode: "insensitive" } },
         { location: { contains: search, mode: "insensitive" } },
+        { supportCompanyName: { contains: search, mode: "insensitive" } },
         { customer: { name: { contains: search, mode: "insensitive" } } }
       ];
     }
@@ -109,6 +110,7 @@ export class MachinesService {
         model,
         serialNumber,
         location,
+        supportCompanyName: this.cleanOptionalString(dto.supportCompanyName),
         qrCodeUrl: publicRequestUrl,
         machineAccessPasswordHash: machineAccessPassword ? this.authService.hashPassword(machineAccessPassword) : undefined,
         machineAccessPasswordUpdatedAt: machineAccessPassword ? new Date() : undefined,
@@ -258,6 +260,7 @@ export class MachinesService {
     if (dto.model !== undefined) data.model = this.requiredString(dto.model, "Model cannot be empty.");
     if (dto.serialNumber !== undefined) data.serialNumber = this.requiredString(dto.serialNumber, "Serial number cannot be empty.");
     if (dto.location !== undefined) data.location = this.requiredString(dto.location, "Location cannot be empty.");
+    if (dto.supportCompanyName !== undefined) data.supportCompanyName = this.cleanNullableString(dto.supportCompanyName);
     if (dto.serviceReminderIntervalDays !== undefined) {
       data.serviceReminderIntervalDays = this.requiredPositiveInteger(
         dto.serviceReminderIntervalDays,
