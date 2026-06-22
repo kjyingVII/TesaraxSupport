@@ -1443,3 +1443,8 @@ This file records meaningful project updates, decisions, and implementation step
 
 - Ticket-created WhatsApp notifications now include technician email context and filter to active customer/machine technicians.
 - Added a skipped notification log when a new ticket has no active assigned machine/customer technicians, making the missing-recipient case visible in Admin > Notifications.
+
+## 2026-06-22 - Technician Ticket WhatsApp Requester Info
+
+- Added requester name, phone, and email to new-ticket WhatsApp notifications sent to assigned technicians.
+- Blank requester contact fields are omitted from the WhatsApp message to keep it concise.

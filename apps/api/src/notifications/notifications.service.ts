@@ -258,8 +258,13 @@ export class NotificationsService {
             `Machine: ${ticket.machine.machineName} (${ticket.machine.serialNumber})`,
             `Location: ${ticket.machine.location}`,
             `Priority: ${ticket.priority}`,
-            `Issue: ${ticket.issueTitle}`
-          ].join("\n"),
+            `Issue: ${ticket.issueTitle}`,
+            "",
+            "Requester:",
+            `Name: ${ticket.requesterName}`,
+            ticket.requesterPhone ? `Phone: ${ticket.requesterPhone}` : null,
+            ticket.requesterEmail ? `Email: ${ticket.requesterEmail}` : null
+          ].filter(Boolean).join("\n"),
           template: {
             eventKey: "ticket_created_technician",
             parameters: [
