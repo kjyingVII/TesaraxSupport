@@ -24,6 +24,13 @@ type Machine = {
   internalRemarks: string | null;
   isActive: boolean;
   hasMachineAccessPassword: boolean;
+  supportCompanyLogoAttachment: {
+    id: string;
+    originalFileName: string;
+    contentType: string;
+    fileSizeBytes: number;
+    createdAt: string;
+  } | null;
 };
 
 type MachineResponse = { data: Machine };
@@ -69,6 +76,8 @@ export function MachineFormPage({ machineId }: { machineId?: string }) {
   const [defaultReminderIntervalDays, setDefaultReminderIntervalDays] = useState(90);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [logoFile, setLogoFile] = useState<File | null>(null);
+  const [uploadingLogo, setUploadingLogo] = useState(false);
   const [savingTechnicians, setSavingTechnicians] = useState(false);
   const [technicians, setTechnicians] = useState<Technician[]>([]);
   const [selectedTechnicianIds, setSelectedTechnicianIds] = useState<string[]>([]);
@@ -218,6 +227,42 @@ export function MachineFormPage({ machineId }: { machineId?: string }) {
     }
   }
 
+  async function uploadSupportCompanyLogo() {
+    if (!machineId || !logoFile) return;
+
+    setUploadingLogo(true);
+    setError(null);
+    setMessage(null);
+
+    try {
+      if (!logoFile.type.startsWith("image/")) {
+        throw new Error("Support company logo must be an image file.");
+      }
+      if (logoFile.size > 2 * 1024 * 1024) {
+        throw new Error("Support company logo must be 2 MB or smaller.");
+      }
+
+      const response = await apiRequest<{
+        data: Machine["supportCompanyLogoAttachment"];
+      }>(`/api/machines/${machineId}/support-company-logo`, {
+        method: "POST",
+        body: JSON.stringify({
+          originalFileName: logoFile.name,
+          contentType: logoFile.type || "application/octet-stream",
+          dataBase64: await readFileAsDataUrl(logoFile)
+        })
+      });
+
+      setMachine((current) => current ? { ...current, supportCompanyLogoAttachment: response.data } : current);
+      setLogoFile(null);
+      setMessage("Support company logo uploaded.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unable to upload support company logo.");
+    } finally {
+      setUploadingLogo(false);
+    }
+  }
+
   return (
     <main className="field-page">
       <section className="field-shell max-w-3xl">
@@ -270,6 +315,32 @@ export function MachineFormPage({ machineId }: { machineId?: string }) {
               <TextInput label="Serial Number" value={form.serialNumber} required onChange={(value) => updateField("serialNumber", value)} />
               <TextInput label="Location" value={form.location} required onChange={(value) => updateField("location", value)} />
               <TextInput label="Support Company Name" value={form.supportCompanyName} onChange={(value) => updateField("supportCompanyName", value)} />
+              {isEdit ? (
+                <div className="field-panel-subtle">
+                  <p className="field-meta-label">Support Company Logo</p>
+                  <p className="field-muted mt-1">
+                    {machine?.supportCompanyLogoAttachment
+                      ? `Current logo: ${machine.supportCompanyLogoAttachment.originalFileName}`
+                      : "No support company logo uploaded."}
+                  </p>
+                  <div className="mt-3 grid gap-3">
+                    <input
+                      className="field-input min-h-11 py-2"
+                      type="file"
+                      accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml"
+                      onChange={(event) => setLogoFile(event.target.files?.[0] ?? null)}
+                    />
+                    <button
+                      className="field-button-secondary disabled:opacity-50"
+                      type="button"
+                      disabled={uploadingLogo || !logoFile}
+                      onClick={uploadSupportCompanyLogo}
+                    >
+                      {uploadingLogo ? "Uploading..." : "Upload Logo"}
+                    </button>
+                  </div>
+                </div>
+              ) : null}
               <TextInput label="Machine Maintenance Interval Days" type="number" value={form.serviceReminderIntervalDays} required onChange={(value) => updateField("serviceReminderIntervalDays", value)} />
               <TextInput label="Next Machine Maintenance Due" type="datetime-local" value={form.nextServiceDueAt} onChange={(value) => updateField("nextServiceDueAt", value)} />
               <TextInput label={isEdit ? "New Machine Access Password" : "Machine Access Password"} type="password" value={form.machineAccessPassword} required={!isEdit} onChange={(value) => updateField("machineAccessPassword", value)} />
@@ -349,4 +420,13 @@ function toDateTimeLocal(value: string) {
   const date = new Date(value);
   const offsetMs = date.getTimezoneOffset() * 60 * 1000;
   return new Date(date.getTime() - offsetMs).toISOString().slice(0, 16);
+}
+
+function readFileAsDataUrl(file: File) {
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = () => reject(reader.error ?? new Error("Unable to read file."));
+    reader.readAsDataURL(file);
+  });
 }

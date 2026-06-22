@@ -60,6 +60,7 @@ export class MachinesService {
         where,
         include: {
           customer: true,
+          supportCompanyLogoAttachment: this.logoAttachmentSelect(),
           _count: {
             select: {
               tickets: true,
@@ -120,7 +121,10 @@ export class MachinesService {
         warrantyExpiryDate: this.parseOptionalDate(dto.warrantyExpiryDate, "warrantyExpiryDate"),
         internalRemarks: this.cleanOptionalString(dto.internalRemarks)
       },
-      include: { customer: true }
+      include: {
+        customer: true,
+        supportCompanyLogoAttachment: this.logoAttachmentSelect()
+      }
     });
 
     return { data: this.serializeMachine(machine) };
@@ -131,6 +135,7 @@ export class MachinesService {
       where: { id },
       include: {
         customer: true,
+        supportCompanyLogoAttachment: this.logoAttachmentSelect(),
         tickets: {
           orderBy: { createdAt: "desc" },
           take: 10
@@ -283,7 +288,10 @@ export class MachinesService {
     const machine = await this.prisma.machine.update({
       where: { id },
       data,
-      include: { customer: true }
+      include: {
+        customer: true,
+        supportCompanyLogoAttachment: this.logoAttachmentSelect()
+      }
     });
 
     await this.auditService.write({
@@ -353,7 +361,10 @@ export class MachinesService {
     const machine = await this.prisma.machine.update({
       where: { id },
       data,
-      include: { customer: true }
+      include: {
+        customer: true,
+        supportCompanyLogoAttachment: this.logoAttachmentSelect()
+      }
     });
 
     await this.auditService.write({
@@ -429,6 +440,18 @@ export class MachinesService {
     return {
       ...safeMachine,
       hasMachineAccessPassword: Boolean(machineAccessPasswordHash)
+    };
+  }
+
+  private logoAttachmentSelect() {
+    return {
+      select: {
+        id: true,
+        originalFileName: true,
+        contentType: true,
+        fileSizeBytes: true,
+        createdAt: true
+      }
     };
   }
 

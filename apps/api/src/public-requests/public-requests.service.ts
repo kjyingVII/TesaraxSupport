@@ -104,6 +104,16 @@ export class PublicRequestsService {
         model: true,
         serialNumber: true,
         location: true,
+        supportCompanyName: true,
+        supportCompanyLogoAttachment: {
+          select: {
+            id: true,
+            originalFileName: true,
+            contentType: true,
+            fileSizeBytes: true,
+            createdAt: true
+          }
+        },
         machineAccessPasswordHash: true,
         isActive: true,
         customer: {
@@ -190,6 +200,16 @@ export class PublicRequestsService {
         model: true,
         serialNumber: true,
         location: true,
+        supportCompanyName: true,
+        supportCompanyLogoAttachment: {
+          select: {
+            id: true,
+            originalFileName: true,
+            contentType: true,
+            fileSizeBytes: true,
+            createdAt: true
+          }
+        },
         isActive: true,
         serviceReminderIntervalDays: true,
         lastServiceAt: true,
@@ -686,12 +706,22 @@ export class PublicRequestsService {
           select: {
             id: true,
             publicId: true,
-            machineName: true,
-            model: true,
-            serialNumber: true,
-            location: true,
-            customer: {
-              select: {
+        machineName: true,
+        model: true,
+        serialNumber: true,
+        location: true,
+        supportCompanyName: true,
+        supportCompanyLogoAttachment: {
+          select: {
+            id: true,
+            originalFileName: true,
+            contentType: true,
+            fileSizeBytes: true,
+            createdAt: true
+          }
+        },
+        customer: {
+          select: {
                 name: true
               }
             }
@@ -1341,6 +1371,48 @@ export class PublicRequestsService {
     }>;
   }
 
+  async getMachineSupportCompanyLogoDownload(publicId: string, attachmentId: string, authorization?: string) {
+    const access = await this.verifyMachineAccess(publicId, authorization);
+    const attachment = await this.prisma.attachment.findUnique({
+      where: { id: attachmentId },
+      select: {
+        id: true,
+        relatedType: true,
+        machineId: true,
+        originalFileName: true,
+        contentType: true,
+        fileSizeBytes: true,
+        machine: {
+          select: {
+            publicId: true,
+            supportCompanyLogoAttachmentId: true
+          }
+        }
+      }
+    });
+
+    if (!attachment || attachment.relatedType !== AttachmentRelatedType.MACHINE_SUPPORT_LOGO) {
+      throw new NotFoundException("Support company logo not found.");
+    }
+
+    if (
+      attachment.machineId !== access.machineId
+      || attachment.machine?.publicId !== publicId
+      || attachment.machine.supportCompanyLogoAttachmentId !== attachment.id
+    ) {
+      throw new UnauthorizedException("Logo does not belong to this machine access session.");
+    }
+
+    return this.attachmentsService.getDownload(attachmentId) as Promise<{
+      attachment: {
+        contentType: string;
+        fileSizeBytes: number;
+        originalFileName: string;
+      };
+      stream: ReadStream;
+    }>;
+  }
+
   async getMachineLogAttachmentDownload(publicId: string, logId: string, attachmentId: string, authorization?: string) {
     const access = await this.verifyMachineAccess(publicId, authorization);
     const attachment = await this.prisma.attachment.findUnique({
@@ -1670,6 +1742,14 @@ export class PublicRequestsService {
     model: string;
     serialNumber: string;
     location: string;
+    supportCompanyName: string | null;
+    supportCompanyLogoAttachment: {
+      id: string;
+      originalFileName: string;
+      contentType: string;
+      fileSizeBytes: number;
+      createdAt: Date;
+    } | null;
     customer: { name: string };
   }) {
     return {
@@ -1678,6 +1758,8 @@ export class PublicRequestsService {
       model: machine.model,
       serialNumber: machine.serialNumber,
       location: machine.location,
+      supportCompanyName: machine.supportCompanyName,
+      supportCompanyLogoAttachment: machine.supportCompanyLogoAttachment,
       customerName: machine.customer.name
     };
   }

@@ -1448,3 +1448,9 @@ This file records meaningful project updates, decisions, and implementation step
 
 - Added requester name, phone, and email to new-ticket WhatsApp notifications sent to assigned technicians.
 - Blank requester contact fields are omitted from the WhatsApp message to keep it concise.
+
+## 2026-06-22 - Machine Support Company Logo
+
+- Added a per-machine support company logo attachment and admin upload control on the machine edit page.
+- Displayed support company name and logo on the public machine status page after machine access.
+- Added a machine-access-protected public logo download route so logos are visible to authorized machine page viewers without exposing all attachments.

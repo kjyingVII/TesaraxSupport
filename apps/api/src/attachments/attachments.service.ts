@@ -9,6 +9,8 @@ import { SettingsService } from "../settings/settings.service";
 import { UploadTicketAttachmentDto } from "./dto/upload-ticket-attachment.dto";
 
 const bytesPerMb = 1024 * 1024;
+const supportLogoMaxFileMb = 2;
+const supportLogoContentTypes = new Set(["image/png", "image/jpeg", "image/webp", "image/gif", "image/svg+xml"]);
 
 export type PreparedAttachmentUpload = {
   originalFileName: string;
@@ -343,6 +345,62 @@ export class AttachmentsService {
 
     const prepared = await this.prepareTicketAttachments([dto]);
     const attachment = await this.saveMachineDocument(machineId, prepared[0], { uploadedByUserId });
+
+    return { data: attachment };
+  }
+
+  async uploadMachineSupportCompanyLogo(machineId: string, dto: UploadTicketAttachmentDto, uploadedByUserId?: string) {
+    await this.ensureMachineExists(machineId);
+    if (uploadedByUserId) await this.ensureUserExists(uploadedByUserId);
+
+    const prepared = this.prepareAttachment(dto, supportLogoMaxFileMb * bytesPerMb, supportLogoMaxFileMb);
+    if (!supportLogoContentTypes.has(prepared.contentType.toLowerCase())) {
+      throw new BadRequestException("Support company logo must be a PNG, JPG, WebP, GIF, or SVG image.");
+    }
+
+    const attachmentId = randomUUID();
+    const safeName = this.safeFileName(prepared.originalFileName);
+    const storageKey = join("machine-support-logos", machineId, `${attachmentId}-${safeName}`).replace(/\\/g, "/");
+    const absolutePath = this.absolutePath(storageKey);
+
+    await mkdir(this.absolutePath(join("machine-support-logos", machineId)), { recursive: true });
+    await writeFile(absolutePath, prepared.bytes);
+
+    const attachment = await this.prisma.$transaction(async (tx) => {
+      const created = await tx.attachment.create({
+        data: {
+          id: attachmentId,
+          relatedType: AttachmentRelatedType.MACHINE_SUPPORT_LOGO,
+          machineId,
+          uploadedByUserId,
+          originalFileName: prepared.originalFileName,
+          contentType: prepared.contentType,
+          fileSizeBytes: prepared.bytes.length,
+          storageBucket: "local",
+          storageKey,
+          checksum: createHash("sha256").update(prepared.bytes).digest("hex")
+        },
+        include: {
+          uploadedByUser: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              role: true
+            }
+          }
+        }
+      });
+
+      await tx.machine.update({
+        where: { id: machineId },
+        data: {
+          supportCompanyLogoAttachmentId: created.id
+        }
+      });
+
+      return created;
+    });
 
     return { data: attachment };
   }

@@ -42,6 +42,14 @@ type MachineDocument = {
   createdAt: string;
 };
 
+type SupportCompanyLogo = {
+  id: string;
+  originalFileName: string;
+  contentType: string;
+  fileSizeBytes: number;
+  createdAt: string;
+};
+
 type PortalResponse = {
   data: {
     machine: {
@@ -51,6 +59,8 @@ type PortalResponse = {
       serialNumber: string;
       location: string;
       customerName: string;
+      supportCompanyName: string | null;
+      supportCompanyLogoAttachment: SupportCompanyLogo | null;
       serviceReminderIntervalDays: number;
       lastServiceAt: string | null;
       nextServiceDueAt: string | null;
@@ -71,6 +81,7 @@ export function MachinePortalPage({ publicId }: { publicId: string }) {
   const router = useRouter();
   const [portal, setPortal] = useState<PortalResponse["data"] | null>(null);
   const [requesterName, setRequesterName] = useState("");
+  const [supportLogoUrl, setSupportLogoUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -108,6 +119,43 @@ export function MachinePortalPage({ publicId }: { publicId: string }) {
       mounted = false;
     };
   }, [publicId, router]);
+
+  useEffect(() => {
+    let objectUrl: string | null = null;
+    let mounted = true;
+
+    async function loadSupportLogo() {
+      const logo = portal?.machine.supportCompanyLogoAttachment;
+      if (!logo) {
+        setSupportLogoUrl(null);
+        return;
+      }
+
+      const session = getMachineAccessSession(publicId);
+      if (!session) return;
+
+      try {
+        const response = await fetch(`${apiBaseUrl}/api/public/machines/${publicId}/support-company-logo/${logo.id}/download`, {
+          headers: {
+            Authorization: `Bearer ${session.accessToken}`
+          }
+        });
+        if (!response.ok) return;
+        const blob = await response.blob();
+        objectUrl = window.URL.createObjectURL(blob);
+        if (mounted) setSupportLogoUrl(objectUrl);
+      } catch {
+        if (mounted) setSupportLogoUrl(null);
+      }
+    }
+
+    void loadSupportLogo();
+
+    return () => {
+      mounted = false;
+      if (objectUrl) window.URL.revokeObjectURL(objectUrl);
+    };
+  }, [portal?.machine.supportCompanyLogoAttachment?.id, publicId]);
 
   function leaveMachine() {
     clearMachineAccessSession(publicId);
@@ -190,13 +238,29 @@ export function MachinePortalPage({ publicId }: { publicId: string }) {
           <>
             <section className="field-panel mt-6">
               <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                <div>
-                  <p className="field-eyebrow">{portal.machine.customerName}</p>
-                  <h2 className="mt-1 text-2xl font-semibold">{portal.machine.machineName}</h2>
-                  <p className="field-muted mt-2">
-                    {portal.machine.model} / {portal.machine.serialNumber}
-                  </p>
-                  <p className="field-muted mt-1">{portal.machine.location}</p>
+                <div className="flex min-w-0 flex-col gap-4 sm:flex-row sm:items-start">
+                  {supportLogoUrl ? (
+                    <div className="flex h-16 w-28 shrink-0 items-center justify-center rounded-md border border-[#d9dee3] bg-white p-2 dark:border-[#2f3742] dark:bg-[#0f1115]">
+                      <img
+                        className="max-h-full max-w-full object-contain"
+                        src={supportLogoUrl}
+                        alt={`${portal.machine.supportCompanyName ?? "Support company"} logo`}
+                      />
+                    </div>
+                  ) : null}
+                  <div className="min-w-0">
+                    <p className="field-eyebrow">{portal.machine.customerName}</p>
+                    <h2 className="mt-1 text-2xl font-semibold">{portal.machine.machineName}</h2>
+                    <p className="field-muted mt-2">
+                      {portal.machine.model} / {portal.machine.serialNumber}
+                    </p>
+                    <p className="field-muted mt-1">{portal.machine.location}</p>
+                    {portal.machine.supportCompanyName ? (
+                      <p className="mt-3 text-sm font-medium text-neutral-700 dark:text-neutral-200">
+                        Supported by {portal.machine.supportCompanyName}
+                      </p>
+                    ) : null}
+                  </div>
                 </div>
                 <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
                   <Link

@@ -84,6 +84,7 @@ enum AttachmentRelatedType {
   SERVICE_REPORT
   MACHINE_LOG
   MACHINE_DOCUMENT
+  MACHINE_SUPPORT_LOGO
   ACKNOWLEDGEMENT_SIGNATURE
 }
 
@@ -147,6 +148,8 @@ model Machine {
   serialNumber                String
   location                    String
   supportCompanyName          String?
+  supportCompanyLogoAttachmentId String?   @unique
+  supportCompanyLogoAttachment Attachment? @relation("MachineSupportCompanyLogo", fields: [supportCompanyLogoAttachmentId], references: [id])
   qrCodeUrl                   String?
   machineAccessPasswordHash   String?
   machineAccessPasswordUpdatedAt DateTime?
@@ -159,7 +162,7 @@ model Machine {
   isActive                    Boolean              @default(true)
   tickets                     Ticket[]
   logs                        MachineLog[]
-  documents                   Attachment[]
+  documents                   Attachment[]           @relation("MachineAttachments")
   serviceReminderLogs         ServiceReminderLog[]
   technicianAssignments       MachineTechnicianAssignment[]
   createdAt                   DateTime             @default(now())
@@ -429,7 +432,8 @@ model Attachment {
   machineLogId             String?
   machineLog               MachineLog?       @relation(fields: [machineLogId], references: [id])
   machineId                String?
-  machine                  Machine?          @relation(fields: [machineId], references: [id])
+  machine                  Machine?          @relation("MachineAttachments", fields: [machineId], references: [id])
+  supportCompanyLogoForMachine Machine?      @relation("MachineSupportCompanyLogo")
   acknowledgementId        String?
   acknowledgement          Acknowledgement?   @relation("AcknowledgementAttachments", fields: [acknowledgementId], references: [id])
   signatureFor             Acknowledgement?   @relation("AcknowledgementSignature")

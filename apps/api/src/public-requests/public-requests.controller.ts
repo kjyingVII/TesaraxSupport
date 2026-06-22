@@ -227,6 +227,25 @@ export class PublicRequestsController {
     stream.pipe(response);
   }
 
+  @Get(":publicId/support-company-logo/:attachmentId/download")
+  @Header("Cache-Control", "private, max-age=300")
+  async downloadMachineSupportCompanyLogo(
+    @Param("publicId") publicId: string,
+    @Param("attachmentId") attachmentId: string,
+    @Headers("authorization") authorization: string | undefined,
+    @Res() response: any
+  ) {
+    const { attachment, stream } = await this.publicRequestsService.getMachineSupportCompanyLogoDownload(
+      publicId,
+      attachmentId,
+      authorization
+    );
+    response.setHeader("Content-Type", attachment.contentType);
+    response.setHeader("Content-Length", String(attachment.fileSizeBytes));
+    response.setHeader("Content-Disposition", `inline; filename="${attachment.originalFileName.replace(/"/g, "")}"`);
+    stream.pipe(response);
+  }
+
   @Post("tickets/:ticketId/comments/list")
   listTicketComments(@Param("ticketId") ticketId: string, @Body() dto: CreatePublicTicketCommentDto) {
     return this.publicRequestsService.listTicketComments(ticketId, dto);

@@ -51,6 +51,16 @@ export class AttachmentsController {
     return this.attachmentsService.uploadMachineDocument(machineId, dto, user.id);
   }
 
+  @Post("machines/:machineId/support-company-logo")
+  @Roles(UserRole.ADMIN, UserRole.SUPERVISOR)
+  uploadMachineSupportCompanyLogo(
+    @Param("machineId") machineId: string,
+    @Body() dto: UploadTicketAttachmentDto,
+    @CurrentUser() user: { id: string }
+  ) {
+    return this.attachmentsService.uploadMachineSupportCompanyLogo(machineId, dto, user.id);
+  }
+
   @Get("attachments/:id/download")
   @Header("Cache-Control", "private, max-age=300")
   async downloadAttachment(@Param("id") id: string, @Res() response: any) {
