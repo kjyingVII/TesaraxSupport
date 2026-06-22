@@ -405,6 +405,23 @@ export class AttachmentsService {
     return { data: attachment };
   }
 
+  async clearMachineSupportCompanyLogo(machineId: string) {
+    await this.ensureMachineExists(machineId);
+
+    const machine = await this.prisma.machine.update({
+      where: { id: machineId },
+      data: {
+        supportCompanyLogoAttachmentId: null
+      },
+      select: {
+        id: true,
+        supportCompanyLogoAttachmentId: true
+      }
+    });
+
+    return { data: machine };
+  }
+
   private async saveMachineDocument(
     machineId: string,
     prepared: PreparedAttachmentUpload,

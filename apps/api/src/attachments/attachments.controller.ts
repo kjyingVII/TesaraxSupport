@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Header, Param, Post, Res } from "@nestjs/common";
+import { Body, Controller, Delete, Get, Header, Param, Post, Res } from "@nestjs/common";
 import { UserRole } from "@prisma/client";
 import { CurrentUser, Roles } from "../auth/auth.decorators";
 import { AttachmentsService } from "./attachments.service";
@@ -59,6 +59,12 @@ export class AttachmentsController {
     @CurrentUser() user: { id: string }
   ) {
     return this.attachmentsService.uploadMachineSupportCompanyLogo(machineId, dto, user.id);
+  }
+
+  @Delete("machines/:machineId/support-company-logo")
+  @Roles(UserRole.ADMIN, UserRole.SUPERVISOR)
+  clearMachineSupportCompanyLogo(@Param("machineId") machineId: string) {
+    return this.attachmentsService.clearMachineSupportCompanyLogo(machineId);
   }
 
   @Get("attachments/:id/download")

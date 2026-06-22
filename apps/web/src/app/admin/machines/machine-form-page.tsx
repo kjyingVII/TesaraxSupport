@@ -78,6 +78,7 @@ export function MachineFormPage({ machineId }: { machineId?: string }) {
   const [saving, setSaving] = useState(false);
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [uploadingLogo, setUploadingLogo] = useState(false);
+  const [deletingLogo, setDeletingLogo] = useState(false);
   const [savingTechnicians, setSavingTechnicians] = useState(false);
   const [technicians, setTechnicians] = useState<Technician[]>([]);
   const [selectedTechnicianIds, setSelectedTechnicianIds] = useState<string[]>([]);
@@ -263,6 +264,30 @@ export function MachineFormPage({ machineId }: { machineId?: string }) {
     }
   }
 
+  async function deleteSupportCompanyLogo() {
+    if (!machineId || !machine?.supportCompanyLogoAttachment) return;
+
+    const confirmed = window.confirm("Remove the support company logo from this machine?");
+    if (!confirmed) return;
+
+    setDeletingLogo(true);
+    setError(null);
+    setMessage(null);
+
+    try {
+      await apiRequest(`/api/machines/${machineId}/support-company-logo`, {
+        method: "DELETE"
+      });
+      setMachine((current) => current ? { ...current, supportCompanyLogoAttachment: null } : current);
+      setLogoFile(null);
+      setMessage("Support company logo removed.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unable to remove support company logo.");
+    } finally {
+      setDeletingLogo(false);
+    }
+  }
+
   return (
     <main className="field-page">
       <section className="field-shell max-w-3xl">
@@ -330,14 +355,26 @@ export function MachineFormPage({ machineId }: { machineId?: string }) {
                       accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml"
                       onChange={(event) => setLogoFile(event.target.files?.[0] ?? null)}
                     />
-                    <button
-                      className="field-button-secondary disabled:opacity-50"
-                      type="button"
-                      disabled={uploadingLogo || !logoFile}
-                      onClick={uploadSupportCompanyLogo}
-                    >
-                      {uploadingLogo ? "Uploading..." : "Upload Logo"}
-                    </button>
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        className="field-button-secondary disabled:opacity-50"
+                        type="button"
+                        disabled={uploadingLogo || !logoFile}
+                        onClick={uploadSupportCompanyLogo}
+                      >
+                        {uploadingLogo ? "Uploading..." : "Upload Logo"}
+                      </button>
+                      {machine?.supportCompanyLogoAttachment ? (
+                        <button
+                          className="min-h-11 rounded-md border border-red-200 px-4 text-sm font-medium text-red-700 transition hover:border-red-400 hover:bg-red-50 disabled:opacity-50 dark:border-red-900 dark:text-red-200 dark:hover:bg-red-950/40"
+                          type="button"
+                          disabled={deletingLogo}
+                          onClick={deleteSupportCompanyLogo}
+                        >
+                          {deletingLogo ? "Removing..." : "Delete Logo"}
+                        </button>
+                      ) : null}
+                    </div>
                   </div>
                 </div>
               ) : null}

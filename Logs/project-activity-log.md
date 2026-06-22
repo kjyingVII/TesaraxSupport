@@ -1459,3 +1459,8 @@ This file records meaningful project updates, decisions, and implementation step
 
 - Added support company name and logo display to the machine access page before the secure entry instructions.
 - Added a public machine branding metadata endpoint and public inline logo route limited to the machine's selected support company logo.
+
+## 2026-06-22 - Machine Support Logo Removal
+
+- Added an admin/supervisor delete button on the machine edit page to remove the current support company logo from public display.
+- Added a backend delete endpoint that clears the machine's current logo reference while preserving the uploaded attachment record.
