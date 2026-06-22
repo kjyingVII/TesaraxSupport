@@ -144,9 +144,11 @@ export class NotificationsService {
         requesterPhone: true,
         requesterEmail: true,
         issueTitle: true,
+        issueDescription: true,
         priority: true,
         machine: {
           select: {
+            publicId: true,
             machineName: true,
             supportCompanyName: true,
             serialNumber: true,
@@ -214,9 +216,13 @@ export class NotificationsService {
         eventKey: "ticket_created_requester",
         parameters: [
           ticket.ticketNumber,
+          ticket.machine.customer.name,
           ticket.machine.machineName,
-          ticket.machine.serialNumber,
-          ticket.issueTitle
+          ticket.requesterName,
+          this.formatContactValue(ticket.requesterPhone, ticket.requesterEmail),
+          ticket.issueTitle,
+          ticket.issueDescription,
+          signOffName
         ]
       }
     });
@@ -259,6 +265,7 @@ export class NotificationsService {
             `Location: ${ticket.machine.location}`,
             `Priority: ${ticket.priority}`,
             `Issue: ${ticket.issueTitle}`,
+            `Description: ${ticket.issueDescription}`,
             "",
             "Requester:",
             `Name: ${ticket.requesterName}`,
@@ -271,8 +278,11 @@ export class NotificationsService {
               ticket.ticketNumber,
               ticket.machine.customer.name,
               ticket.machine.machineName,
-              ticket.priority,
-              ticket.issueTitle
+              ticket.requesterName,
+              this.formatContactValue(ticket.requesterPhone, ticket.requesterEmail),
+              ticket.issueTitle,
+              ticket.issueDescription,
+              signOffName
             ]
           }
         })
@@ -292,6 +302,7 @@ export class NotificationsService {
         issueTitle: true,
         machine: {
           select: {
+            publicId: true,
             machineName: true,
             serialNumber: true,
             supportCompanyName: true,
@@ -329,10 +340,11 @@ export class NotificationsService {
         eventKey: "ticket_status_changed",
         parameters: [
           ticket.ticketNumber,
-          fromStatus,
           toStatus,
           ticket.machine.machineName,
-          ticket.issueTitle
+          ticket.issueTitle,
+          signOffName,
+          this.buildMachineAccessUrl(ticket.machine.publicId)
         ]
       }
     });
@@ -363,6 +375,7 @@ export class NotificationsService {
             issueTitle: true,
             machine: {
               select: {
+                publicId: true,
                 machineName: true,
                 model: true,
                 supportCompanyName: true,
@@ -425,9 +438,12 @@ export class NotificationsService {
         eventKey: "service_report_submitted",
         parameters: [
           serviceReport.ticket.ticketNumber,
-          serviceReport.technician.name,
           serviceReport.ticket.machine.machineName,
-          serviceReport.resolutionStatus
+          serviceReport.ticket.machine.serialNumber,
+          serviceReport.technician.name,
+          serviceReport.resolutionStatus,
+          signOffName,
+          acknowledgementUrl ?? this.buildMachineAccessUrl(serviceReport.ticket.machine.publicId)
         ]
       }
     });
@@ -560,7 +576,7 @@ export class NotificationsService {
     }
 
     if (provider === "twilio") {
-      return this.sendTwilioWhatsappMessage(recipientPhone, message);
+      return this.sendTwilioWhatsappMessage(recipientPhone, message, template);
     }
 
     if (provider !== "meta") {
@@ -573,10 +589,15 @@ export class NotificationsService {
     return this.sendMetaWhatsappMessage(recipientPhone, message, template);
   }
 
-  private async sendTwilioWhatsappMessage(recipientPhone: string, message: string): Promise<WhatsAppSendResult> {
+  private async sendTwilioWhatsappMessage(
+    recipientPhone: string,
+    message: string,
+    template?: WhatsAppTemplateInput
+  ): Promise<WhatsAppSendResult> {
     const accountSid = this.cleanOptionalString(process.env.TWILIO_ACCOUNT_SID);
     const authToken = this.cleanOptionalString(process.env.TWILIO_AUTH_TOKEN);
     const from = this.formatTwilioWhatsappAddress(process.env.TWILIO_WHATSAPP_FROM);
+    const messageMode = this.cleanOptionalString(process.env.TWILIO_MESSAGE_MODE)?.toLowerCase() ?? "body";
 
     if (!accountSid || !authToken || !from) {
       return {
@@ -595,9 +616,31 @@ export class NotificationsService {
 
     const body = new URLSearchParams({
       From: from,
-      To: to,
-      Body: message
+      To: to
     });
+
+    if (messageMode === "template") {
+      if (!template) {
+        return {
+          status: NotificationStatus.SKIPPED,
+          errorMessage: "Twilio template mode is enabled, but this notification does not provide template data."
+        };
+      }
+
+      const contentSid = this.getTwilioContentSid(template.eventKey);
+      if (!contentSid) {
+        return {
+          status: NotificationStatus.SKIPPED,
+          errorMessage: `Twilio template mode is enabled, but no ContentSid is configured for ${template.eventKey}.`
+        };
+      }
+
+      body.set("ContentSid", contentSid);
+      body.set("ContentVariables", JSON.stringify(this.buildTwilioContentVariables(template.parameters)));
+    } else {
+      body.set("Body", message);
+    }
+
     const statusCallbackUrl = this.cleanOptionalString(process.env.TWILIO_WHATSAPP_STATUS_CALLBACK_URL);
     if (statusCallbackUrl) body.set("StatusCallback", statusCallbackUrl);
 
@@ -758,7 +801,30 @@ export class NotificationsService {
 
   private getMetaTemplateName(eventKey: string) {
     const envKey = `WHATSAPP_META_TEMPLATE_${eventKey.toUpperCase()}`;
+    return this.cleanOptionalString(process.env[envKey]) ?? this.defaultTemplateName(eventKey);
+  }
+
+  private getTwilioContentSid(eventKey: string) {
+    const envKey = `TWILIO_CONTENT_SID_${eventKey.toUpperCase()}`;
     return this.cleanOptionalString(process.env[envKey]);
+  }
+
+  private buildTwilioContentVariables(parameters: Array<string | number | boolean | null | undefined>) {
+    return parameters.reduce<Record<string, string>>((variables, parameter, index) => {
+      variables[String(index + 1)] = this.truncate(String(parameter ?? "-"), 1024);
+      return variables;
+    }, {});
+  }
+
+  private defaultTemplateName(eventKey: string) {
+    const templates: Record<string, string> = {
+      ticket_created_requester: "new_ticket_notification",
+      ticket_created_technician: "new_ticket_notification",
+      ticket_status_changed: "ticket_status_change_notification",
+      service_report_submitted: "service_report_submitted_notification"
+    };
+
+    return templates[eventKey];
   }
 
   private buildServiceReportAcknowledgementMessage(input: {
@@ -824,6 +890,16 @@ export class NotificationsService {
       hour: "2-digit",
       minute: "2-digit"
     }).format(value);
+  }
+
+  private formatContactValue(phone?: string | null, email?: string | null) {
+    const parts = [this.cleanOptionalString(phone), this.cleanOptionalString(email)].filter(Boolean);
+    return parts.length ? parts.join(" / ") : "Not recorded";
+  }
+
+  private buildMachineAccessUrl(publicId: string) {
+    const webAppUrl = process.env.WEB_APP_URL ?? "http://localhost:3000";
+    return `${webAppUrl.replace(/\/$/, "")}/m/${publicId}/access`;
   }
 
   private async getMessageSignOffName(machineSupportCompanyName?: string | null) {

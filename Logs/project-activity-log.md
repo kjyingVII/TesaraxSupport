@@ -1464,3 +1464,9 @@ This file records meaningful project updates, decisions, and implementation step
 
 - Added an admin/supervisor delete button on the machine edit page to remove the current support company logo from public display.
 - Added a backend delete endpoint that clears the machine's current logo reference while preserving the uploaded attachment record.
+
+## 2026-06-22 - Approved WhatsApp Template Mapping
+
+- Updated new ticket, service report, and ticket status notification parameters to match the approved WhatsApp templates.
+- Added Twilio template mode using ContentSid and ContentVariables while keeping free-text Body mode as the default.
+- Added approved Meta template defaults and Twilio ContentSid environment placeholders to `.env.example`.
