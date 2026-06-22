@@ -318,6 +318,39 @@ export class NotificationsService {
     if (!ticket) return;
 
     const signOffName = await this.getMessageSignOffName(ticket.machine.supportCompanyName);
+    const statusLink = this.buildMachineAccessUrl(ticket.machine.publicId);
+    const statusMessage = [
+      `Ticket ${ticket.ticketNumber} status has been updated.`,
+      "",
+      `New status: ${toStatus}`,
+      `Machine: ${ticket.machine.machineName}`,
+      `Issue: ${ticket.issueTitle}`,
+      `Support Company: ${signOffName}`,
+      "",
+      "Please open the support system for details:",
+      statusLink,
+      "",
+      "Thank you."
+    ].join("\n");
+
+    if (!this.cleanOptionalString(ticket.requesterPhone)) {
+      await this.prisma.notificationLog.create({
+        data: {
+          relatedType: "Ticket",
+          relatedId: ticket.id,
+          channel: NotificationChannel.WHATSAPP,
+          recipientName: ticket.requesterName,
+          recipientEmail: ticket.requesterEmail,
+          recipientPhone: ticket.requesterPhone,
+          subject: `Requester ticket status update skipped: ${ticket.ticketNumber}`,
+          messageSummary: this.truncate(statusMessage, 1000),
+          status: NotificationStatus.SKIPPED,
+          errorMessage: "Requester phone number is missing. Ticket status WhatsApp was not sent."
+        }
+      });
+      return;
+    }
+
     await this.logWhatsapp({
       relatedType: "Ticket",
       relatedId: ticket.id,
@@ -326,15 +359,8 @@ export class NotificationsService {
         phone: ticket.requesterPhone,
         email: ticket.requesterEmail
       },
-      subject: `Ticket status updated: ${ticket.ticketNumber}`,
-      message: [
-        `Ticket ${ticket.ticketNumber} status has changed from ${fromStatus} to ${toStatus}.`,
-        `Machine: ${ticket.machine.machineName} (${ticket.machine.serialNumber})`,
-        `Issue: ${ticket.issueTitle}`,
-        "",
-        "Thank you.",
-        signOffName
-      ].join("\n"),
+      subject: `Requester ticket status updated: ${ticket.ticketNumber}`,
+      message: statusMessage,
       template: {
         eventKey: "ticket_status_changed",
         parameters: [
@@ -343,7 +369,7 @@ export class NotificationsService {
           ticket.machine.machineName,
           ticket.issueTitle,
           signOffName,
-          this.buildMachineAccessUrl(ticket.machine.publicId)
+          statusLink
         ]
       }
     });

@@ -1479,3 +1479,8 @@ This file records meaningful project updates, decisions, and implementation step
 ## 2026-06-22 - Twilio Template Environment Pass-Through
 
 - Added `TWILIO_MESSAGE_MODE` and approved-template Content SID variables to `docker-compose.yml` so the API container can send Twilio WhatsApp templates instead of falling back to free-text body mode.
+
+## 2026-06-22 - Requester Status Notification Clarity
+
+- Ticket status WhatsApp notifications now use the approved status-update wording for the free-text fallback body.
+- Status notification subjects are labelled as requester updates, and missing requester phone numbers create an explicit skipped notification log.
