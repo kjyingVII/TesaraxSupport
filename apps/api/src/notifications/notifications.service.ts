@@ -160,6 +160,8 @@ export class NotificationsService {
                       select: {
                         id: true,
                         name: true,
+                        email: true,
+                        isActive: true,
                         phone: true
                       }
                     }
@@ -173,6 +175,8 @@ export class NotificationsService {
                   select: {
                     id: true,
                     name: true,
+                    email: true,
+                    isActive: true,
                     phone: true
                   }
                 }
@@ -220,7 +224,26 @@ export class NotificationsService {
     const technicianRecipients = this.uniqueRecipients([
       ...ticket.machine.technicianAssignments.map((assignment) => assignment.technician),
       ...ticket.machine.customer.technicianAssignments.map((assignment) => assignment.technician)
-    ]);
+    ].filter((technician) => technician.isActive));
+
+    if (!technicianRecipients.length) {
+      await this.prisma.notificationLog.create({
+        data: {
+          relatedType: "Ticket",
+          relatedId: ticket.id,
+          channel: NotificationChannel.WHATSAPP,
+          subject: `New ticket: ${ticket.ticketNumber}`,
+          messageSummary: this.truncate([
+            `No active machine/customer technicians are assigned for ticket ${ticket.ticketNumber}.`,
+            `Customer: ${ticket.machine.customer.name}`,
+            `Machine: ${ticket.machine.machineName} (${ticket.machine.serialNumber})`
+          ].join("\n"), 1000),
+          status: NotificationStatus.SKIPPED,
+          errorMessage: "No active machine or customer technician is assigned to receive this ticket notification."
+        }
+      });
+      return;
+    }
 
     await Promise.all(
       technicianRecipients.map((technician) =>

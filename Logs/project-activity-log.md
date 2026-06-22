@@ -1438,3 +1438,8 @@ This file records meaningful project updates, decisions, and implementation step
 - Added a per-machine Support Company Name for ticket, ticket status, service report, and machine log acknowledgement message sign-offs.
 - Messages fall back to Admin Settings > Company Name, then `Tesarax Support`, when the machine support company is blank.
 - Added Support Company Name to the admin machine add/edit form and machine list.
+
+## 2026-06-22 - Ticket Technician WhatsApp Diagnostics
+
+- Ticket-created WhatsApp notifications now include technician email context and filter to active customer/machine technicians.
+- Added a skipped notification log when a new ticket has no active assigned machine/customer technicians, making the missing-recipient case visible in Admin > Notifications.
