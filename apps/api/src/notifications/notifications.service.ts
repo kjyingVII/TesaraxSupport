@@ -2,7 +2,6 @@ import { BadRequestException, Injectable } from "@nestjs/common";
 import { NotificationChannel, NotificationStatus, Prisma, TicketStatus } from "@prisma/client";
 import { parseRequiredPhoneNumber } from "../common/phone-number";
 import { PrismaService } from "../prisma/prisma.service";
-import { SettingsService } from "../settings/settings.service";
 
 type ListNotificationLogsInput = {
   channel?: string;
@@ -48,10 +47,7 @@ type SendManualWhatsappInput = {
 
 @Injectable()
 export class NotificationsService {
-  constructor(
-    private readonly prisma: PrismaService,
-    private readonly settingsService: SettingsService
-  ) {}
+  constructor(private readonly prisma: PrismaService) {}
 
   async list(input: ListNotificationLogsInput) {
     const page = this.parsePositiveInteger(input.page, 1);
@@ -188,7 +184,10 @@ export class NotificationsService {
       `Ticket ${ticket.ticketNumber} has been submitted.`,
       `Machine: ${ticket.machine.machineName} (${ticket.machine.serialNumber})`,
       `Issue: ${ticket.issueTitle}`,
-      "Our support team will review and update the ticket status."
+      "Our support team will review and update the ticket status.",
+      "",
+      "Thank you.",
+      ticket.machine.customer.name
     ].join("\n");
 
     await this.logWhatsapp({
@@ -260,7 +259,12 @@ export class NotificationsService {
         machine: {
           select: {
             machineName: true,
-            serialNumber: true
+            serialNumber: true,
+            customer: {
+              select: {
+                name: true
+              }
+            }
           }
         }
       }
@@ -280,7 +284,10 @@ export class NotificationsService {
       message: [
         `Ticket ${ticket.ticketNumber} status has changed from ${fromStatus} to ${toStatus}.`,
         `Machine: ${ticket.machine.machineName} (${ticket.machine.serialNumber})`,
-        `Issue: ${ticket.issueTitle}`
+        `Issue: ${ticket.issueTitle}`,
+        "",
+        "Thank you.",
+        ticket.machine.customer.name
       ].join("\n"),
       template: {
         eventKey: "ticket_status_changed",
@@ -338,8 +345,7 @@ export class NotificationsService {
 
     if (!serviceReport) return;
 
-    const settings = await this.settingsService.getCurrentSettings();
-    const signOffName = settings.companyName ?? "Tesarax Support";
+    const signOffName = serviceReport.ticket.machine.customer.name;
     const message = acknowledgementUrl
       ? this.buildServiceReportAcknowledgementMessage({
           acknowledgementUrl,

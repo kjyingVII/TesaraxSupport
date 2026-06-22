@@ -531,7 +531,8 @@ function MachineLogDetailPanel({
         title: detail.title,
         workDate: detail.workDate,
         workEndAt: detail.workEndAt,
-        summary: detail.workSummary
+        summary: detail.workSummary,
+        signOffName: machine?.customer.name
       });
 
       setAcknowledgementUrl(response.data.acknowledgementUrl);

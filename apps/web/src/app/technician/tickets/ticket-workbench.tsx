@@ -175,7 +175,6 @@ type AcknowledgementSubmitResponse = {
 
 type SettingsResponse = {
   data: {
-    companyName: string | null;
     acknowledgementRequiredBeforeClosing: boolean;
     requestAttachmentMaxFileMb: number;
     requestAttachmentMaxTotalMb: number;
@@ -253,7 +252,6 @@ export function TicketWorkbench() {
   const [acknowledgementUrl, setAcknowledgementUrl] = useState<string | null>(null);
   const [acknowledgementReportId, setAcknowledgementReportId] = useState<string | null>(null);
   const [meta, setMeta] = useState<TicketListResponse["meta"] | null>(null);
-  const [companyName, setCompanyName] = useState<string | null>(null);
   const [acknowledgementRequiredBeforeClosing, setAcknowledgementRequiredBeforeClosing] = useState(true);
   const [requestAttachmentLimits, setRequestAttachmentLimits] = useState({
     requestAttachmentMaxFileMb: 10,
@@ -355,14 +353,12 @@ export function TicketWorkbench() {
   async function loadSettings() {
     try {
       const response = await apiRequest<SettingsResponse>("/api/settings");
-      setCompanyName(response.data.companyName);
       setAcknowledgementRequiredBeforeClosing(response.data.acknowledgementRequiredBeforeClosing);
       setRequestAttachmentLimits({
         requestAttachmentMaxFileMb: response.data.requestAttachmentMaxFileMb,
         requestAttachmentMaxTotalMb: response.data.requestAttachmentMaxTotalMb
       });
     } catch {
-      setCompanyName(null);
       setAcknowledgementRequiredBeforeClosing(true);
     }
   }
@@ -1113,7 +1109,7 @@ export function TicketWorkbench() {
                                       {acknowledgementReportId === report.id && acknowledgementUrl ? (
                                         <DirectAcknowledgementLink
                                           url={acknowledgementUrl}
-                                          message={buildTicketServiceReportMessage(acknowledgementUrl, selectedTicket, report, companyName)}
+                                          message={buildTicketServiceReportMessage(acknowledgementUrl, selectedTicket, report)}
                                           onCopy={copyAcknowledgementUrl}
                                           onCopyMessage={copyAcknowledgementMessage}
                                         />
@@ -1154,7 +1150,7 @@ export function TicketWorkbench() {
                                   {acknowledgementReportId === report.id && acknowledgementUrl ? (
                                     <DirectAcknowledgementLink
                                       url={acknowledgementUrl}
-                                      message={buildTicketServiceReportMessage(acknowledgementUrl, selectedTicket, report, companyName)}
+                                      message={buildTicketServiceReportMessage(acknowledgementUrl, selectedTicket, report)}
                                       onCopy={copyAcknowledgementUrl}
                                       onCopyMessage={copyAcknowledgementMessage}
                                     />
@@ -1294,8 +1290,7 @@ function DirectAcknowledgementLink({
 function buildTicketServiceReportMessage(
   acknowledgementUrl: string,
   ticket: TicketDetail,
-  report: TicketDetail["serviceReports"][number],
-  signOffName?: string | null
+  report: TicketDetail["serviceReports"][number]
 ) {
   return buildServiceReportAcknowledgementMessage({
     acknowledgementUrl,
@@ -1312,7 +1307,7 @@ function buildTicketServiceReportMessage(
     diagnosis: report.diagnosis,
     actionTaken: report.actionTaken,
     resolutionStatus: report.resolutionStatus,
-    signOffName
+    signOffName: ticket.machine.customer.name
   });
 }
 
