@@ -1475,3 +1475,7 @@ This file records meaningful project updates, decisions, and implementation step
 
 - Changed the free-text fallback body for new ticket WhatsApp notifications to match the approved `new_ticket_notification` template wording.
 - Requester and technician new-ticket notifications now share the same message format.
+
+## 2026-06-22 - Twilio Template Environment Pass-Through
+
+- Added `TWILIO_MESSAGE_MODE` and approved-template Content SID variables to `docker-compose.yml` so the API container can send Twilio WhatsApp templates instead of falling back to free-text body mode.
