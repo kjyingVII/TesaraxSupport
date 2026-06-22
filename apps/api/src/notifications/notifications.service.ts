@@ -2,6 +2,7 @@ import { BadRequestException, Injectable } from "@nestjs/common";
 import { NotificationChannel, NotificationStatus, Prisma, TicketStatus } from "@prisma/client";
 import { parseRequiredPhoneNumber } from "../common/phone-number";
 import { PrismaService } from "../prisma/prisma.service";
+import { SettingsService } from "../settings/settings.service";
 
 type ListNotificationLogsInput = {
   channel?: string;
@@ -47,7 +48,10 @@ type SendManualWhatsappInput = {
 
 @Injectable()
 export class NotificationsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly settingsService: SettingsService
+  ) {}
 
   async list(input: ListNotificationLogsInput) {
     const page = this.parsePositiveInteger(input.page, 1);
@@ -291,11 +295,15 @@ export class NotificationsService {
     });
   }
 
-  async logServiceReportSubmitted(serviceReportId: string) {
+  async logServiceReportSubmitted(serviceReportId: string, acknowledgementUrl?: string) {
     const serviceReport = await this.prisma.serviceReport.findUnique({
       where: { id: serviceReportId },
       select: {
         id: true,
+        diagnosis: true,
+        actionTaken: true,
+        serviceStartAt: true,
+        serviceEndAt: true,
         resolutionStatus: true,
         technician: {
           select: {
@@ -313,7 +321,14 @@ export class NotificationsService {
             machine: {
               select: {
                 machineName: true,
-                serialNumber: true
+                model: true,
+                serialNumber: true,
+                location: true,
+                customer: {
+                  select: {
+                    name: true
+                  }
+                }
               }
             }
           }
@@ -323,6 +338,37 @@ export class NotificationsService {
 
     if (!serviceReport) return;
 
+    const settings = await this.settingsService.getCurrentSettings();
+    const signOffName = settings.companyName ?? "Tesarax Support";
+    const message = acknowledgementUrl
+      ? this.buildServiceReportAcknowledgementMessage({
+          acknowledgementUrl,
+          ticketNumber: serviceReport.ticket.ticketNumber,
+          customerName: serviceReport.ticket.machine.customer.name,
+          machineName: serviceReport.ticket.machine.machineName,
+          model: serviceReport.ticket.machine.model,
+          serialNumber: serviceReport.ticket.machine.serialNumber,
+          location: serviceReport.ticket.machine.location,
+          issueTitle: serviceReport.ticket.issueTitle,
+          serviceStartAt: serviceReport.serviceStartAt,
+          serviceEndAt: serviceReport.serviceEndAt,
+          technicianName: serviceReport.technician.name,
+          diagnosis: serviceReport.diagnosis,
+          actionTaken: serviceReport.actionTaken,
+          resolutionStatus: serviceReport.resolutionStatus,
+          signOffName
+        })
+      : [
+          `A service report has been submitted for ticket ${serviceReport.ticket.ticketNumber}.`,
+          `Technician: ${serviceReport.technician.name}`,
+          `Machine: ${serviceReport.ticket.machine.machineName} (${serviceReport.ticket.machine.serialNumber})`,
+          `Result: ${serviceReport.resolutionStatus}`,
+          "Please review and acknowledge the service report.",
+          "",
+          "Thank you.",
+          signOffName
+        ].join("\n");
+
     await this.logWhatsapp({
       relatedType: "ServiceReport",
       relatedId: serviceReport.id,
@@ -331,13 +377,7 @@ export class NotificationsService {
         phone: serviceReport.ticket.requesterPhone
       },
       subject: `Service report submitted: ${serviceReport.ticket.ticketNumber}`,
-      message: [
-        `A service report has been submitted for ticket ${serviceReport.ticket.ticketNumber}.`,
-        `Technician: ${serviceReport.technician.name}`,
-        `Machine: ${serviceReport.ticket.machine.machineName} (${serviceReport.ticket.machine.serialNumber})`,
-        `Result: ${serviceReport.resolutionStatus}`,
-        "Please review and acknowledge the service report."
-      ].join("\n"),
+      message,
       template: {
         eventKey: "service_report_submitted",
         parameters: [
@@ -670,6 +710,71 @@ export class NotificationsService {
   private getMetaTemplateName(eventKey: string) {
     const envKey = `WHATSAPP_META_TEMPLATE_${eventKey.toUpperCase()}`;
     return this.cleanOptionalString(process.env[envKey]);
+  }
+
+  private buildServiceReportAcknowledgementMessage(input: {
+    acknowledgementUrl: string;
+    ticketNumber: string;
+    customerName: string;
+    machineName: string;
+    model?: string | null;
+    serialNumber?: string | null;
+    location?: string | null;
+    issueTitle: string;
+    serviceStartAt?: Date | null;
+    serviceEndAt?: Date | null;
+    technicianName?: string | null;
+    diagnosis?: string | null;
+    actionTaken?: string | null;
+    resolutionStatus?: string | null;
+    signOffName: string;
+  }) {
+    return [
+      "Dear customer,",
+      "",
+      "A service report has been submitted for your support ticket. Please review the service details and acknowledge the service rendered using the link below.",
+      "",
+      `Ticket: ${input.ticketNumber}`,
+      `Customer: ${input.customerName}`,
+      `Machine: ${input.machineName}`,
+      `Model: ${input.model || "Not recorded"}`,
+      `Serial No.: ${input.serialNumber || "Not recorded"}`,
+      `Location: ${input.location || "Not recorded"}`,
+      `Issue: ${input.issueTitle}`,
+      `Service Time: ${this.formatMessageDateRange(input.serviceStartAt, input.serviceEndAt)}`,
+      `Technician: ${input.technicianName || "Not recorded"}`,
+      `Result: ${this.formatMessageValue(input.resolutionStatus)}`,
+      "",
+      "Service Summary:",
+      input.actionTaken || input.diagnosis || "Please refer to the service report details in the acknowledgement page.",
+      "",
+      "Acknowledgement link:",
+      input.acknowledgementUrl,
+      "",
+      "Thank you.",
+      input.signOffName
+    ].join("\n");
+  }
+
+  private formatMessageValue(value?: string | null) {
+    return value ? value.replaceAll("_", " ") : "Not recorded";
+  }
+
+  private formatMessageDateRange(start?: Date | null, end?: Date | null) {
+    if (!start && !end) return "Not recorded";
+    if (!end) return this.formatMessageDate(start);
+    return `${this.formatMessageDate(start)} to ${this.formatMessageDate(end)}`;
+  }
+
+  private formatMessageDate(value?: Date | null) {
+    if (!value) return "Not recorded";
+    return new Intl.DateTimeFormat("en", {
+      year: "numeric",
+      month: "short",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit"
+    }).format(value);
   }
 
   private uniqueRecipients(recipients: Array<NotificationRecipient & { id?: string }>) {

@@ -13,6 +13,7 @@ type ServiceReportAcknowledgementMessageInput = {
   diagnosis?: string | null;
   actionTaken?: string | null;
   resolutionStatus?: string | null;
+  signOffName?: string | null;
 };
 
 type MachineLogAcknowledgementMessageInput = {
@@ -27,6 +28,7 @@ type MachineLogAcknowledgementMessageInput = {
   workDate: string;
   workEndAt?: string | null;
   summary?: string | null;
+  signOffName?: string | null;
 };
 
 export function buildServiceReportAcknowledgementMessage(input: ServiceReportAcknowledgementMessageInput) {
@@ -53,7 +55,7 @@ export function buildServiceReportAcknowledgementMessage(input: ServiceReportAck
     input.acknowledgementUrl,
     "",
     "Thank you.",
-    "Tesarax Support"
+    input.signOffName || "Tesarax Support"
   ].join("\n");
 }
 
@@ -79,7 +81,7 @@ export function buildMachineLogAcknowledgementMessage(input: MachineLogAcknowled
     input.acknowledgementUrl,
     "",
     "Thank you.",
-    "Tesarax Support"
+    input.signOffName || "Tesarax Support"
   ].join("\n");
 }
 

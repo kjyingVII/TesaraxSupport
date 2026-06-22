@@ -40,6 +40,12 @@ type TicketDetailResponse = {
   };
 };
 
+type SettingsResponse = {
+  data: {
+    companyName: string | null;
+  };
+};
+
 export function ServiceReportSubmittedPage({ ticketId, reportId }: { ticketId: string; reportId: string }) {
   const [acknowledgementUrl, setAcknowledgementUrl] = useState("");
   const [acknowledgementMessage, setAcknowledgementMessage] = useState("");
@@ -61,9 +67,12 @@ export function ServiceReportSubmittedPage({ ticketId, reportId }: { ticketId: s
       if (stored) {
         setAcknowledgementUrl(stored);
         try {
-          const ticketResponse = await apiRequest<TicketDetailResponse>(`/api/tickets/${ticketId}`);
+          const [ticketResponse, settingsResponse] = await Promise.all([
+            apiRequest<TicketDetailResponse>(`/api/tickets/${ticketId}`),
+            apiRequest<SettingsResponse>("/api/settings")
+          ]);
           if (!mounted) return;
-          setAcknowledgementMessage(buildServiceReportMessage(stored, ticketResponse.data, reportId));
+          setAcknowledgementMessage(buildServiceReportMessage(stored, ticketResponse.data, reportId, settingsResponse.data.companyName));
         } catch (err) {
           if (!mounted) return;
           setError(err instanceof Error ? err.message : "Unable to prepare acknowledgement message.");
@@ -75,7 +84,7 @@ export function ServiceReportSubmittedPage({ ticketId, reportId }: { ticketId: s
 
       try {
         const user = getAuthUser();
-        const [response, ticketResponse] = await Promise.all([
+        const [response, ticketResponse, settingsResponse] = await Promise.all([
           apiRequest<AcknowledgementLinkResponse>(
             `/api/service-reports/${reportId}/acknowledgement-link`,
             {
@@ -85,11 +94,17 @@ export function ServiceReportSubmittedPage({ ticketId, reportId }: { ticketId: s
               })
             }
           ),
-          apiRequest<TicketDetailResponse>(`/api/tickets/${ticketId}`)
+          apiRequest<TicketDetailResponse>(`/api/tickets/${ticketId}`),
+          apiRequest<SettingsResponse>("/api/settings")
         ]);
         if (!mounted) return;
         setAcknowledgementUrl(response.data.acknowledgementUrl);
-        setAcknowledgementMessage(buildServiceReportMessage(response.data.acknowledgementUrl, ticketResponse.data, reportId));
+        setAcknowledgementMessage(buildServiceReportMessage(
+          response.data.acknowledgementUrl,
+          ticketResponse.data,
+          reportId,
+          settingsResponse.data.companyName
+        ));
         window.sessionStorage.setItem(directLinkStorageKey(reportId), response.data.acknowledgementUrl);
       } catch (err) {
         if (!mounted) return;
@@ -200,7 +215,8 @@ function directLinkStorageKey(reportId: string) {
 function buildServiceReportMessage(
   acknowledgementUrl: string,
   ticket: TicketDetailResponse["data"],
-  reportId: string
+  reportId: string,
+  signOffName?: string | null
 ) {
   const report = ticket.serviceReports.find((item) => item.id === reportId) ?? ticket.serviceReports[0];
 
@@ -218,6 +234,7 @@ function buildServiceReportMessage(
     technicianName: report?.technician?.name,
     diagnosis: report?.diagnosis,
     actionTaken: report?.actionTaken,
-    resolutionStatus: report?.resolutionStatus
+    resolutionStatus: report?.resolutionStatus,
+    signOffName
   });
 }

@@ -39,7 +39,8 @@ export class ServiceReportsService {
     }
 
     const shouldMoveToPendingAcknowledgement = currentTicket.status !== TicketStatus.PENDING_ACKNOWLEDGEMENT;
-    const acknowledgementTokenHash = this.hashToken(randomBytes(32).toString("base64url"));
+    const rawAcknowledgementToken = randomBytes(32).toString("base64url");
+    const acknowledgementTokenHash = this.hashToken(rawAcknowledgementToken);
     const tokenExpiresAt = this.addDays(new Date(), 14);
 
     const report = await this.prisma.$transaction(async (tx) => {
@@ -119,9 +120,17 @@ export class ServiceReportsService {
       }
     });
 
-    await this.notificationsService.logServiceReportSubmitted(report.id);
+    const webAppUrl = process.env.WEB_APP_URL ?? "http://localhost:13000";
+    const acknowledgementUrl = `${webAppUrl.replace(/\/$/, "")}/acknowledgement/${rawAcknowledgementToken}`;
 
-    return { data: report };
+    await this.notificationsService.logServiceReportSubmitted(report.id, acknowledgementUrl);
+
+    return {
+      data: {
+        ...report,
+        acknowledgementUrl
+      }
+    };
   }
 
   async getById(id: string) {

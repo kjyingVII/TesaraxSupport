@@ -1426,3 +1426,9 @@ This file records meaningful project updates, decisions, and implementation step
 - Added Twilio WhatsApp sending through the existing notification service so all current notification events can use Twilio.
 - Added a Twilio WhatsApp status callback endpoint at `/api/webhooks/twilio/whatsapp/status`.
 - Documented Twilio setup steps and sandbox notes in the WhatsApp provider deployment guide.
+
+## 2026-06-22 - Service Report WhatsApp Message Details
+
+- Changed service report WhatsApp notifications to use the same detailed acknowledgement message format shown to technicians for copying.
+- Reused the original acknowledgement URL created during service report submission instead of regenerating a second link in the frontend submit flow.
+- Made the message sign-off use Settings > Company Name, with `Tesarax Support` as the fallback.

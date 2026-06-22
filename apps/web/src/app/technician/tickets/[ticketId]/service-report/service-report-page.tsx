@@ -4,7 +4,7 @@ import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ThemeToggle } from "../../../../../components/theme-toggle";
 import { apiBaseUrl, apiRequest } from "../../../../../lib/api";
-import { getAccessToken, getAuthUser } from "../../../../../lib/auth";
+import { getAccessToken } from "../../../../../lib/auth";
 
 type Attachment = {
   id: string;
@@ -73,11 +73,6 @@ type SettingsResponse = {
 type ServiceReportSubmitResponse = {
   data: {
     id: string;
-  };
-};
-
-type AcknowledgementLinkResponse = {
-  data: {
     acknowledgementUrl: string;
   };
 };
@@ -165,20 +160,9 @@ export function ServiceReportPage({ ticketId }: { ticketId: string }) {
         })
       });
 
-      const user = getAuthUser();
-      const linkResponse = await apiRequest<AcknowledgementLinkResponse>(
-        `/api/service-reports/${reportResponse.data.id}/acknowledgement-link`,
-        {
-          method: "POST",
-          body: JSON.stringify({
-            submittedByUserId: user?.id
-          })
-        }
-      );
-
       window.sessionStorage.setItem(
         directLinkStorageKey(reportResponse.data.id),
-        linkResponse.data.acknowledgementUrl
+        reportResponse.data.acknowledgementUrl
       );
 
       router.push(`/technician/tickets/${ticket.id}/service-report/submitted?reportId=${reportResponse.data.id}`);
