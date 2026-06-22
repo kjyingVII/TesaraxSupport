@@ -1454,3 +1454,8 @@ This file records meaningful project updates, decisions, and implementation step
 - Added a per-machine support company logo attachment and admin upload control on the machine edit page.
 - Displayed support company name and logo on the public machine status page after machine access.
 - Added a machine-access-protected public logo download route so logos are visible to authorized machine page viewers without exposing all attachments.
+
+## 2026-06-22 - Machine Access Branding
+
+- Added support company name and logo display to the machine access page before the secure entry instructions.
+- Added a public machine branding metadata endpoint and public inline logo route limited to the machine's selected support company logo.

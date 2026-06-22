@@ -18,6 +18,11 @@ export class PublicRequestsController {
     return this.publicRequestsService.getRequestMachine(publicId, authorization);
   }
 
+  @Get(":publicId/access-branding")
+  getMachineAccessBranding(@Param("publicId") publicId: string) {
+    return this.publicRequestsService.getMachineAccessBranding(publicId);
+  }
+
   @Post(":publicId/access")
   requestMachineAccess(
     @Param("publicId") publicId: string,
@@ -239,6 +244,23 @@ export class PublicRequestsController {
       publicId,
       attachmentId,
       authorization
+    );
+    response.setHeader("Content-Type", attachment.contentType);
+    response.setHeader("Content-Length", String(attachment.fileSizeBytes));
+    response.setHeader("Content-Disposition", `inline; filename="${attachment.originalFileName.replace(/"/g, "")}"`);
+    stream.pipe(response);
+  }
+
+  @Get(":publicId/access-branding/logo/:attachmentId/download")
+  @Header("Cache-Control", "public, max-age=300")
+  async downloadMachineAccessBrandingLogo(
+    @Param("publicId") publicId: string,
+    @Param("attachmentId") attachmentId: string,
+    @Res() response: any
+  ) {
+    const { attachment, stream } = await this.publicRequestsService.getPublicMachineSupportCompanyLogoDownload(
+      publicId,
+      attachmentId
     );
     response.setHeader("Content-Type", attachment.contentType);
     response.setHeader("Content-Length", String(attachment.fileSizeBytes));

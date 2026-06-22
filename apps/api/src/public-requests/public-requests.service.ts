@@ -53,6 +53,44 @@ export class PublicRequestsService {
     private readonly settingsService: SettingsService
   ) {}
 
+  async getMachineAccessBranding(publicId: string) {
+    const machine = await this.prisma.machine.findUnique({
+      where: { publicId },
+      select: {
+        publicId: true,
+        supportCompanyName: true,
+        isActive: true,
+        supportCompanyLogoAttachment: {
+          select: {
+            id: true,
+            originalFileName: true,
+            contentType: true,
+            fileSizeBytes: true,
+            createdAt: true
+          }
+        },
+        customer: {
+          select: {
+            isActive: true
+          }
+        }
+      }
+    });
+
+    if (!machine) {
+      throw new NotFoundException("Machine not found.");
+    }
+
+    return {
+      data: {
+        publicId: machine.publicId,
+        isActive: machine.isActive && machine.customer.isActive,
+        supportCompanyName: machine.supportCompanyName,
+        supportCompanyLogoAttachment: machine.supportCompanyLogoAttachment
+      }
+    };
+  }
+
   async getRequestMachine(publicId: string, authorization?: string) {
     await this.verifyMachineAccess(publicId, authorization);
     const machine = await this.prisma.machine.findUnique({
@@ -1401,6 +1439,54 @@ export class PublicRequestsService {
       || attachment.machine.supportCompanyLogoAttachmentId !== attachment.id
     ) {
       throw new UnauthorizedException("Logo does not belong to this machine access session.");
+    }
+
+    return this.attachmentsService.getDownload(attachmentId) as Promise<{
+      attachment: {
+        contentType: string;
+        fileSizeBytes: number;
+        originalFileName: string;
+      };
+      stream: ReadStream;
+    }>;
+  }
+
+  async getPublicMachineSupportCompanyLogoDownload(publicId: string, attachmentId: string) {
+    const attachment = await this.prisma.attachment.findUnique({
+      where: { id: attachmentId },
+      select: {
+        id: true,
+        relatedType: true,
+        machineId: true,
+        originalFileName: true,
+        contentType: true,
+        fileSizeBytes: true,
+        machine: {
+          select: {
+            publicId: true,
+            isActive: true,
+            supportCompanyLogoAttachmentId: true,
+            customer: {
+              select: {
+                isActive: true
+              }
+            }
+          }
+        }
+      }
+    });
+
+    if (!attachment || attachment.relatedType !== AttachmentRelatedType.MACHINE_SUPPORT_LOGO) {
+      throw new NotFoundException("Support company logo not found.");
+    }
+
+    if (
+      attachment.machine?.publicId !== publicId
+      || attachment.machine.supportCompanyLogoAttachmentId !== attachment.id
+      || !attachment.machine.isActive
+      || !attachment.machine.customer.isActive
+    ) {
+      throw new UnauthorizedException("Logo does not belong to this active machine.");
     }
 
     return this.attachmentsService.getDownload(attachmentId) as Promise<{
