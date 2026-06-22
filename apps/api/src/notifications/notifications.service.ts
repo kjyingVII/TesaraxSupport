@@ -192,14 +192,26 @@ export class NotificationsService {
     if (!ticket) return;
 
     const signOffName = await this.getMessageSignOffName(ticket.machine.supportCompanyName);
-    const requesterMessage = [
-      `Ticket ${ticket.ticketNumber} has been submitted.`,
-      `Machine: ${ticket.machine.machineName} (${ticket.machine.serialNumber})`,
-      `Issue: ${ticket.issueTitle}`,
-      "Our support team will review and update the ticket status.",
+    const newTicketMessage = [
+      "New support ticket has been created.",
+      "",
+      `Ticket: ${ticket.ticketNumber}`,
+      `Customer: ${ticket.machine.customer.name}`,
+      `Machine: ${ticket.machine.machineName}`,
+      "",
+      "Requester:",
+      `Name: ${ticket.requesterName}`,
+      `Contact: ${this.formatContactValue(ticket.requesterPhone, ticket.requesterEmail)}`,
+      "",
+      "Issue:",
+      ticket.issueTitle,
+      "",
+      "Description:",
+      ticket.issueDescription,
+      "",
+      `Support company: ${signOffName}`,
       "",
       "Thank you.",
-      signOffName
     ].join("\n");
 
     await this.logWhatsapp({
@@ -211,7 +223,7 @@ export class NotificationsService {
         email: ticket.requesterEmail
       },
       subject: `Ticket submitted: ${ticket.ticketNumber}`,
-      message: requesterMessage,
+      message: newTicketMessage,
       template: {
         eventKey: "ticket_created_requester",
         parameters: [
@@ -258,20 +270,7 @@ export class NotificationsService {
           relatedId: ticket.id,
           recipient: technician,
           subject: `New ticket: ${ticket.ticketNumber}`,
-          message: [
-            `New support ticket ${ticket.ticketNumber} was lodged.`,
-            `Customer: ${ticket.machine.customer.name}`,
-            `Machine: ${ticket.machine.machineName} (${ticket.machine.serialNumber})`,
-            `Location: ${ticket.machine.location}`,
-            `Priority: ${ticket.priority}`,
-            `Issue: ${ticket.issueTitle}`,
-            `Description: ${ticket.issueDescription}`,
-            "",
-            "Requester:",
-            `Name: ${ticket.requesterName}`,
-            ticket.requesterPhone ? `Phone: ${ticket.requesterPhone}` : null,
-            ticket.requesterEmail ? `Email: ${ticket.requesterEmail}` : null
-          ].filter(Boolean).join("\n"),
+          message: newTicketMessage,
           template: {
             eventKey: "ticket_created_technician",
             parameters: [
