@@ -278,6 +278,38 @@ export class TicketsService {
         },
         machineLogs: {
           orderBy: { workDate: "desc" }
+        },
+        scheduledTasks: {
+          include: {
+            assignments: {
+              include: {
+                technician: {
+                  select: {
+                    id: true,
+                    name: true,
+                    email: true,
+                    phone: true,
+                    role: true,
+                    isActive: true
+                  }
+                }
+              },
+              orderBy: {
+                createdAt: "asc"
+              }
+            },
+            createdByUser: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+                role: true
+              }
+            }
+          },
+          orderBy: {
+            scheduledStartAt: "asc"
+          }
         }
       }
     });
@@ -557,7 +589,7 @@ export class TicketsService {
   async listTechnicians() {
     const technicians = await this.prisma.user.findMany({
       where: {
-        role: UserRole.TECHNICIAN,
+        role: { in: [UserRole.SUPERVISOR, UserRole.TECHNICIAN] },
         isActive: true
       },
       select: {
@@ -681,8 +713,9 @@ export class TicketsService {
       }
     });
 
-    if (!user || user.role !== UserRole.TECHNICIAN || !user.isActive) {
-      throw new NotFoundException("Active technician not found.");
+    const assignableRoles: UserRole[] = [UserRole.SUPERVISOR, UserRole.TECHNICIAN];
+    if (!user || !assignableRoles.includes(user.role) || !user.isActive) {
+      throw new NotFoundException("Active technician or supervisor not found.");
     }
   }
 

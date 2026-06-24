@@ -1444,6 +1444,50 @@ This file records meaningful project updates, decisions, and implementation step
 - Ticket-created WhatsApp notifications now include technician email context and filter to active customer/machine technicians.
 - Added a skipped notification log when a new ticket has no active assigned machine/customer technicians, making the missing-recipient case visible in Admin > Notifications.
 
+## 2026-06-24 - Supervisor Scheduling Permissions
+
+- Allowed technicians to open the schedule task creation flow by making assignable service staff available to technician users.
+- Treated supervisors as assignable service staff for tickets, scheduled tasks, machine/customer technician assignments, and service reports.
+- Added explicit protected route guards for the schedule list and new schedule task pages.
+
+## 2026-06-24 - Scheduled Task WhatsApp Notification
+
+- Added notification contact fields to scheduled tasks for customer/user WhatsApp updates.
+- Prefilled ticket-linked schedule notifications from the ticket requester name, phone, and email.
+- Added a standalone schedule notification contact section for no-ticket scheduled tasks.
+- Logged and sent WhatsApp notification attempts when scheduled tasks are created.
+
+## 2026-06-24 - Schedule Task Rescheduling
+
+- Added an edit page for scheduled tasks so technicians/admins can reschedule time, update status, adjust assigned staff, and revise notification contact details.
+- Added an Edit button to schedule task cards from the technician schedule page.
+
+## 2026-06-25 - Reschedule WhatsApp Prompt
+
+- Added a dedicated backend endpoint to log/send WhatsApp notifications after a scheduled task is rescheduled.
+- Added an edit-page confirmation dialog that appears when start/end time changes, with Save Only and Save & Notify User options.
+- Added reschedule notification template placeholders for Twilio and Meta WhatsApp template mode.
+
+## 2026-06-25 - WhatsApp Notification Scenario Toggles
+
+- Added system settings for enabling/disabling automatic WhatsApp notifications by workflow scenario.
+- Added admin settings controls for ticket created, ticket status changed, service report submitted, machine log created, scheduled visit created, and scheduled visit rescheduled notifications.
+- Disabled scenarios now create skipped notification log entries so Admin > Notifications still shows why a message was not sent.
+
+## 2026-06-25 - Scheduled Visit WhatsApp Templates
+
+- Added copy-ready WhatsApp template bodies for scheduled visit created and scheduled visit rescheduled notifications.
+- Added default Meta template names for scheduled visit notifications in `.env.example`.
+
+## 2026-06-23 - Scheduled Visit Tasks
+
+- Added scheduled task tables for machine/ticket-linked visits with multiple assigned technicians.
+- Added scheduled task API endpoints for list, create, update, cancel, and complete workflows.
+- Added a technician schedule page for upcoming work and action buttons to complete or cancel tasks.
+- Added Schedule Visit entry points from the ticket workbench and linked scheduled visits on ticket detail pages.
+- Added confirmation before cancelling scheduled tasks and service-report routing after completing ticket-linked visits.
+- Added a standalone New Scheduled Task page so technicians/admins can schedule machine work without a user ticket.
+
 ## 2026-06-22 - Technician Ticket WhatsApp Requester Info
 
 - Added requester name, phone, and email to new-ticket WhatsApp notifications sent to assigned technicians.

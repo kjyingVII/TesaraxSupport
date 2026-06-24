@@ -13,6 +13,7 @@ const menuItems = [
   { href: "/admin/notifications", label: "Notifications", roles: ["ADMIN", "SUPERVISOR"] },
   { href: "/admin/users", label: "Users", roles: ["ADMIN"] },
   { href: "/technician/tickets", label: "Tickets", roles: ["ADMIN", "SUPERVISOR", "TECHNICIAN"] },
+  { href: "/technician/schedule", label: "Schedule", roles: ["ADMIN", "SUPERVISOR", "TECHNICIAN"] },
   { href: "/admin/settings", label: "Settings", roles: ["ADMIN", "SUPERVISOR"] },
   { href: "/profile", label: "Profile", roles: ["ADMIN", "SUPERVISOR", "TECHNICIAN"] }
 ];

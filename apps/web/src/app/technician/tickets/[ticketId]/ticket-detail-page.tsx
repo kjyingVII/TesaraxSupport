@@ -59,6 +59,21 @@ type TicketDetail = {
     comment: string | null;
     createdAt: string;
   }>;
+  scheduledTasks: Array<{
+    id: string;
+    title: string;
+    taskType: string;
+    description: string | null;
+    scheduledStartAt: string;
+    scheduledEndAt: string | null;
+    status: string;
+    assignments: Array<{
+      technician: {
+        name: string;
+        email: string;
+      };
+    }>;
+  }>;
   serviceReports: Array<{
     id: string;
     diagnosis: string;
@@ -232,6 +247,38 @@ export function TicketDetailPage({ ticketId }: { ticketId: string }) {
                 <AttachmentList attachments={ticket.attachments} />
               </DetailGroup>
             </section>
+
+            <DetailGroup title={`Scheduled Visits (${ticket.scheduledTasks.length})`}>
+              {ticket.scheduledTasks.length > 0 ? (
+                <div className="grid gap-3">
+                  {ticket.scheduledTasks.map((task) => (
+                    <div key={task.id} className="field-panel-subtle">
+                      <div className="flex flex-wrap items-start justify-between gap-2">
+                        <div>
+                          <p className="text-sm font-semibold">{task.title}</p>
+                          <p className="field-muted mt-1">
+                            {formatDate(task.scheduledStartAt)}
+                            {task.scheduledEndAt ? ` to ${formatDate(task.scheduledEndAt)}` : ""}
+                          </p>
+                          <p className="field-muted mt-1">
+                            Assigned: {task.assignments.map((assignment) => assignment.technician.name).join(", ") || "Unassigned"}
+                          </p>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                          <StatusBadge value={task.status} />
+                          <StatusBadge value={task.taskType} />
+                        </div>
+                      </div>
+                      {task.description ? (
+                        <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-neutral-700 dark:text-neutral-200">{task.description}</p>
+                      ) : null}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="field-muted">No scheduled visits linked to this ticket.</p>
+              )}
+            </DetailGroup>
 
             <DetailGroup title={`Service Reports (${ticket.serviceReports.length})`}>
               {ticket.serviceReports.length > 0 ? (

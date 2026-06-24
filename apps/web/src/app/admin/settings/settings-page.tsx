@@ -18,6 +18,12 @@ type SystemSettings = {
   requestAttachmentMaxTotalMb: number;
   serviceReportAttachmentMaxFileMb: number;
   serviceReportAttachmentMaxTotalMb: number;
+  whatsappTicketCreatedEnabled: boolean;
+  whatsappTicketStatusChangedEnabled: boolean;
+  whatsappServiceReportSubmittedEnabled: boolean;
+  whatsappMachineLogCreatedEnabled: boolean;
+  whatsappScheduledTaskCreatedEnabled: boolean;
+  whatsappScheduledTaskRescheduledEnabled: boolean;
 };
 
 type SettingsResponse = {
@@ -34,7 +40,13 @@ const emptyForm = {
   requestAttachmentMaxFileMb: "10",
   requestAttachmentMaxTotalMb: "100",
   serviceReportAttachmentMaxFileMb: "10",
-  serviceReportAttachmentMaxTotalMb: "100"
+  serviceReportAttachmentMaxTotalMb: "100",
+  whatsappTicketCreatedEnabled: true,
+  whatsappTicketStatusChangedEnabled: true,
+  whatsappServiceReportSubmittedEnabled: true,
+  whatsappMachineLogCreatedEnabled: true,
+  whatsappScheduledTaskCreatedEnabled: true,
+  whatsappScheduledTaskRescheduledEnabled: true
 };
 
 export function SettingsPage() {
@@ -64,7 +76,13 @@ export function SettingsPage() {
         requestAttachmentMaxFileMb: String(response.data.requestAttachmentMaxFileMb),
         requestAttachmentMaxTotalMb: String(response.data.requestAttachmentMaxTotalMb),
         serviceReportAttachmentMaxFileMb: String(response.data.serviceReportAttachmentMaxFileMb),
-        serviceReportAttachmentMaxTotalMb: String(response.data.serviceReportAttachmentMaxTotalMb)
+        serviceReportAttachmentMaxTotalMb: String(response.data.serviceReportAttachmentMaxTotalMb),
+        whatsappTicketCreatedEnabled: response.data.whatsappTicketCreatedEnabled,
+        whatsappTicketStatusChangedEnabled: response.data.whatsappTicketStatusChangedEnabled,
+        whatsappServiceReportSubmittedEnabled: response.data.whatsappServiceReportSubmittedEnabled,
+        whatsappMachineLogCreatedEnabled: response.data.whatsappMachineLogCreatedEnabled,
+        whatsappScheduledTaskCreatedEnabled: response.data.whatsappScheduledTaskCreatedEnabled,
+        whatsappScheduledTaskRescheduledEnabled: response.data.whatsappScheduledTaskRescheduledEnabled
       });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unable to load settings.");
@@ -90,7 +108,13 @@ export function SettingsPage() {
         requestAttachmentMaxFileMb: Number(form.requestAttachmentMaxFileMb),
         requestAttachmentMaxTotalMb: Number(form.requestAttachmentMaxTotalMb),
         serviceReportAttachmentMaxFileMb: Number(form.serviceReportAttachmentMaxFileMb),
-        serviceReportAttachmentMaxTotalMb: Number(form.serviceReportAttachmentMaxTotalMb)
+        serviceReportAttachmentMaxTotalMb: Number(form.serviceReportAttachmentMaxTotalMb),
+        whatsappTicketCreatedEnabled: form.whatsappTicketCreatedEnabled,
+        whatsappTicketStatusChangedEnabled: form.whatsappTicketStatusChangedEnabled,
+        whatsappServiceReportSubmittedEnabled: form.whatsappServiceReportSubmittedEnabled,
+        whatsappMachineLogCreatedEnabled: form.whatsappMachineLogCreatedEnabled,
+        whatsappScheduledTaskCreatedEnabled: form.whatsappScheduledTaskCreatedEnabled,
+        whatsappScheduledTaskRescheduledEnabled: form.whatsappScheduledTaskRescheduledEnabled
       };
 
       const response = await apiRequest<SettingsResponse>("/api/settings", {
@@ -108,7 +132,13 @@ export function SettingsPage() {
         requestAttachmentMaxFileMb: String(response.data.requestAttachmentMaxFileMb),
         requestAttachmentMaxTotalMb: String(response.data.requestAttachmentMaxTotalMb),
         serviceReportAttachmentMaxFileMb: String(response.data.serviceReportAttachmentMaxFileMb),
-        serviceReportAttachmentMaxTotalMb: String(response.data.serviceReportAttachmentMaxTotalMb)
+        serviceReportAttachmentMaxTotalMb: String(response.data.serviceReportAttachmentMaxTotalMb),
+        whatsappTicketCreatedEnabled: response.data.whatsappTicketCreatedEnabled,
+        whatsappTicketStatusChangedEnabled: response.data.whatsappTicketStatusChangedEnabled,
+        whatsappServiceReportSubmittedEnabled: response.data.whatsappServiceReportSubmittedEnabled,
+        whatsappMachineLogCreatedEnabled: response.data.whatsappMachineLogCreatedEnabled,
+        whatsappScheduledTaskCreatedEnabled: response.data.whatsappScheduledTaskCreatedEnabled,
+        whatsappScheduledTaskRescheduledEnabled: response.data.whatsappScheduledTaskRescheduledEnabled
       });
       setMessage("Settings saved.");
     } catch (err) {
@@ -118,7 +148,7 @@ export function SettingsPage() {
     }
   }
 
-  function updateField(field: keyof typeof form, value: string) {
+  function updateField(field: keyof typeof form, value: string | boolean) {
     setForm((current) => ({ ...current, [field]: value }));
   }
 
@@ -167,6 +197,52 @@ export function SettingsPage() {
                 </label>
               </div>
 
+              <section className="grid gap-3 border-t border-[#d9dee5] pt-5 dark:border-[#29313a]">
+                <div>
+                  <h2 className="field-section-title text-base">WhatsApp Notifications</h2>
+                  <p className="field-muted mt-1 text-sm">Choose which workflow events should send automatic WhatsApp messages.</p>
+                </div>
+
+                <div className="grid gap-3 md:grid-cols-2">
+                  <ToggleInput
+                    label="Ticket Created"
+                    description="Notify requester and assigned technicians when a new support ticket is lodged."
+                    checked={form.whatsappTicketCreatedEnabled}
+                    onChange={(checked) => updateField("whatsappTicketCreatedEnabled", checked)}
+                  />
+                  <ToggleInput
+                    label="Ticket Status Changed"
+                    description="Notify the requester when a ticket status changes."
+                    checked={form.whatsappTicketStatusChangedEnabled}
+                    onChange={(checked) => updateField("whatsappTicketStatusChangedEnabled", checked)}
+                  />
+                  <ToggleInput
+                    label="Service Report Submitted"
+                    description="Notify the requester when a technician submits a service report."
+                    checked={form.whatsappServiceReportSubmittedEnabled}
+                    onChange={(checked) => updateField("whatsappServiceReportSubmittedEnabled", checked)}
+                  />
+                  <ToggleInput
+                    label="Machine Log Created"
+                    description="Notify the selected contact when a machine log is created with notification enabled."
+                    checked={form.whatsappMachineLogCreatedEnabled}
+                    onChange={(checked) => updateField("whatsappMachineLogCreatedEnabled", checked)}
+                  />
+                  <ToggleInput
+                    label="Scheduled Visit Created"
+                    description="Notify the selected contact when a scheduled visit is created."
+                    checked={form.whatsappScheduledTaskCreatedEnabled}
+                    onChange={(checked) => updateField("whatsappScheduledTaskCreatedEnabled", checked)}
+                  />
+                  <ToggleInput
+                    label="Scheduled Visit Rescheduled"
+                    description="Notify the selected contact when a scheduled visit time is changed."
+                    checked={form.whatsappScheduledTaskRescheduledEnabled}
+                    onChange={(checked) => updateField("whatsappScheduledTaskRescheduledEnabled", checked)}
+                  />
+                </div>
+              </section>
+
               <button className="field-button-primary disabled:opacity-50" type="submit" disabled={saving || hasInvalidNumberSetting(form)}>
                 {saving ? "Saving..." : "Save Settings"}
               </button>
@@ -183,6 +259,18 @@ function TextInput({ label, value, onChange, required, type = "text" }: { label:
     <label className="block">
       <span className="field-label">{label}</span>
       <input className="field-input h-11" type={type} value={value} required={required} onChange={(event) => onChange(event.target.value)} />
+    </label>
+  );
+}
+
+function ToggleInput({ label, description, checked, onChange }: { label: string; description: string; checked: boolean; onChange: (checked: boolean) => void }) {
+  return (
+    <label className="flex cursor-pointer items-start justify-between gap-4 rounded-md border border-[#d9dee5] bg-white/70 p-4 dark:border-[#29313a] dark:bg-[#121820]">
+      <span>
+        <span className="block text-sm font-semibold text-[#202124] dark:text-[#f3f6f9]">{label}</span>
+        <span className="mt-1 block text-sm text-[#5f6368] dark:text-[#a8b0ba]">{description}</span>
+      </span>
+      <input className="mt-1 h-5 w-5 accent-[#1f6feb]" type="checkbox" checked={checked} onChange={(event) => onChange(event.target.checked)} />
     </label>
   );
 }

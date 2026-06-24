@@ -78,6 +78,24 @@ enum ServiceResolutionStatus {
   NOT_RESOLVED
 }
 
+enum ScheduledTaskStatus {
+  SCHEDULED
+  IN_PROGRESS
+  COMPLETED
+  RESCHEDULED
+  CANCELLED
+}
+
+enum ScheduledTaskType {
+  CORRECTIVE_SERVICE
+  MACHINE_MAINTENANCE
+  COMPONENT_REPLACEMENT
+  INSPECTION_DIAGNOSIS
+  UPGRADE
+  FOLLOW_UP_VISIT
+  OTHER
+}
+
 enum AttachmentRelatedType {
   TICKET
   TICKET_COMMENT
@@ -109,6 +127,10 @@ model User {
   customerAssignmentsAssigned CustomerTechnicianAssignment[] @relation("CustomerTechnicianAssignedBy")
   machineAssignments  MachineTechnicianAssignment[]  @relation("MachineTechnician")
   machineAssignmentsAssigned MachineTechnicianAssignment[] @relation("MachineTechnicianAssignedBy")
+  scheduledTasksCreated ScheduledTask[] @relation("ScheduledTaskCreatedBy")
+  scheduledTasksCompleted ScheduledTask[] @relation("ScheduledTaskCompletedBy")
+  scheduledTaskAssignments ScheduledTaskAssignment[] @relation("ScheduledTaskTechnician")
+  scheduledTaskAssignmentsMade ScheduledTaskAssignment[] @relation("ScheduledTaskAssignedBy")
   attachments         Attachment[]
   auditLogs           AuditLog[]
   createdAt           DateTime              @default(now())
@@ -130,6 +152,7 @@ model Customer {
   isActive     Boolean   @default(true)
   machines     Machine[]
   technicianAssignments CustomerTechnicianAssignment[]
+  scheduledTasks ScheduledTask[]
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
 
@@ -165,6 +188,7 @@ model Machine {
   documents                   Attachment[]           @relation("MachineAttachments")
   serviceReminderLogs         ServiceReminderLog[]
   technicianAssignments       MachineTechnicianAssignment[]
+  scheduledTasks              ScheduledTask[]
   createdAt                   DateTime             @default(now())
   updatedAt                   DateTime             @updatedAt
 
@@ -202,6 +226,7 @@ model Ticket {
   acknowledgements     Acknowledgement[]
   attachments          Attachment[]
   machineLogs          MachineLog[]
+  scheduledTasks       ScheduledTask[]
   closedAt             DateTime?
   createdAt            DateTime              @default(now())
   updatedAt            DateTime              @updatedAt
@@ -387,6 +412,64 @@ model MachineLog {
   @@index([machineId, activityType, workDate], map: "MachineLog_machineId_activityType_workDate_idx")
   @@index([ticketId, workDate], map: "MachineLog_ticketId_workDate_idx")
   @@index([serviceReportId, workDate], map: "MachineLog_serviceReportId_workDate_idx")
+}
+
+model ScheduledTask {
+  id                 String              @id @default(uuid())
+  customerId         String
+  customer           Customer            @relation(fields: [customerId], references: [id])
+  machineId          String
+  machine            Machine             @relation(fields: [machineId], references: [id])
+  ticketId           String?
+  ticket             Ticket?             @relation(fields: [ticketId], references: [id])
+  title              String
+  taskType           ScheduledTaskType
+  description        String?
+  scheduledStartAt   DateTime
+  scheduledEndAt     DateTime?
+  status             ScheduledTaskStatus @default(SCHEDULED)
+  priority           TicketPriority      @default(NORMAL)
+  notifyRecipientName String?
+  notifyRecipientPhone String?
+  notifyRecipientEmail String?
+  notifiedAt         DateTime?
+  createdByUserId    String
+  createdByUser      User                @relation("ScheduledTaskCreatedBy", fields: [createdByUserId], references: [id])
+  completedByUserId  String?
+  completedByUser    User?               @relation("ScheduledTaskCompletedBy", fields: [completedByUserId], references: [id])
+  completedAt        DateTime?
+  internalRemarks    String?
+  assignments        ScheduledTaskAssignment[]
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+
+  @@index([customerId])
+  @@index([machineId])
+  @@index([ticketId])
+  @@index([status])
+  @@index([scheduledStartAt])
+  @@index([notifyRecipientPhone])
+  @@index([createdByUserId])
+  @@index([completedByUserId])
+  @@index([machineId, scheduledStartAt], map: "ScheduledTask_machineId_scheduledStartAt_idx")
+  @@index([ticketId, scheduledStartAt], map: "ScheduledTask_ticketId_scheduledStartAt_idx")
+  @@index([status, scheduledStartAt], map: "ScheduledTask_status_scheduledStartAt_idx")
+}
+
+model ScheduledTaskAssignment {
+  id              String        @id @default(uuid())
+  scheduledTaskId String
+  scheduledTask   ScheduledTask @relation(fields: [scheduledTaskId], references: [id])
+  technicianId    String
+  technician      User          @relation("ScheduledTaskTechnician", fields: [technicianId], references: [id])
+  assignedByUserId String?
+  assignedByUser  User?         @relation("ScheduledTaskAssignedBy", fields: [assignedByUserId], references: [id])
+  createdAt       DateTime      @default(now())
+
+  @@unique([scheduledTaskId, technicianId])
+  @@index([scheduledTaskId])
+  @@index([technicianId])
+  @@index([assignedByUserId])
 }
 
 model Acknowledgement {

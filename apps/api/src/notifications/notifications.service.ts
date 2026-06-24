@@ -46,6 +46,14 @@ type SendManualWhatsappInput = {
   message?: string;
 };
 
+type WhatsAppScenarioSetting =
+  | "whatsappTicketCreatedEnabled"
+  | "whatsappTicketStatusChangedEnabled"
+  | "whatsappServiceReportSubmittedEnabled"
+  | "whatsappMachineLogCreatedEnabled"
+  | "whatsappScheduledTaskCreatedEnabled"
+  | "whatsappScheduledTaskRescheduledEnabled";
+
 @Injectable()
 export class NotificationsService {
   constructor(
@@ -214,6 +222,17 @@ export class NotificationsService {
       "Thank you.",
     ].join("\n");
 
+    if (
+      !(await this.shouldSendWhatsappScenario("whatsappTicketCreatedEnabled", {
+        relatedType: "Ticket",
+        relatedId: ticket.id,
+        subject: `Ticket created WhatsApp skipped: ${ticket.ticketNumber}`,
+        message: newTicketMessage
+      }))
+    ) {
+      return;
+    }
+
     await this.logWhatsapp({
       relatedType: "Ticket",
       relatedId: ticket.id,
@@ -333,6 +352,17 @@ export class NotificationsService {
       "Thank you."
     ].join("\n");
 
+    if (
+      !(await this.shouldSendWhatsappScenario("whatsappTicketStatusChangedEnabled", {
+        relatedType: "Ticket",
+        relatedId: ticket.id,
+        subject: `Ticket status WhatsApp skipped: ${ticket.ticketNumber}`,
+        message: statusMessage
+      }))
+    ) {
+      return;
+    }
+
     if (!this.cleanOptionalString(ticket.requesterPhone)) {
       await this.prisma.notificationLog.create({
         data: {
@@ -450,6 +480,17 @@ export class NotificationsService {
           signOffName
         ].join("\n");
 
+    if (
+      !(await this.shouldSendWhatsappScenario("whatsappServiceReportSubmittedEnabled", {
+        relatedType: "ServiceReport",
+        relatedId: serviceReport.id,
+        subject: `Service report WhatsApp skipped: ${serviceReport.ticket.ticketNumber}`,
+        message
+      }))
+    ) {
+      return;
+    }
+
     await this.logWhatsapp({
       relatedType: "ServiceReport",
       relatedId: serviceReport.id,
@@ -507,6 +548,30 @@ export class NotificationsService {
     if (!machineLog?.notifyCustomer) return;
 
     const signOffName = await this.getMessageSignOffName(machineLog.machine.supportCompanyName);
+    const message = [
+      `A machine log has been added for ${machineLog.machine.machineName} (${machineLog.machine.serialNumber}).`,
+      `Customer: ${machineLog.machine.customer.name}`,
+      `Location: ${machineLog.machine.location}`,
+      `Type: ${machineLog.activityType}`,
+      `Work time: ${machineLog.workDate.toISOString()}`,
+      `Title: ${machineLog.title}`,
+      `Summary: ${machineLog.workSummary}`,
+      machineLog.notifyMessage ? `Note: ${machineLog.notifyMessage}` : null,
+      "",
+      "Thank you.",
+      signOffName
+    ].filter(Boolean).join("\n");
+
+    if (
+      !(await this.shouldSendWhatsappScenario("whatsappMachineLogCreatedEnabled", {
+        relatedType: "MachineLog",
+        relatedId: machineLog.id,
+        subject: `Machine log WhatsApp skipped: ${machineLog.title}`,
+        message
+      }))
+    ) {
+      return;
+    }
 
     await this.logWhatsapp({
       relatedType: "MachineLog",
@@ -517,19 +582,7 @@ export class NotificationsService {
         email: machineLog.notifyRecipientEmail
       },
       subject: `Machine log added: ${machineLog.title}`,
-      message: [
-        `A machine log has been added for ${machineLog.machine.machineName} (${machineLog.machine.serialNumber}).`,
-        `Customer: ${machineLog.machine.customer.name}`,
-        `Location: ${machineLog.machine.location}`,
-        `Type: ${machineLog.activityType}`,
-        `Work time: ${machineLog.workDate.toISOString()}`,
-        `Title: ${machineLog.title}`,
-        `Summary: ${machineLog.workSummary}`,
-        machineLog.notifyMessage ? `Note: ${machineLog.notifyMessage}` : null,
-        "",
-        "Thank you.",
-        signOffName
-      ].filter(Boolean).join("\n"),
+      message,
       template: {
         eventKey: "machine_log_created",
         parameters: [
@@ -541,6 +594,162 @@ export class NotificationsService {
         ]
       }
     });
+  }
+
+  async logScheduledTaskCreated(scheduledTaskId: string) {
+    await this.logScheduledTaskNotification(scheduledTaskId, "created");
+  }
+
+  async logScheduledTaskRescheduled(scheduledTaskId: string) {
+    await this.logScheduledTaskNotification(scheduledTaskId, "rescheduled");
+  }
+
+  private async logScheduledTaskNotification(scheduledTaskId: string, mode: "created" | "rescheduled") {
+    const task = await this.prisma.scheduledTask.findUnique({
+      where: { id: scheduledTaskId },
+      select: {
+        id: true,
+        title: true,
+        taskType: true,
+        description: true,
+        scheduledStartAt: true,
+        scheduledEndAt: true,
+        notifyRecipientName: true,
+        notifyRecipientPhone: true,
+        notifyRecipientEmail: true,
+        ticket: {
+          select: {
+            ticketNumber: true,
+            issueTitle: true
+          }
+        },
+        machine: {
+          select: {
+            publicId: true,
+            machineName: true,
+            serialNumber: true,
+            location: true,
+            supportCompanyName: true,
+            customer: {
+              select: {
+                name: true
+              }
+            }
+          }
+        },
+        assignments: {
+          include: {
+            technician: {
+              select: {
+                name: true,
+                phone: true
+              }
+            }
+          },
+          orderBy: {
+            createdAt: "asc"
+          }
+        }
+      }
+    });
+
+    if (!task) return;
+
+    const signOffName = await this.getMessageSignOffName(task.machine.supportCompanyName);
+    const taskLink = this.buildMachineAccessUrl(task.machine.publicId);
+    const technicianNames = task.assignments.map((assignment) => assignment.technician.name).filter(Boolean).join(", ") || "To be confirmed";
+    const isRescheduled = mode === "rescheduled";
+    const message = [
+      isRescheduled ? "A service visit has been rescheduled." : "A service visit has been scheduled.",
+      "",
+      `Task: ${task.title}`,
+      task.ticket ? `Ticket: ${task.ticket.ticketNumber}` : null,
+      task.ticket ? `Issue: ${task.ticket.issueTitle}` : null,
+      `Customer: ${task.machine.customer.name}`,
+      `Machine: ${task.machine.machineName}`,
+      `Serial No.: ${task.machine.serialNumber}`,
+      `Location: ${task.machine.location}`,
+      `Task Type: ${this.formatMessageValue(task.taskType)}`,
+      `Schedule Time: ${this.formatMessageDateRange(task.scheduledStartAt, task.scheduledEndAt)}`,
+      `Assigned Staff: ${technicianNames}`,
+      task.description ? "" : null,
+      task.description ? "Details:" : null,
+      task.description || null,
+      "",
+      "Please open the support system for details:",
+      taskLink,
+      "",
+      "Thank you.",
+      signOffName
+    ].filter((line) => line !== null).join("\n");
+
+    if (
+      !(await this.shouldSendWhatsappScenario(isRescheduled ? "whatsappScheduledTaskRescheduledEnabled" : "whatsappScheduledTaskCreatedEnabled", {
+        relatedType: "ScheduledTask",
+        relatedId: task.id,
+        subject: isRescheduled ? `Scheduled visit reschedule WhatsApp skipped: ${task.title}` : `Scheduled visit WhatsApp skipped: ${task.title}`,
+        message
+      }))
+    ) {
+      return;
+    }
+
+    await this.logWhatsapp({
+      relatedType: "ScheduledTask",
+      relatedId: task.id,
+      recipient: {
+        name: task.notifyRecipientName,
+        phone: task.notifyRecipientPhone,
+        email: task.notifyRecipientEmail
+      },
+      subject: isRescheduled ? `Scheduled visit rescheduled: ${task.title}` : `Scheduled visit: ${task.title}`,
+      message,
+      template: {
+        eventKey: isRescheduled ? "scheduled_task_rescheduled" : "scheduled_task_created",
+        parameters: [
+          task.title,
+          task.machine.customer.name,
+          task.machine.machineName,
+          task.machine.serialNumber,
+          this.formatMessageDateRange(task.scheduledStartAt, task.scheduledEndAt),
+          technicianNames,
+          signOffName,
+          taskLink
+        ]
+      }
+    });
+
+    await this.prisma.scheduledTask.update({
+      where: { id: task.id },
+      data: { notifiedAt: new Date() }
+    });
+  }
+
+  private async shouldSendWhatsappScenario(
+    settingKey: WhatsAppScenarioSetting,
+    input: {
+      relatedType: string;
+      relatedId?: string;
+      subject: string;
+      message: string;
+    }
+  ) {
+    const settings = await this.settingsService.getCurrentSettings();
+    if (settings[settingKey]) return true;
+
+    await this.prisma.notificationLog.create({
+      data: {
+        relatedType: input.relatedType,
+        relatedId: input.relatedId,
+        channel: NotificationChannel.WHATSAPP,
+        subject: input.subject,
+        messageSummary: this.truncate(input.message, 1000),
+        status: NotificationStatus.SKIPPED,
+        errorMessage: "WhatsApp notification is disabled in system settings."
+      }
+    });
+
+    return false;
   }
 
   private async logWhatsapp(input: WhatsAppLogInput) {
@@ -846,7 +1055,9 @@ export class NotificationsService {
       ticket_created_requester: "new_ticket_notification",
       ticket_created_technician: "new_ticket_notification",
       ticket_status_changed: "ticket_status_change_notification",
-      service_report_submitted: "service_report_submitted_notification"
+      service_report_submitted: "service_report_submitted_notification",
+      scheduled_task_created: "scheduled_task_created_notification",
+      scheduled_task_rescheduled: "scheduled_task_rescheduled_notification"
     };
 
     return templates[eventKey];

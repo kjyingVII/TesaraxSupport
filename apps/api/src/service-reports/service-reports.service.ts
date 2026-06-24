@@ -17,7 +17,8 @@ export class ServiceReportsService {
   async upsertForTicket(ticketId: string, dto: UpsertServiceReportDto, actorUser: { id: string; role: UserRole }) {
     const currentTicket = await this.ensureTicketExists(ticketId);
 
-    const technicianId = actorUser.role === UserRole.TECHNICIAN
+    const serviceStaffRoles: UserRole[] = [UserRole.SUPERVISOR, UserRole.TECHNICIAN];
+    const technicianId = serviceStaffRoles.includes(actorUser.role)
       ? actorUser.id
       : this.requiredString(dto.technicianId, "Technician is required.");
     await this.ensureTechnicianExists(technicianId);
@@ -213,8 +214,9 @@ export class ServiceReportsService {
       }
     });
 
-    if (!user || user.role !== UserRole.TECHNICIAN || !user.isActive) {
-      throw new NotFoundException("Active technician not found.");
+    const serviceStaffRoles: UserRole[] = [UserRole.SUPERVISOR, UserRole.TECHNICIAN];
+    if (!user || !serviceStaffRoles.includes(user.role) || !user.isActive) {
+      throw new NotFoundException("Active technician or supervisor not found.");
     }
   }
 

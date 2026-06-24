@@ -9,4 +9,10 @@ export type UpdateSystemSettingsDto = {
   requestAttachmentMaxTotalMb?: number;
   serviceReportAttachmentMaxFileMb?: number;
   serviceReportAttachmentMaxTotalMb?: number;
+  whatsappTicketCreatedEnabled?: boolean;
+  whatsappTicketStatusChangedEnabled?: boolean;
+  whatsappServiceReportSubmittedEnabled?: boolean;
+  whatsappMachineLogCreatedEnabled?: boolean;
+  whatsappScheduledTaskCreatedEnabled?: boolean;
+  whatsappScheduledTaskRescheduledEnabled?: boolean;
 };

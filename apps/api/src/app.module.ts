@@ -15,6 +15,7 @@ import { PrismaModule } from "./prisma/prisma.module";
 import { PublicRequestsModule } from "./public-requests/public-requests.module";
 import { ServiceReportsModule } from "./service-reports/service-reports.module";
 import { SettingsModule } from "./settings/settings.module";
+import { ScheduledTasksModule } from "./scheduled-tasks/scheduled-tasks.module";
 import { TicketsModule } from "./tickets/tickets.module";
 import { UsersModule } from "./users/users.module";
 import { WebhooksModule } from "./webhooks/webhooks.module";
@@ -32,6 +33,7 @@ import { WebhooksModule } from "./webhooks/webhooks.module";
     MachinesModule,
     PublicRequestsModule,
     ServiceReportsModule,
+    ScheduledTasksModule,
     SettingsModule,
     TicketsModule,
     UsersModule,

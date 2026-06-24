@@ -39,7 +39,7 @@ export class TicketsController {
     });
   }
 
-  @Roles(UserRole.ADMIN, UserRole.SUPERVISOR)
+  @Roles(UserRole.ADMIN, UserRole.SUPERVISOR, UserRole.TECHNICIAN)
   @Get("technicians")
   listTechnicians() {
     return this.ticketsService.listTechnicians();

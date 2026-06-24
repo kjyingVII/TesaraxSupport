@@ -19,6 +19,12 @@ export type SystemSettings = {
   requestAttachmentMaxTotalMb: number;
   serviceReportAttachmentMaxFileMb: number;
   serviceReportAttachmentMaxTotalMb: number;
+  whatsappTicketCreatedEnabled: boolean;
+  whatsappTicketStatusChangedEnabled: boolean;
+  whatsappServiceReportSubmittedEnabled: boolean;
+  whatsappMachineLogCreatedEnabled: boolean;
+  whatsappScheduledTaskCreatedEnabled: boolean;
+  whatsappScheduledTaskRescheduledEnabled: boolean;
 };
 
 const defaultSettings: SystemSettings = {
@@ -31,7 +37,13 @@ const defaultSettings: SystemSettings = {
   requestAttachmentMaxFileMb: 10,
   requestAttachmentMaxTotalMb: 100,
   serviceReportAttachmentMaxFileMb: 10,
-  serviceReportAttachmentMaxTotalMb: 100
+  serviceReportAttachmentMaxTotalMb: 100,
+  whatsappTicketCreatedEnabled: true,
+  whatsappTicketStatusChangedEnabled: true,
+  whatsappServiceReportSubmittedEnabled: true,
+  whatsappMachineLogCreatedEnabled: true,
+  whatsappScheduledTaskCreatedEnabled: true,
+  whatsappScheduledTaskRescheduledEnabled: true
 };
 
 @Injectable()
@@ -93,6 +105,24 @@ export class SettingsService {
         dto.serviceReportAttachmentMaxTotalMb,
         "Service report attachment max total MB"
       );
+    }
+    if (dto.whatsappTicketCreatedEnabled !== undefined) {
+      next.whatsappTicketCreatedEnabled = this.parseBoolean(dto.whatsappTicketCreatedEnabled, "Ticket created WhatsApp notification");
+    }
+    if (dto.whatsappTicketStatusChangedEnabled !== undefined) {
+      next.whatsappTicketStatusChangedEnabled = this.parseBoolean(dto.whatsappTicketStatusChangedEnabled, "Ticket status changed WhatsApp notification");
+    }
+    if (dto.whatsappServiceReportSubmittedEnabled !== undefined) {
+      next.whatsappServiceReportSubmittedEnabled = this.parseBoolean(dto.whatsappServiceReportSubmittedEnabled, "Service report submitted WhatsApp notification");
+    }
+    if (dto.whatsappMachineLogCreatedEnabled !== undefined) {
+      next.whatsappMachineLogCreatedEnabled = this.parseBoolean(dto.whatsappMachineLogCreatedEnabled, "Machine log created WhatsApp notification");
+    }
+    if (dto.whatsappScheduledTaskCreatedEnabled !== undefined) {
+      next.whatsappScheduledTaskCreatedEnabled = this.parseBoolean(dto.whatsappScheduledTaskCreatedEnabled, "Scheduled task created WhatsApp notification");
+    }
+    if (dto.whatsappScheduledTaskRescheduledEnabled !== undefined) {
+      next.whatsappScheduledTaskRescheduledEnabled = this.parseBoolean(dto.whatsappScheduledTaskRescheduledEnabled, "Scheduled task rescheduled WhatsApp notification");
     }
 
     if (next.requestAttachmentMaxFileMb > next.requestAttachmentMaxTotalMb) {
@@ -165,7 +195,13 @@ export class SettingsService {
       serviceReportAttachmentMaxTotalMb: this.readPositiveInteger(
         raw.serviceReportAttachmentMaxTotalMb,
         defaultSettings.serviceReportAttachmentMaxTotalMb
-      )
+      ),
+      whatsappTicketCreatedEnabled: this.readBoolean(raw.whatsappTicketCreatedEnabled, defaultSettings.whatsappTicketCreatedEnabled),
+      whatsappTicketStatusChangedEnabled: this.readBoolean(raw.whatsappTicketStatusChangedEnabled, defaultSettings.whatsappTicketStatusChangedEnabled),
+      whatsappServiceReportSubmittedEnabled: this.readBoolean(raw.whatsappServiceReportSubmittedEnabled, defaultSettings.whatsappServiceReportSubmittedEnabled),
+      whatsappMachineLogCreatedEnabled: this.readBoolean(raw.whatsappMachineLogCreatedEnabled, defaultSettings.whatsappMachineLogCreatedEnabled),
+      whatsappScheduledTaskCreatedEnabled: this.readBoolean(raw.whatsappScheduledTaskCreatedEnabled, defaultSettings.whatsappScheduledTaskCreatedEnabled),
+      whatsappScheduledTaskRescheduledEnabled: this.readBoolean(raw.whatsappScheduledTaskRescheduledEnabled, defaultSettings.whatsappScheduledTaskRescheduledEnabled)
     };
   }
 
@@ -182,6 +218,17 @@ export class SettingsService {
 
   private readNullableString(value: unknown) {
     return typeof value === "string" && value.trim() ? value.trim() : null;
+  }
+
+  private readBoolean(value: unknown, fallback: boolean) {
+    return typeof value === "boolean" ? value : fallback;
+  }
+
+  private parseBoolean(value: boolean, label: string) {
+    if (typeof value !== "boolean") {
+      throw new BadRequestException(`${label} must be true or false.`);
+    }
+    return value;
   }
 
   private cleanNullableString(value: string | null | undefined) {

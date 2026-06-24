@@ -394,14 +394,14 @@ export class MachinesService {
     const technician = await this.prisma.user.findFirst({
       where: {
         id,
-        role: UserRole.TECHNICIAN,
+        role: { in: [UserRole.SUPERVISOR, UserRole.TECHNICIAN] },
         isActive: true
       },
       select: { id: true }
     });
 
     if (!technician) {
-      throw new NotFoundException("Active technician not found.");
+      throw new NotFoundException("Active technician or supervisor not found.");
     }
   }
 
