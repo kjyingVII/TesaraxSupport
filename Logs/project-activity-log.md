@@ -1481,6 +1481,11 @@ This file records meaningful project updates, decisions, and implementation step
 - Consolidated scheduled and rescheduled visit notifications into one shared WhatsApp template using a schedule action parameter.
 - Updated the shared scheduled visit template parameters to match the approved body with schedule action, task, customer, machine, schedule time, support company, contact, and access link.
 
+## 2026-06-25 - Public Machine Scheduled Visits
+
+- Added active/upcoming scheduled visits to the machine portal response after machine password access.
+- Added a Scheduled Visits panel on the public machine page showing schedule time, status, task type, linked ticket, priority, and assigned staff.
+
 ## 2026-06-23 - Scheduled Visit Tasks
 
 - Added scheduled task tables for machine/ticket-linked visits with multiple assigned technicians.

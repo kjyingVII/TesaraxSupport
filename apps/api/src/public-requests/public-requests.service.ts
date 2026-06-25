@@ -4,6 +4,7 @@ import {
   AttachmentRelatedType,
   Prisma,
   ServiceResolutionStatus,
+  ScheduledTaskStatus,
   TicketCommentVisibility,
   TicketPriority,
   TicketStatus
@@ -292,6 +293,43 @@ export class PublicRequestsService {
           orderBy: { workDate: "desc" },
           take: 25
         },
+        scheduledTasks: {
+          where: {
+            status: {
+              in: [ScheduledTaskStatus.SCHEDULED, ScheduledTaskStatus.RESCHEDULED, ScheduledTaskStatus.IN_PROGRESS]
+            }
+          },
+          select: {
+            id: true,
+            title: true,
+            taskType: true,
+            scheduledStartAt: true,
+            scheduledEndAt: true,
+            status: true,
+            priority: true,
+            ticket: {
+              select: {
+                id: true,
+                ticketNumber: true,
+                issueTitle: true
+              }
+            },
+            assignments: {
+              select: {
+                technician: {
+                  select: {
+                    name: true
+                  }
+                }
+              },
+              orderBy: {
+                createdAt: "asc"
+              }
+            }
+          },
+          orderBy: { scheduledStartAt: "asc" },
+          take: 10
+        },
         documents: {
           where: {
             relatedType: AttachmentRelatedType.MACHINE_DOCUMENT
@@ -347,6 +385,7 @@ export class PublicRequestsService {
           closed: machine.tickets.filter((ticket) => closedStatuses.has(ticket.status))
         },
         logs: machine.logs,
+        scheduledTasks: machine.scheduledTasks,
         documents: machine.documents,
         requestAttachmentMaxFileMb: settings.requestAttachmentMaxFileMb,
         requestAttachmentMaxTotalMb: settings.requestAttachmentMaxTotalMb
