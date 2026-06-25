@@ -1478,6 +1478,8 @@ This file records meaningful project updates, decisions, and implementation step
 
 - Added copy-ready WhatsApp template bodies for scheduled visit created and scheduled visit rescheduled notifications.
 - Added default Meta template names for scheduled visit notifications in `.env.example`.
+- Consolidated scheduled and rescheduled visit notifications into one shared WhatsApp template using a schedule action parameter.
+- Updated the shared scheduled visit template parameters to match the approved body with schedule action, task, customer, machine, schedule time, support company, contact, and access link.
 
 ## 2026-06-23 - Scheduled Visit Tasks
 

@@ -657,30 +657,28 @@ export class NotificationsService {
 
     const signOffName = await this.getMessageSignOffName(task.machine.supportCompanyName);
     const taskLink = this.buildMachineAccessUrl(task.machine.publicId);
-    const technicianNames = task.assignments.map((assignment) => assignment.technician.name).filter(Boolean).join(", ") || "To be confirmed";
+    const technicianContact = task.assignments
+      .map((assignment) => {
+        const phone = this.cleanOptionalString(assignment.technician.phone);
+        return phone ? `${assignment.technician.name} (${phone})` : assignment.technician.name;
+      })
+      .filter(Boolean)
+      .join(", ") || "To be confirmed";
     const isRescheduled = mode === "rescheduled";
     const message = [
       isRescheduled ? "A service visit has been rescheduled." : "A service visit has been scheduled.",
       "",
       `Task: ${task.title}`,
-      task.ticket ? `Ticket: ${task.ticket.ticketNumber}` : null,
-      task.ticket ? `Issue: ${task.ticket.issueTitle}` : null,
       `Customer: ${task.machine.customer.name}`,
       `Machine: ${task.machine.machineName}`,
-      `Serial No.: ${task.machine.serialNumber}`,
-      `Location: ${task.machine.location}`,
-      `Task Type: ${this.formatMessageValue(task.taskType)}`,
       `Schedule Time: ${this.formatMessageDateRange(task.scheduledStartAt, task.scheduledEndAt)}`,
-      `Assigned Staff: ${technicianNames}`,
-      task.description ? "" : null,
-      task.description ? "Details:" : null,
-      task.description || null,
+      `Support Company: ${signOffName}`,
+      `Contact: ${technicianContact}`,
       "",
       "Please open the support system for details:",
       taskLink,
       "",
-      "Thank you.",
-      signOffName
+      "Thank you."
     ].filter((line) => line !== null).join("\n");
 
     if (
@@ -705,15 +703,15 @@ export class NotificationsService {
       subject: isRescheduled ? `Scheduled visit rescheduled: ${task.title}` : `Scheduled visit: ${task.title}`,
       message,
       template: {
-        eventKey: isRescheduled ? "scheduled_task_rescheduled" : "scheduled_task_created",
+        eventKey: "scheduled_task_notification",
         parameters: [
+          isRescheduled ? "rescheduled" : "scheduled",
           task.title,
           task.machine.customer.name,
           task.machine.machineName,
-          task.machine.serialNumber,
           this.formatMessageDateRange(task.scheduledStartAt, task.scheduledEndAt),
-          technicianNames,
           signOffName,
+          technicianContact,
           taskLink
         ]
       }
@@ -1056,8 +1054,7 @@ export class NotificationsService {
       ticket_created_technician: "new_ticket_notification",
       ticket_status_changed: "ticket_status_change_notification",
       service_report_submitted: "service_report_submitted_notification",
-      scheduled_task_created: "scheduled_task_created_notification",
-      scheduled_task_rescheduled: "scheduled_task_rescheduled_notification"
+      scheduled_task_notification: "scheduled_task_notification"
     };
 
     return templates[eventKey];
