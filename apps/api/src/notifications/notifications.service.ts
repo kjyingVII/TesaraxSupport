@@ -1121,8 +1121,13 @@ export class NotificationsService {
       month: "short",
       day: "2-digit",
       hour: "2-digit",
-      minute: "2-digit"
+      minute: "2-digit",
+      timeZone: this.getMessageTimeZone()
     }).format(value);
+  }
+
+  private getMessageTimeZone() {
+    return this.cleanOptionalString(process.env.APP_TIME_ZONE) ?? "Asia/Singapore";
   }
 
   private formatContactValue(phone?: string | null, email?: string | null) {

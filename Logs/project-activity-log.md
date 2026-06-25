@@ -1486,6 +1486,11 @@ This file records meaningful project updates, decisions, and implementation step
 - Added active/upcoming scheduled visits to the machine portal response after machine password access.
 - Added a Scheduled Visits panel on the public machine page showing schedule time, status, task type, linked ticket, priority, and assigned staff.
 
+## 2026-06-25 - Notification Time Zone Formatting
+
+- Added explicit `APP_TIME_ZONE` support for backend notification date/time formatting, defaulting to `Asia/Singapore`.
+- Fixed scheduled visit WhatsApp messages showing UTC time instead of the selected local schedule time.
+
 ## 2026-06-23 - Scheduled Visit Tasks
 
 - Added scheduled task tables for machine/ticket-linked visits with multiple assigned technicians.
