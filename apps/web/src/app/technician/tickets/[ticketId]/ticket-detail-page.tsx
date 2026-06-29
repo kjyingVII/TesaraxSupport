@@ -5,7 +5,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { AdminMenu } from "../../../../components/admin-menu";
 import { ThemeToggle } from "../../../../components/theme-toggle";
 import { apiBaseUrl, apiRequest } from "../../../../lib/api";
-import { getAccessToken } from "../../../../lib/auth";
+import { getAccessToken, getAuthUser, type AuthUser } from "../../../../lib/auth";
 
 type TicketDetail = {
   id: string;
@@ -117,14 +117,32 @@ type TicketDetailResponse = {
 };
 
 export function TicketDetailPage({ ticketId }: { ticketId: string }) {
+  const [user] = useState<AuthUser | null>(() => getAuthUser());
   const [ticket, setTicket] = useState<TicketDetail | null>(null);
   const [loading, setLoading] = useState(true);
+  const [actionBusy, setActionBusy] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const canAdminCloseTicket = user?.role === "ADMIN";
+
+  async function loadTicket() {
+    setLoading(true);
+    setError(null);
+
+    try {
+      const response = await apiRequest<TicketDetailResponse>(`/api/tickets/${ticketId}`);
+      setTicket(response.data);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unable to load ticket detail.");
+    } finally {
+      setLoading(false);
+    }
+  }
 
   useEffect(() => {
     let mounted = true;
 
-    async function loadTicket() {
+    async function loadMountedTicket() {
       setLoading(true);
       setError(null);
 
@@ -140,12 +158,44 @@ export function TicketDetailPage({ ticketId }: { ticketId: string }) {
       }
     }
 
-    void loadTicket();
+    void loadMountedTicket();
 
     return () => {
       mounted = false;
     };
   }, [ticketId]);
+
+  async function updateTicketStatus(nextStatus: "CLOSED" | "CANCELLED") {
+    if (!ticket || !user?.id) return;
+    setActionBusy(true);
+    setMessage(null);
+    setError(null);
+
+    try {
+      await apiRequest(`/api/tickets/${ticket.id}/status`, {
+        method: "PATCH",
+        body: JSON.stringify({
+          status: nextStatus,
+          changedByUserId: user.id,
+          comment: `Admin updated status to ${nextStatus}.`
+        })
+      });
+      setMessage(`Ticket updated to ${nextStatus}.`);
+      await loadTicket();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unable to update ticket status.");
+    } finally {
+      setActionBusy(false);
+    }
+  }
+
+  function confirmAdminTicketStatus(nextStatus: "CLOSED" | "CANCELLED") {
+    if (!ticket) return;
+    const label = nextStatus === "CLOSED" ? "close" : "cancel";
+    const confirmed = window.confirm(`Are you sure you want to ${label} ticket ${ticket.ticketNumber}?`);
+    if (!confirmed) return;
+    void updateTicketStatus(nextStatus);
+  }
 
   return (
     <main className="field-page">
@@ -181,6 +231,11 @@ export function TicketDetailPage({ ticketId }: { ticketId: string }) {
             {error}
           </div>
         ) : null}
+        {message ? (
+          <div className="field-alert-success mt-5 p-3 text-sm">
+            {message}
+          </div>
+        ) : null}
 
         {ticket ? (
           <div className="mt-5 grid gap-5">
@@ -206,6 +261,26 @@ export function TicketDetailPage({ ticketId }: { ticketId: string }) {
                 <Link className="field-button-secondary" href="/technician/tickets">
                   Back to Workbench
                 </Link>
+                {canAdminCloseTicket ? (
+                  <>
+                    <button
+                      className="field-button-secondary disabled:cursor-not-allowed disabled:opacity-50"
+                      type="button"
+                      disabled={actionBusy || ticket.status === "CLOSED"}
+                      onClick={() => confirmAdminTicketStatus("CLOSED")}
+                    >
+                      Close Ticket
+                    </button>
+                    <button
+                      className="grid min-h-10 place-items-center rounded-md border border-red-300 bg-red-50 px-4 text-sm font-semibold text-red-800 transition hover:border-red-500 hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-red-900 dark:bg-red-950 dark:text-red-100"
+                      type="button"
+                      disabled={actionBusy || ticket.status === "CANCELLED"}
+                      onClick={() => confirmAdminTicketStatus("CANCELLED")}
+                    >
+                      Cancel Ticket
+                    </button>
+                  </>
+                ) : null}
               </div>
             </section>
 

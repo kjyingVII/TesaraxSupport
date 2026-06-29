@@ -236,7 +236,8 @@ const statusOptions = [
   { label: "Resolved", value: "RESOLVED" },
   { label: "Pending Ack", value: "PENDING_ACKNOWLEDGEMENT" },
   { label: "Follow Up", value: "FOLLOW_UP_REQUIRED" },
-  { label: "Closed", value: "CLOSED" }
+  { label: "Closed", value: "CLOSED" },
+  { label: "Cancelled", value: "CANCELLED" }
 ];
 
 const actionStatusOptions = [
@@ -313,6 +314,7 @@ export function TicketWorkbench() {
   });
   const [user] = useState<AuthUser | null>(() => getAuthUser());
   const canManageAssignments = user?.role === "ADMIN" || user?.role === "SUPERVISOR";
+  const canAdminCloseTicket = user?.role === "ADMIN";
 
   useEffect(() => {
     void loadTickets();
@@ -474,8 +476,8 @@ export function TicketWorkbench() {
         method: "PATCH",
         body: JSON.stringify({
           status: nextStatus,
-          changedByUserId: selectedTicket.assignedTechnician?.id,
-          comment: `Technician updated status to ${nextStatus}.`
+          changedByUserId: user?.id ?? selectedTicket.assignedTechnician?.id,
+          comment: `${user?.role === "ADMIN" ? "Admin" : "Technician"} updated status to ${nextStatus}.`
         })
       });
       setActionMessage(`Ticket updated to ${nextStatus}.`);
@@ -485,6 +487,14 @@ export function TicketWorkbench() {
     } finally {
       setActionBusy(false);
     }
+  }
+
+  function confirmAdminTicketStatus(nextStatus: "CLOSED" | "CANCELLED") {
+    if (!selectedTicket) return;
+    const label = nextStatus === "CLOSED" ? "close" : "cancel";
+    const confirmed = window.confirm(`Are you sure you want to ${label} ticket ${selectedTicket.ticketNumber}?`);
+    if (!confirmed) return;
+    void updateTicketStatus(nextStatus);
   }
 
   async function submitForAcknowledgement() {
@@ -1136,6 +1146,29 @@ export function TicketWorkbench() {
                       ))}
                     </div>
                   </div>
+                  {canAdminCloseTicket ? (
+                    <div>
+                      <p className="field-meta-label mb-2">Admin Close / Cancel</p>
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        <button
+                          className="field-button-secondary disabled:cursor-not-allowed disabled:opacity-50"
+                          type="button"
+                          disabled={actionBusy || selectedTicket.status === "CLOSED"}
+                          onClick={() => confirmAdminTicketStatus("CLOSED")}
+                        >
+                          Close Ticket
+                        </button>
+                        <button
+                          className="grid min-h-10 place-items-center rounded-md border border-red-300 bg-red-50 px-4 text-sm font-semibold text-red-800 transition hover:border-red-500 hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-red-900 dark:bg-red-950 dark:text-red-100"
+                          type="button"
+                          disabled={actionBusy || selectedTicket.status === "CANCELLED"}
+                          onClick={() => confirmAdminTicketStatus("CANCELLED")}
+                        >
+                          Cancel Ticket
+                        </button>
+                      </div>
+                    </div>
+                  ) : null}
                   <button
                     className="field-button-primary disabled:cursor-not-allowed disabled:opacity-50"
                     type="button"

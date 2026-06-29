@@ -1556,3 +1556,4 @@ This file records meaningful project updates, decisions, and implementation step
 - Expanded task status workflow with Pending, Waiting Component, and Waiting Customer; made task start/end time optional for unconfirmed schedules and updated task/ticket/machine views to show unconfirmed times cleanly.
 - Updated task forms so end time can be saved even when start time is not confirmed, while keeping task status editable across all seven task statuses without transition restrictions.
 - Added task detail quick status buttons below Mark Completed, allowing technician/admin to switch between Pending, Scheduled, In Progress, Waiting Component, Waiting Customer, Completed, and Cancelled directly from the task page.
+- Added admin-only Close Ticket and Cancel Ticket actions to the ticket workbench and standalone ticket detail page, with confirmation prompts and audit/status history through the existing ticket status API.
