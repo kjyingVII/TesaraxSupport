@@ -16,12 +16,12 @@ type Technician = {
   phone: string | null;
 };
 
-type ScheduledTask = {
+type Task = {
   id: string;
   title: string;
   taskType: string;
   description: string | null;
-  scheduledStartAt: string;
+  scheduledStartAt: string | null;
   scheduledEndAt: string | null;
   status: string;
   priority: string;
@@ -48,8 +48,8 @@ type ScheduledTask = {
   }>;
 };
 
-type ScheduledTaskResponse = {
-  data: ScheduledTask;
+type TaskResponse = {
+  data: Task;
 };
 
 type TechnicianListResponse = {
@@ -74,9 +74,11 @@ const priorityOptions = [
 ];
 
 const statusOptions = [
+  { label: "Pending", value: "PENDING" },
   { label: "Scheduled", value: "SCHEDULED" },
   { label: "In Progress", value: "IN_PROGRESS" },
-  { label: "Rescheduled", value: "RESCHEDULED" },
+  { label: "Waiting Component", value: "WAITING_COMPONENT" },
+  { label: "Waiting Customer", value: "WAITING_CUSTOMER" },
   { label: "Completed", value: "COMPLETED" },
   { label: "Cancelled", value: "CANCELLED" }
 ];
@@ -95,9 +97,9 @@ const emptyForm = {
   internalRemarks: ""
 };
 
-export function EditScheduledTaskPage({ taskId }: { taskId: string }) {
+export function EditTaskPage({ taskId }: { taskId: string }) {
   const router = useRouter();
-  const [task, setTask] = useState<ScheduledTask | null>(null);
+  const [task, setTask] = useState<Task | null>(null);
   const [technicians, setTechnicians] = useState<Technician[]>([]);
   const [selectedTechnicianIds, setSelectedTechnicianIds] = useState<string[]>([]);
   const [form, setForm] = useState(emptyForm);
@@ -111,9 +113,9 @@ export function EditScheduledTaskPage({ taskId }: { taskId: string }) {
     return !form.notifyRecipientPhone.trim() || isValidPhoneNumber(form.notifyRecipientPhone);
   }, [form.notifyRecipientPhone]);
 
-  const scheduleTimeChanged = useMemo(() => {
+  const taskTimeChanged = useMemo(() => {
     if (!task) return false;
-    const originalStart = toDateTimeLocal(task.scheduledStartAt);
+    const originalStart = task.scheduledStartAt ? toDateTimeLocal(task.scheduledStartAt) : "";
     const originalEnd = task.scheduledEndAt ? toDateTimeLocal(task.scheduledEndAt) : "";
     return form.scheduledStartAt !== originalStart || form.scheduledEndAt !== originalEnd;
   }, [form.scheduledEndAt, form.scheduledStartAt, task]);
@@ -128,7 +130,7 @@ export function EditScheduledTaskPage({ taskId }: { taskId: string }) {
 
     try {
       const [taskResponse, technicianResponse] = await Promise.all([
-        apiRequest<ScheduledTaskResponse>(`/api/scheduled-tasks/${taskId}`),
+        apiRequest<TaskResponse>(`/api/tasks/${taskId}`),
         apiRequest<TechnicianListResponse>("/api/tickets/technicians")
       ]);
 
@@ -140,7 +142,7 @@ export function EditScheduledTaskPage({ taskId }: { taskId: string }) {
         taskType: taskResponse.data.taskType,
         priority: taskResponse.data.priority,
         status: taskResponse.data.status,
-        scheduledStartAt: toDateTimeLocal(taskResponse.data.scheduledStartAt),
+        scheduledStartAt: taskResponse.data.scheduledStartAt ? toDateTimeLocal(taskResponse.data.scheduledStartAt) : "",
         scheduledEndAt: taskResponse.data.scheduledEndAt ? toDateTimeLocal(taskResponse.data.scheduledEndAt) : "",
         description: taskResponse.data.description ?? "",
         notifyRecipientName: taskResponse.data.notifyRecipientName ?? "",
@@ -149,7 +151,7 @@ export function EditScheduledTaskPage({ taskId }: { taskId: string }) {
         internalRemarks: taskResponse.data.internalRemarks ?? ""
       });
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Unable to load scheduled task.");
+      setError(err instanceof Error ? err.message : "Unable to load task.");
     } finally {
       setLoading(false);
     }
@@ -161,29 +163,29 @@ export function EditScheduledTaskPage({ taskId }: { taskId: string }) {
 
   function handleSaveSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (scheduleTimeChanged) {
+    if (taskTimeChanged) {
       setShowNotifyDialog(true);
       return;
     }
 
-    void saveSchedule(false);
+    void saveTask(false);
   }
 
-  async function saveSchedule(notifyUser: boolean) {
+  async function saveTask(notifyUser: boolean) {
     setSaving(true);
     setError(null);
     setMessage(null);
     setShowNotifyDialog(false);
 
     try {
-      const response = await apiRequest<ScheduledTaskResponse>(`/api/scheduled-tasks/${taskId}`, {
+      const response = await apiRequest<TaskResponse>(`/api/tasks/${taskId}`, {
         method: "PATCH",
         body: JSON.stringify({
           title: form.title,
           taskType: form.taskType,
           priority: form.priority,
           status: form.status,
-          scheduledStartAt: new Date(form.scheduledStartAt).toISOString(),
+          scheduledStartAt: form.scheduledStartAt ? new Date(form.scheduledStartAt).toISOString() : null,
           scheduledEndAt: form.scheduledEndAt ? new Date(form.scheduledEndAt).toISOString() : null,
           description: form.description || null,
           notifyRecipientName: form.notifyRecipientName || null,
@@ -195,16 +197,16 @@ export function EditScheduledTaskPage({ taskId }: { taskId: string }) {
       });
 
       if (notifyUser) {
-        await apiRequest<ScheduledTaskResponse>(`/api/scheduled-tasks/${taskId}/notify-reschedule`, {
+        await apiRequest<TaskResponse>(`/api/tasks/${taskId}/notify-reschedule`, {
           method: "PATCH"
         });
       }
 
       setTask(response.data);
-      setMessage(notifyUser ? "Scheduled task updated and user notification logged." : "Scheduled task updated.");
-      router.push("/technician/schedule");
+      setMessage(notifyUser ? "Task updated and user notification logged." : "Task updated.");
+      router.push(`/technician/tasks/${taskId}`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Unable to update scheduled task.");
+      setError(err instanceof Error ? err.message : "Unable to update task.");
     } finally {
       setSaving(false);
     }
@@ -220,16 +222,16 @@ export function EditScheduledTaskPage({ taskId }: { taskId: string }) {
                 Home
               </Link>
               <span>/</span>
-              <Link className="field-link" href="/technician/schedule">
-                Schedule
+              <Link className="field-link" href="/technician/tasks">
+                Tasks
               </Link>
               <span>/</span>
               <span>Edit</span>
             </nav>
-            <h1 className="field-title">Edit Scheduled Task</h1>
+            <h1 className="field-title">Edit task</h1>
           </div>
           <div className="flex items-center gap-3">
-            <Link className="field-button-secondary" href="/technician/schedule">
+            <Link className="field-button-secondary" href={task ? `/technician/tasks/${task.id}` : "/technician/tasks"}>
               Back
             </Link>
             <ThemeToggle />
@@ -289,7 +291,7 @@ export function EditScheduledTaskPage({ taskId }: { taskId: string }) {
                     ))}
                   </select>
                 </label>
-                <TextInput label="Start Time" type="datetime-local" value={form.scheduledStartAt} required onChange={(value) => updateField("scheduledStartAt", value)} />
+                <TextInput label="Start Time" type="datetime-local" value={form.scheduledStartAt} onChange={(value) => updateField("scheduledStartAt", value)} />
               </div>
 
               <TextInput label="End Time" type="datetime-local" value={form.scheduledEndAt} onChange={(value) => updateField("scheduledEndAt", value)} />
@@ -298,7 +300,7 @@ export function EditScheduledTaskPage({ taskId }: { taskId: string }) {
               <section className="field-panel-subtle grid gap-4">
                 <div>
                   <h2 className="field-section-title text-base">User to Notify</h2>
-                  <p className="field-muted mt-1">Update the contact used for schedule communication. Editing this task does not resend WhatsApp automatically.</p>
+                  <p className="field-muted mt-1">Update the contact used for task communication. Editing this task does not resend WhatsApp automatically.</p>
                 </div>
                 <div className="grid gap-4 md:grid-cols-2">
                   <TextInput label="Name" value={form.notifyRecipientName} onChange={(value) => updateField("notifyRecipientName", value)} />
@@ -323,13 +325,13 @@ export function EditScheduledTaskPage({ taskId }: { taskId: string }) {
               <TextAreaInput label="Internal Remarks" value={form.internalRemarks} onChange={(value) => updateField("internalRemarks", value)} />
 
               <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-                <Link className="field-button-secondary" href="/technician/schedule">
+                <Link className="field-button-secondary" href={task ? `/technician/tasks/${task.id}` : "/technician/tasks"}>
                   Cancel
                 </Link>
                 <button
                   className="field-button-primary disabled:cursor-not-allowed disabled:opacity-50"
                   type="submit"
-                  disabled={saving || !form.title.trim() || !form.scheduledStartAt || !hasValidPhone}
+                  disabled={saving || !form.title.trim() || !hasValidPhone}
                 >
                   {saving ? "Saving..." : "Save Changes"}
                 </button>
@@ -347,8 +349,8 @@ export function EditScheduledTaskPage({ taskId }: { taskId: string }) {
             endAt={form.scheduledEndAt}
             saving={saving}
             onClose={() => setShowNotifyDialog(false)}
-            onSaveOnly={() => void saveSchedule(false)}
-            onSaveAndNotify={() => void saveSchedule(true)}
+            onSaveOnly={() => void saveTask(false)}
+            onSaveAndNotify={() => void saveTask(true)}
           />
         ) : null}
       </section>
@@ -393,7 +395,7 @@ function RescheduleNotifyDialog({
         </div>
 
         <div className="field-panel-subtle mt-5 text-sm">
-          <p className="font-semibold">{taskTitle || "Scheduled task"}</p>
+          <p className="font-semibold">{taskTitle || "task"}</p>
           <p className="mt-3">
             {formatDialogDateTime(startAt)}
             {endAt ? ` to ${formatDialogDateTime(endAt)}` : ""}
@@ -404,7 +406,7 @@ function RescheduleNotifyDialog({
         </div>
 
         <p className="mt-5 text-sm leading-6 text-neutral-700 dark:text-neutral-200">
-          The schedule time changed. You can save the change silently, or send/log a WhatsApp reschedule notification for the user.
+          The task time changed. You can save the change silently, or send/log a WhatsApp reschedule notification for the user.
         </p>
 
         {!canNotify ? (

@@ -1,7 +1,7 @@
 import { ProtectedPage } from "../../../../../components/protected-page";
-import { EditScheduledTaskPage } from "./edit-scheduled-task-page";
+import { EditTaskPage } from "./edit-task-page";
 
-export default async function EditScheduleRoute({
+export default async function EditTasksRoute({
   params
 }: {
   params: Promise<{ taskId: string }>;
@@ -10,7 +10,7 @@ export default async function EditScheduleRoute({
 
   return (
     <ProtectedPage allowedRoles={["ADMIN", "SUPERVISOR", "TECHNICIAN"]}>
-      <EditScheduledTaskPage taskId={taskId} />
+      <EditTaskPage taskId={taskId} />
     </ProtectedPage>
   );
 }

@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { FormEvent, useEffect, useState } from "react";
 import { AdminMenu } from "../../../components/admin-menu";
-import { PhoneNumberInput } from "../../../components/phone-number-input";
 import { ThemeToggle } from "../../../components/theme-toggle";
 import { apiRequest } from "../../../lib/api";
 
@@ -50,10 +49,6 @@ type NotificationFilterState = {
   search: string;
 };
 
-type ManualWhatsappResponse = {
-  data: NotificationLog;
-};
-
 export function NotificationLogsPage() {
   const [logs, setLogs] = useState<NotificationLog[]>([]);
   const [selectedLog, setSelectedLog] = useState<NotificationLog | null>(null);
@@ -64,13 +59,6 @@ export function NotificationLogsPage() {
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [manualRecipientName, setManualRecipientName] = useState("");
-  const [manualRecipientPhone, setManualRecipientPhone] = useState("");
-  const [manualSubject, setManualSubject] = useState("Manual WhatsApp test");
-  const [manualMessage, setManualMessage] = useState("This is a WhatsApp test message from Tesarax Support System.");
-  const [manualSending, setManualSending] = useState(false);
-  const [manualResult, setManualResult] = useState<NotificationLog | null>(null);
-  const [manualError, setManualError] = useState<string | null>(null);
 
   useEffect(() => {
     void loadLogs();
@@ -120,32 +108,6 @@ export function NotificationLogsPage() {
     void loadLogs(filters);
   }
 
-  async function sendManualWhatsapp(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setManualSending(true);
-    setManualError(null);
-    setManualResult(null);
-
-    try {
-      const response = await apiRequest<ManualWhatsappResponse>("/api/admin/notification-logs/whatsapp-test", {
-        method: "POST",
-        body: JSON.stringify({
-          recipientName: manualRecipientName,
-          recipientPhone: manualRecipientPhone,
-          subject: manualSubject,
-          message: manualMessage
-        })
-      });
-      setManualResult(response.data);
-      setSelectedLog(response.data);
-      await loadLogs({ channel: "WHATSAPP", status: "", relatedType: "", search: "" });
-    } catch (err) {
-      setManualError(err instanceof Error ? err.message : "Unable to send WhatsApp test message.");
-    } finally {
-      setManualSending(false);
-    }
-  }
-
   return (
     <main className="field-page">
       <section className="field-shell max-w-7xl">
@@ -164,60 +126,6 @@ export function NotificationLogsPage() {
         </header>
 
         <AdminMenu />
-
-        <section className="field-panel mt-5">
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div>
-              <h2 className="field-section-title">Manual WhatsApp Test</h2>
-              <p className="field-muted mt-1">Send a direct test message using the current WhatsApp provider settings.</p>
-            </div>
-            {manualResult ? <StatusBadge status={manualResult.status} /> : null}
-          </div>
-
-          <form className="mt-4 grid gap-4 lg:grid-cols-2" onSubmit={sendManualWhatsapp}>
-            <label className="block">
-              <span className="field-label">Recipient Name</span>
-              <input
-                className="field-input"
-                value={manualRecipientName}
-                onChange={(event) => setManualRecipientName(event.target.value)}
-              />
-            </label>
-            <PhoneNumberInput label="Recipient Phone" value={manualRecipientPhone} required onChange={setManualRecipientPhone} />
-            <label className="block lg:col-span-2">
-              <span className="field-label">Subject</span>
-              <input
-                className="field-input"
-                value={manualSubject}
-                onChange={(event) => setManualSubject(event.target.value)}
-              />
-            </label>
-            <label className="block lg:col-span-2">
-              <span className="field-label">Message</span>
-              <textarea
-                className="field-input min-h-28"
-                maxLength={1000}
-                required
-                value={manualMessage}
-                onChange={(event) => setManualMessage(event.target.value)}
-              />
-              <span className="field-muted mt-2 block text-xs">{manualMessage.length}/1000 characters</span>
-            </label>
-            {manualError ? <div className="field-alert-error lg:col-span-2">{manualError}</div> : null}
-            {manualResult ? (
-              <div className="rounded-md border border-[#d9dee3] bg-[#eef3f6] p-3 text-sm dark:border-[#2f3742] dark:bg-[#111820] lg:col-span-2">
-                <p className="font-semibold">Result: {manualResult.status}</p>
-                <p className="field-muted mt-1 break-all">Provider Message ID: {manualResult.providerMessageId ?? "None"}</p>
-                {manualResult.errorMessage ? <p className="mt-1 text-amber-700 dark:text-amber-300">{manualResult.errorMessage}</p> : null}
-              </div>
-            ) : null}
-            <div className="lg:col-span-2">
-              <button className="field-button" type="submit" disabled={manualSending}>
-                {manualSending ? "Sending..." : "Send WhatsApp Test"}
-              </button>
-            </div>
-          </form>
-        </section>
 
         <div className="mt-5 grid gap-5 lg:grid-cols-[minmax(0,0.95fr)_minmax(380px,0.75fr)]">
           <section className="field-panel p-0">

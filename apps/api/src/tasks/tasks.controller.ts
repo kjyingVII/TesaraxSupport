@@ -1,14 +1,14 @@
 import { Body, Controller, Get, Param, Patch, Post, Query } from "@nestjs/common";
 import { UserRole } from "@prisma/client";
 import { CurrentUser, Roles } from "../auth/auth.decorators";
-import { CreateScheduledTaskDto } from "./dto/create-scheduled-task.dto";
-import { UpdateScheduledTaskDto } from "./dto/update-scheduled-task.dto";
-import { ScheduledTasksService } from "./scheduled-tasks.service";
+import { CreateTaskDto } from "./dto/create-task.dto";
+import { UpdateTaskDto } from "./dto/update-task.dto";
+import { TasksService } from "./tasks.service";
 
 @Roles(UserRole.ADMIN, UserRole.SUPERVISOR, UserRole.TECHNICIAN)
-@Controller("scheduled-tasks")
-export class ScheduledTasksController {
-  constructor(private readonly scheduledTasksService: ScheduledTasksService) {}
+@Controller("tasks")
+export class TasksController {
+  constructor(private readonly tasksService: TasksService) {}
 
   @Get()
   list(
@@ -23,7 +23,7 @@ export class ScheduledTasksController {
     @Query("page") page?: string,
     @Query("pageSize") pageSize?: string
   ) {
-    return this.scheduledTasksService.list({
+    return this.tasksService.list({
       customerId,
       machineId,
       ticketId,
@@ -39,31 +39,41 @@ export class ScheduledTasksController {
 
   @Get(":id")
   getById(@Param("id") id: string) {
-    return this.scheduledTasksService.getById(id);
+    return this.tasksService.getById(id);
+  }
+
+  @Get(":id/comments")
+  listComments(@Param("id") id: string) {
+    return this.tasksService.listComments(id);
   }
 
   @Post()
-  create(@Body() dto: CreateScheduledTaskDto, @CurrentUser() user: { id: string }) {
-    return this.scheduledTasksService.create(dto, user.id);
+  create(@Body() dto: CreateTaskDto, @CurrentUser() user: { id: string }) {
+    return this.tasksService.create(dto, user.id);
+  }
+
+  @Post(":id/comments")
+  createComment(@Param("id") id: string, @Body() dto: { comment?: string }, @CurrentUser() user: { id: string }) {
+    return this.tasksService.createComment(id, dto, user.id);
   }
 
   @Patch(":id")
-  update(@Param("id") id: string, @Body() dto: UpdateScheduledTaskDto, @CurrentUser() user: { id: string }) {
-    return this.scheduledTasksService.update(id, dto, user.id);
+  update(@Param("id") id: string, @Body() dto: UpdateTaskDto, @CurrentUser() user: { id: string }) {
+    return this.tasksService.update(id, dto, user.id);
   }
 
   @Patch(":id/cancel")
   cancel(@Param("id") id: string, @CurrentUser() user: { id: string }) {
-    return this.scheduledTasksService.cancel(id, user.id);
+    return this.tasksService.cancel(id, user.id);
   }
 
   @Patch(":id/complete")
   complete(@Param("id") id: string, @CurrentUser() user: { id: string }) {
-    return this.scheduledTasksService.complete(id, user.id);
+    return this.tasksService.complete(id, user.id);
   }
 
   @Patch(":id/notify-reschedule")
   notifyRescheduled(@Param("id") id: string, @CurrentUser() user: { id: string }) {
-    return this.scheduledTasksService.notifyRescheduled(id, user.id);
+    return this.tasksService.notifyRescheduled(id, user.id);
   }
 }

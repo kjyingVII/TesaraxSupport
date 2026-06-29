@@ -23,8 +23,8 @@ export type SystemSettings = {
   whatsappTicketStatusChangedEnabled: boolean;
   whatsappServiceReportSubmittedEnabled: boolean;
   whatsappMachineLogCreatedEnabled: boolean;
-  whatsappScheduledTaskCreatedEnabled: boolean;
-  whatsappScheduledTaskRescheduledEnabled: boolean;
+  whatsappTaskCreatedEnabled: boolean;
+  whatsappTaskRescheduledEnabled: boolean;
 };
 
 const defaultSettings: SystemSettings = {
@@ -42,8 +42,8 @@ const defaultSettings: SystemSettings = {
   whatsappTicketStatusChangedEnabled: true,
   whatsappServiceReportSubmittedEnabled: true,
   whatsappMachineLogCreatedEnabled: true,
-  whatsappScheduledTaskCreatedEnabled: true,
-  whatsappScheduledTaskRescheduledEnabled: true
+  whatsappTaskCreatedEnabled: true,
+  whatsappTaskRescheduledEnabled: true
 };
 
 @Injectable()
@@ -118,11 +118,11 @@ export class SettingsService {
     if (dto.whatsappMachineLogCreatedEnabled !== undefined) {
       next.whatsappMachineLogCreatedEnabled = this.parseBoolean(dto.whatsappMachineLogCreatedEnabled, "Machine log created WhatsApp notification");
     }
-    if (dto.whatsappScheduledTaskCreatedEnabled !== undefined) {
-      next.whatsappScheduledTaskCreatedEnabled = this.parseBoolean(dto.whatsappScheduledTaskCreatedEnabled, "Scheduled task created WhatsApp notification");
+    if (dto.whatsappTaskCreatedEnabled !== undefined) {
+      next.whatsappTaskCreatedEnabled = this.parseBoolean(dto.whatsappTaskCreatedEnabled, "Task created WhatsApp notification");
     }
-    if (dto.whatsappScheduledTaskRescheduledEnabled !== undefined) {
-      next.whatsappScheduledTaskRescheduledEnabled = this.parseBoolean(dto.whatsappScheduledTaskRescheduledEnabled, "Scheduled task rescheduled WhatsApp notification");
+    if (dto.whatsappTaskRescheduledEnabled !== undefined) {
+      next.whatsappTaskRescheduledEnabled = this.parseBoolean(dto.whatsappTaskRescheduledEnabled, "Task rescheduled WhatsApp notification");
     }
 
     if (next.requestAttachmentMaxFileMb > next.requestAttachmentMaxTotalMb) {
@@ -200,8 +200,14 @@ export class SettingsService {
       whatsappTicketStatusChangedEnabled: this.readBoolean(raw.whatsappTicketStatusChangedEnabled, defaultSettings.whatsappTicketStatusChangedEnabled),
       whatsappServiceReportSubmittedEnabled: this.readBoolean(raw.whatsappServiceReportSubmittedEnabled, defaultSettings.whatsappServiceReportSubmittedEnabled),
       whatsappMachineLogCreatedEnabled: this.readBoolean(raw.whatsappMachineLogCreatedEnabled, defaultSettings.whatsappMachineLogCreatedEnabled),
-      whatsappScheduledTaskCreatedEnabled: this.readBoolean(raw.whatsappScheduledTaskCreatedEnabled, defaultSettings.whatsappScheduledTaskCreatedEnabled),
-      whatsappScheduledTaskRescheduledEnabled: this.readBoolean(raw.whatsappScheduledTaskRescheduledEnabled, defaultSettings.whatsappScheduledTaskRescheduledEnabled)
+      whatsappTaskCreatedEnabled: this.readBoolean(
+        raw.whatsappTaskCreatedEnabled,
+        this.readBoolean(raw.whatsappScheduledTaskCreatedEnabled, defaultSettings.whatsappTaskCreatedEnabled)
+      ),
+      whatsappTaskRescheduledEnabled: this.readBoolean(
+        raw.whatsappTaskRescheduledEnabled,
+        this.readBoolean(raw.whatsappScheduledTaskRescheduledEnabled, defaultSettings.whatsappTaskRescheduledEnabled)
+      )
     };
   }
 

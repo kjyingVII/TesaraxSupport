@@ -8,12 +8,12 @@ import { ThemeToggle } from "../../../components/theme-toggle";
 import { apiRequest } from "../../../lib/api";
 import { getAuthUser, type AuthUser } from "../../../lib/auth";
 
-type ScheduledTask = {
+type Task = {
   id: string;
   title: string;
   taskType: string;
   description: string | null;
-  scheduledStartAt: string;
+  scheduledStartAt: string | null;
   scheduledEndAt: string | null;
   status: string;
   priority: string;
@@ -46,8 +46,8 @@ type ScheduledTask = {
   }>;
 };
 
-type ScheduledTaskListResponse = {
-  data: ScheduledTask[];
+type TaskListResponse = {
+  data: Task[];
   meta: {
     page: number;
     pageSize: number;
@@ -56,21 +56,24 @@ type ScheduledTaskListResponse = {
 };
 
 type PendingAction =
-  | { type: "cancel"; task: ScheduledTask }
-  | { type: "complete"; task: ScheduledTask };
+  | { type: "cancel"; task: Task }
+  | { type: "complete"; task: Task };
 
 const statusOptions = [
   { label: "Active", value: "ACTIVE" },
+  { label: "Pending", value: "PENDING" },
   { label: "Scheduled", value: "SCHEDULED" },
   { label: "In Progress", value: "IN_PROGRESS" },
+  { label: "Waiting Component", value: "WAITING_COMPONENT" },
+  { label: "Waiting Customer", value: "WAITING_CUSTOMER" },
   { label: "Completed", value: "COMPLETED" },
   { label: "Cancelled", value: "CANCELLED" }
 ];
 
-export function TechnicianSchedulePage() {
+export function TasksPage() {
   const router = useRouter();
   const [user] = useState<AuthUser | null>(() => getAuthUser());
-  const [tasks, setTasks] = useState<ScheduledTask[]>([]);
+  const [tasks, setTasks] = useState<Task[]>([]);
   const [statusFilter, setStatusFilter] = useState("ACTIVE");
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
@@ -100,13 +103,13 @@ export function TechnicianSchedulePage() {
     if (nextSearch.trim()) params.set("search", nextSearch.trim());
 
     try {
-      const response = await apiRequest<ScheduledTaskListResponse>(`/api/scheduled-tasks?${params.toString()}`);
+      const response = await apiRequest<TaskListResponse>(`/api/tasks?${params.toString()}`);
       const filtered = nextStatus === "ACTIVE"
         ? response.data.filter((task) => !["COMPLETED", "CANCELLED"].includes(task.status))
         : response.data;
       setTasks(filtered);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Unable to load scheduled tasks.");
+      setError(err instanceof Error ? err.message : "Unable to load tasks.");
     } finally {
       setLoading(false);
     }
@@ -123,21 +126,21 @@ export function TechnicianSchedulePage() {
     setMessage(null);
 
     try {
-      await apiRequest(`/api/scheduled-tasks/${id}/${action}`, {
+      await apiRequest(`/api/tasks/${id}/${action}`, {
         method: "PATCH"
       });
       setMessage(action === "complete" ? "Task marked completed." : "Task cancelled.");
       await loadTasks();
       return true;
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Unable to update scheduled task.");
+      setError(err instanceof Error ? err.message : "Unable to update task.");
       return false;
     } finally {
       setBusyTaskId(null);
     }
   }
 
-  async function completeTask(task: ScheduledTask, openServiceReport = false) {
+  async function completeTask(task: Task, openServiceReport = false) {
     const completed = await updateTask(task.id, "complete");
 
     if (completed && openServiceReport && task.ticket) {
@@ -145,7 +148,7 @@ export function TechnicianSchedulePage() {
     }
   }
 
-  async function cancelTask(task: ScheduledTask) {
+  async function cancelTask(task: Task) {
     await updateTask(task.id, "cancel");
   }
 
@@ -172,8 +175,8 @@ export function TechnicianSchedulePage() {
             <h1 className="field-title">Upcoming Tasks</h1>
           </div>
           <div className="flex items-center gap-3">
-            <Link className="field-button-primary min-h-10" href="/technician/schedule/new">
-              New Schedule Task
+            <Link className="field-button-primary min-h-10" href="/technician/tasks/new">
+              New task
             </Link>
             <ThemeToggle />
           </div>
@@ -212,13 +215,15 @@ export function TechnicianSchedulePage() {
 
         <section className="mt-5 grid gap-4">
           {loading ? <p className="field-muted">Loading tasks...</p> : null}
-          {!loading && tasks.length === 0 ? <p className="field-muted">No scheduled tasks found.</p> : null}
+          {!loading && tasks.length === 0 ? <p className="field-muted">No tasks found.</p> : null}
           {tasks.map((task) => (
             <article key={task.id} className="field-panel">
               <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                 <div>
                   <div className="flex flex-wrap items-center gap-2">
-                    <h2 className="text-lg font-semibold">{task.title}</h2>
+                    <Link className="text-lg font-semibold text-[#155e75] underline-offset-4 hover:underline dark:text-[#67e8f9]" href={`/technician/tasks/${task.id}`}>
+                      {task.title}
+                    </Link>
                     <span className={`status-badge ${statusTone(task.status)}`}>{task.status.replaceAll("_", " ")}</span>
                     <span className="status-badge status-neutral">{task.taskType.replaceAll("_", " ")}</span>
                   </div>
@@ -253,8 +258,8 @@ export function TechnicianSchedulePage() {
                   <Link className="field-button-secondary" href={`/machines/${task.machine.id}/logs/new`}>
                     Add Machine Log
                   </Link>
-                  <Link className="field-button-secondary" href={`/technician/schedule/${task.id}/edit`}>
-                    Edit
+                  <Link className="field-button-primary" href={`/technician/tasks/${task.id}`}>
+                    Open
                   </Link>
                   {!["COMPLETED", "CANCELLED"].includes(task.status) ? (
                     <>
@@ -330,9 +335,9 @@ function ActionDialog({
       <section className="w-full max-w-lg rounded-lg border border-[#d9dee3] bg-white p-5 shadow-xl dark:border-[#2f3742] dark:bg-[#171a21]">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <p className="field-eyebrow">{isCancel ? "Cancel schedule" : "Complete schedule"}</p>
+            <p className="field-eyebrow">{isCancel ? "Cancel Task" : "Complete Task"}</p>
             <h2 className="mt-1 text-xl font-semibold">
-              {isCancel ? "Cancel this scheduled task?" : "Mark this scheduled task complete?"}
+              {isCancel ? "Cancel this task?" : "Mark this task complete?"}
             </h2>
           </div>
           <button
@@ -364,18 +369,18 @@ function ActionDialog({
 
         {isCancel ? (
           <p className="mt-5 text-sm leading-6 text-neutral-700 dark:text-neutral-200">
-            This will mark the schedule as cancelled. The record will remain visible for tracking and audit history.
+            This will mark the task as cancelled. The record will remain visible for tracking and audit history.
           </p>
         ) : (
           <p className="mt-5 text-sm leading-6 text-neutral-700 dark:text-neutral-200">
-            This will mark the scheduled visit as completed.
+            This will mark the Task as completed.
             {isTicketLinked ? " You can continue directly to the service report form after completing it." : ""}
           </p>
         )}
 
         <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
           <button className="field-button-secondary" type="button" onClick={onClose} disabled={busy}>
-            Keep Schedule
+            Keep Task
           </button>
 
           {isCancel ? (
@@ -385,7 +390,7 @@ function ActionDialog({
               onClick={onCancelTask}
               disabled={busy}
             >
-              {busy ? "Cancelling..." : "Cancel Schedule"}
+              {busy ? "Cancelling..." : "Cancel Task"}
             </button>
           ) : (
             <>
@@ -413,14 +418,16 @@ function statusTone(status: string) {
       return "status-neutral";
     case "IN_PROGRESS":
       return "status-cyan";
-    case "RESCHEDULED":
+    case "WAITING_COMPONENT":
+    case "WAITING_CUSTOMER":
       return "status-amber";
     default:
       return "status-blue";
   }
 }
 
-function isToday(value: string) {
+function isToday(value: string | null) {
+  if (!value) return false;
   const date = new Date(value);
   const now = new Date();
   return date.getFullYear() === now.getFullYear()
@@ -428,7 +435,8 @@ function isToday(value: string) {
     && date.getDate() === now.getDate();
 }
 
-function formatDateTime(value: string) {
+function formatDateTime(value: string | null) {
+  if (!value) return "Not confirmed";
   return new Intl.DateTimeFormat("en", {
     year: "numeric",
     month: "short",

@@ -1491,6 +1491,13 @@ This file records meaningful project updates, decisions, and implementation step
 - Added explicit `APP_TIME_ZONE` support for backend notification date/time formatting, defaulting to `Asia/Singapore`.
 - Fixed scheduled visit WhatsApp messages showing UTC time instead of the selected local schedule time.
 
+## 2026-06-25 - Team Work Dashboard
+
+- Added a protected dashboard API that combines scheduled tasks and tickets into one team work view.
+- Added Team View and Only Me scopes so users can switch between all team work and their own assigned tickets/tasks.
+- Added a technician dashboard page with summary metrics, quick filters, dense work table, status badges, machine labels, and assignee initials.
+- Made dashboard task/ticket titles clickable and changed the row Open action into a more visible button.
+
 ## 2026-06-23 - Scheduled Visit Tasks
 
 - Added scheduled task tables for machine/ticket-linked visits with multiple assigned technicians.
@@ -1540,3 +1547,12 @@ This file records meaningful project updates, decisions, and implementation step
 
 - Ticket status WhatsApp notifications now use the approved status-update wording for the free-text fallback body.
 - Status notification subjects are labelled as requester updates, and missing requester phone numbers create an explicit skipped notification log.
+
+## 2026-06-29 Task Domain Rename And Detail Flow
+- Renamed the scheduled visit domain toward tasks, including Prisma models/API routes/frontend routes, and began cleanup of mechanical schedule wording replacements.
+- Added a TaskComment data model and API comment endpoints for technician/admin internal task discussion.
+- Rebuilt local Docker API/web containers, applied the Task migration, verified API build, Prisma generation, health check, authenticated task detail/comment endpoints, and web task routes.
+- Removed the Admin Notifications manual WhatsApp test form and added dashboard display filters for all/tickets/tasks plus sortable columns for name, machine, start time, due/end time, status, and priority.
+- Expanded task status workflow with Pending, Waiting Component, and Waiting Customer; made task start/end time optional for unconfirmed schedules and updated task/ticket/machine views to show unconfirmed times cleanly.
+- Updated task forms so end time can be saved even when start time is not confirmed, while keeping task status editable across all seven task statuses without transition restrictions.
+- Added task detail quick status buttons below Mark Completed, allowing technician/admin to switch between Pending, Scheduled, In Progress, Waiting Component, Waiting Customer, Completed, and Cancelled directly from the task page.

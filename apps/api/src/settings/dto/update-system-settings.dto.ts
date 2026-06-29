@@ -13,6 +13,6 @@ export type UpdateSystemSettingsDto = {
   whatsappTicketStatusChangedEnabled?: boolean;
   whatsappServiceReportSubmittedEnabled?: boolean;
   whatsappMachineLogCreatedEnabled?: boolean;
-  whatsappScheduledTaskCreatedEnabled?: boolean;
-  whatsappScheduledTaskRescheduledEnabled?: boolean;
+  whatsappTaskCreatedEnabled?: boolean;
+  whatsappTaskRescheduledEnabled?: boolean;
 };

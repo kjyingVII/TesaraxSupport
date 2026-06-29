@@ -1,10 +1,10 @@
 import { ProtectedPage } from "../../../components/protected-page";
-import { TechnicianSchedulePage } from "./technician-schedule-page";
+import { TasksPage } from "./tasks-page";
 
-export default function ScheduleRoute() {
+export default function TasksRoute() {
   return (
     <ProtectedPage allowedRoles={["ADMIN", "SUPERVISOR", "TECHNICIAN"]}>
-      <TechnicianSchedulePage />
+      <TasksPage />
     </ProtectedPage>
   );
 }

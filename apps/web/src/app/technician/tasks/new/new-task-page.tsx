@@ -37,7 +37,7 @@ type TechnicianListResponse = {
   data: Technician[];
 };
 
-type ScheduledTaskResponse = {
+type TaskResponse = {
   data: {
     id: string;
   };
@@ -73,7 +73,7 @@ const emptyForm = {
   internalRemarks: ""
 };
 
-export function NewScheduledTaskPage() {
+export function NewTaskPage() {
   const router = useRouter();
   const [user] = useState<AuthUser | null>(() => getAuthUser());
   const [machines, setMachines] = useState<Machine[]>([]);
@@ -110,7 +110,7 @@ export function NewScheduledTaskPage() {
         machineId: current.machineId || machineResponse.data[0]?.id || ""
       }));
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Unable to load schedule form.");
+      setError(err instanceof Error ? err.message : "Unable to load task form.");
     } finally {
       setLoading(false);
     }
@@ -120,20 +120,20 @@ export function NewScheduledTaskPage() {
     setForm((current) => ({ ...current, [field]: value }));
   }
 
-  async function saveSchedule(event: FormEvent<HTMLFormElement>) {
+  async function saveTask(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setSaving(true);
     setError(null);
 
     try {
-      const response = await apiRequest<ScheduledTaskResponse>("/api/scheduled-tasks", {
+      const response = await apiRequest<TaskResponse>("/api/tasks", {
         method: "POST",
         body: JSON.stringify({
           machineId: form.machineId,
           title: form.title,
           taskType: form.taskType,
           priority: form.priority,
-          scheduledStartAt: new Date(form.scheduledStartAt).toISOString(),
+          scheduledStartAt: form.scheduledStartAt ? new Date(form.scheduledStartAt).toISOString() : null,
           scheduledEndAt: form.scheduledEndAt ? new Date(form.scheduledEndAt).toISOString() : null,
           description: form.description || null,
           notifyRecipientName: form.notifyRecipientName || null,
@@ -144,9 +144,9 @@ export function NewScheduledTaskPage() {
         })
       });
 
-      router.push(`/technician/schedule?created=${encodeURIComponent(response.data.id)}`);
+      router.push(`/technician/tasks/${response.data.id}`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Unable to create scheduled task.");
+      setError(err instanceof Error ? err.message : "Unable to create task.");
     } finally {
       setSaving(false);
     }
@@ -162,16 +162,16 @@ export function NewScheduledTaskPage() {
                 Home
               </Link>
               <span>/</span>
-              <Link className="field-link" href="/technician/schedule">
-                Schedule
+              <Link className="field-link" href="/technician/tasks">
+                Tasks
               </Link>
               <span>/</span>
               <span>New</span>
             </nav>
-            <h1 className="field-title">New Scheduled Task</h1>
+            <h1 className="field-title">New task</h1>
           </div>
           <div className="flex items-center gap-3">
-            <Link className="field-button-secondary" href="/technician/schedule">
+            <Link className="field-button-secondary" href="/technician/tasks">
               Back
             </Link>
             <ThemeToggle />
@@ -185,7 +185,7 @@ export function NewScheduledTaskPage() {
           {error ? <div className="field-alert-error">{error}</div> : null}
 
           {!loading ? (
-            <form className="mt-4 grid gap-5" onSubmit={saveSchedule}>
+            <form className="mt-4 grid gap-5" onSubmit={saveTask}>
               <SearchableSingleSelect
                 label="Machine"
                 value={form.machineId}
@@ -234,7 +234,7 @@ export function NewScheduledTaskPage() {
                     ))}
                   </select>
                 </label>
-                <TextInput label="Start Time" type="datetime-local" value={form.scheduledStartAt} required onChange={(value) => updateField("scheduledStartAt", value)} />
+                <TextInput label="Start Time" type="datetime-local" value={form.scheduledStartAt} onChange={(value) => updateField("scheduledStartAt", value)} />
                 <TextInput label="End Time" type="datetime-local" value={form.scheduledEndAt} onChange={(value) => updateField("scheduledEndAt", value)} />
               </div>
 
@@ -243,7 +243,7 @@ export function NewScheduledTaskPage() {
               <section className="field-panel-subtle grid gap-4">
                 <div>
                   <h2 className="field-section-title text-base">User to Notify</h2>
-                  <p className="field-muted mt-1">A WhatsApp schedule notification will be sent to this contact when the task is created.</p>
+                  <p className="field-muted mt-1">A WhatsApp task notification will be sent to this contact when the task is created.</p>
                 </div>
                 <div className="grid gap-4 md:grid-cols-2">
                   <TextInput label="Name" value={form.notifyRecipientName} required onChange={(value) => updateField("notifyRecipientName", value)} />
@@ -273,7 +273,7 @@ export function NewScheduledTaskPage() {
               <TextAreaInput label="Internal Remarks" value={form.internalRemarks} onChange={(value) => updateField("internalRemarks", value)} />
 
               <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-                <Link className="field-button-secondary" href="/technician/schedule">
+                <Link className="field-button-secondary" href="/technician/tasks">
                   Cancel
                 </Link>
                 <button
@@ -283,12 +283,11 @@ export function NewScheduledTaskPage() {
                     saving
                     || !form.machineId
                     || !form.title.trim()
-                    || !form.scheduledStartAt
                     || !form.notifyRecipientName.trim()
                     || !isValidPhoneNumber(form.notifyRecipientPhone)
                   }
                 >
-                  {saving ? "Creating..." : "Create Scheduled Task"}
+                  {saving ? "Creating..." : "Create task"}
                 </button>
               </div>
             </form>

@@ -59,12 +59,12 @@ type TicketDetail = {
     comment: string | null;
     createdAt: string;
   }>;
-  scheduledTasks: Array<{
+  tasks: Array<{
     id: string;
     title: string;
     taskType: string;
     description: string | null;
-    scheduledStartAt: string;
+    scheduledStartAt: string | null;
     scheduledEndAt: string | null;
     status: string;
     assignments: Array<{
@@ -248,14 +248,16 @@ export function TicketDetailPage({ ticketId }: { ticketId: string }) {
               </DetailGroup>
             </section>
 
-            <DetailGroup title={`Scheduled Visits (${ticket.scheduledTasks.length})`}>
-              {ticket.scheduledTasks.length > 0 ? (
+            <DetailGroup title={`Tasks (${ticket.tasks.length})`}>
+              {ticket.tasks.length > 0 ? (
                 <div className="grid gap-3">
-                  {ticket.scheduledTasks.map((task) => (
+                  {ticket.tasks.map((task) => (
                     <div key={task.id} className="field-panel-subtle">
                       <div className="flex flex-wrap items-start justify-between gap-2">
                         <div>
-                          <p className="text-sm font-semibold">{task.title}</p>
+                          <Link className="text-sm font-semibold text-[#155e75] underline-offset-4 hover:underline dark:text-[#67e8f9]" href={`/technician/tasks/${task.id}`}>
+                            {task.title}
+                          </Link>
                           <p className="field-muted mt-1">
                             {formatDate(task.scheduledStartAt)}
                             {task.scheduledEndAt ? ` to ${formatDate(task.scheduledEndAt)}` : ""}
@@ -276,7 +278,7 @@ export function TicketDetailPage({ ticketId }: { ticketId: string }) {
                   ))}
                 </div>
               ) : (
-                <p className="field-muted">No scheduled visits linked to this ticket.</p>
+                <p className="field-muted">No tasks linked to this ticket.</p>
               )}
             </DetailGroup>
 
@@ -466,7 +468,8 @@ function acknowledgementSummary(acknowledgement: TicketDetail["serviceReports"][
   return `${acknowledgement.response.replaceAll("_", " ")}${name}${date}`;
 }
 
-function formatDate(value: string) {
+function formatDate(value: string | null) {
+  if (!value) return "Not confirmed";
   return new Intl.DateTimeFormat("en", {
     year: "numeric",
     month: "short",

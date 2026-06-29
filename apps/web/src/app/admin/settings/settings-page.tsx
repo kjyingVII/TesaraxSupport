@@ -22,8 +22,8 @@ type SystemSettings = {
   whatsappTicketStatusChangedEnabled: boolean;
   whatsappServiceReportSubmittedEnabled: boolean;
   whatsappMachineLogCreatedEnabled: boolean;
-  whatsappScheduledTaskCreatedEnabled: boolean;
-  whatsappScheduledTaskRescheduledEnabled: boolean;
+  whatsappTaskCreatedEnabled: boolean;
+  whatsappTaskRescheduledEnabled: boolean;
 };
 
 type SettingsResponse = {
@@ -45,8 +45,8 @@ const emptyForm = {
   whatsappTicketStatusChangedEnabled: true,
   whatsappServiceReportSubmittedEnabled: true,
   whatsappMachineLogCreatedEnabled: true,
-  whatsappScheduledTaskCreatedEnabled: true,
-  whatsappScheduledTaskRescheduledEnabled: true
+  whatsappTaskCreatedEnabled: true,
+  whatsappTaskRescheduledEnabled: true
 };
 
 export function SettingsPage() {
@@ -81,8 +81,8 @@ export function SettingsPage() {
         whatsappTicketStatusChangedEnabled: response.data.whatsappTicketStatusChangedEnabled,
         whatsappServiceReportSubmittedEnabled: response.data.whatsappServiceReportSubmittedEnabled,
         whatsappMachineLogCreatedEnabled: response.data.whatsappMachineLogCreatedEnabled,
-        whatsappScheduledTaskCreatedEnabled: response.data.whatsappScheduledTaskCreatedEnabled,
-        whatsappScheduledTaskRescheduledEnabled: response.data.whatsappScheduledTaskRescheduledEnabled
+        whatsappTaskCreatedEnabled: response.data.whatsappTaskCreatedEnabled,
+        whatsappTaskRescheduledEnabled: response.data.whatsappTaskRescheduledEnabled
       });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unable to load settings.");
@@ -113,8 +113,8 @@ export function SettingsPage() {
         whatsappTicketStatusChangedEnabled: form.whatsappTicketStatusChangedEnabled,
         whatsappServiceReportSubmittedEnabled: form.whatsappServiceReportSubmittedEnabled,
         whatsappMachineLogCreatedEnabled: form.whatsappMachineLogCreatedEnabled,
-        whatsappScheduledTaskCreatedEnabled: form.whatsappScheduledTaskCreatedEnabled,
-        whatsappScheduledTaskRescheduledEnabled: form.whatsappScheduledTaskRescheduledEnabled
+        whatsappTaskCreatedEnabled: form.whatsappTaskCreatedEnabled,
+        whatsappTaskRescheduledEnabled: form.whatsappTaskRescheduledEnabled
       };
 
       const response = await apiRequest<SettingsResponse>("/api/settings", {
@@ -137,8 +137,8 @@ export function SettingsPage() {
         whatsappTicketStatusChangedEnabled: response.data.whatsappTicketStatusChangedEnabled,
         whatsappServiceReportSubmittedEnabled: response.data.whatsappServiceReportSubmittedEnabled,
         whatsappMachineLogCreatedEnabled: response.data.whatsappMachineLogCreatedEnabled,
-        whatsappScheduledTaskCreatedEnabled: response.data.whatsappScheduledTaskCreatedEnabled,
-        whatsappScheduledTaskRescheduledEnabled: response.data.whatsappScheduledTaskRescheduledEnabled
+        whatsappTaskCreatedEnabled: response.data.whatsappTaskCreatedEnabled,
+        whatsappTaskRescheduledEnabled: response.data.whatsappTaskRescheduledEnabled
       });
       setMessage("Settings saved.");
     } catch (err) {
@@ -229,16 +229,16 @@ export function SettingsPage() {
                     onChange={(checked) => updateField("whatsappMachineLogCreatedEnabled", checked)}
                   />
                   <ToggleInput
-                    label="Scheduled Visit Created"
-                    description="Notify the selected contact when a scheduled visit is created."
-                    checked={form.whatsappScheduledTaskCreatedEnabled}
-                    onChange={(checked) => updateField("whatsappScheduledTaskCreatedEnabled", checked)}
+                    label="Task Created"
+                    description="Notify the selected contact when a task is created."
+                    checked={form.whatsappTaskCreatedEnabled}
+                    onChange={(checked) => updateField("whatsappTaskCreatedEnabled", checked)}
                   />
                   <ToggleInput
-                    label="Scheduled Visit Rescheduled"
-                    description="Notify the selected contact when a scheduled visit time is changed."
-                    checked={form.whatsappScheduledTaskRescheduledEnabled}
-                    onChange={(checked) => updateField("whatsappScheduledTaskRescheduledEnabled", checked)}
+                    label="Task Rescheduled"
+                    description="Notify the selected contact when a task time is changed."
+                    checked={form.whatsappTaskRescheduledEnabled}
+                    onChange={(checked) => updateField("whatsappTaskRescheduledEnabled", checked)}
                   />
                 </div>
               </section>

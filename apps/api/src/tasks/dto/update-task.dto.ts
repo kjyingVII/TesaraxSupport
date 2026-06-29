@@ -1,4 +1,4 @@
-export type UpdateScheduledTaskDto = {
+export type UpdateTaskDto = {
   customerId?: string;
   machineId?: string;
   ticketId?: string | null;

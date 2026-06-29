@@ -61,12 +61,12 @@ type AssignmentSummary = {
   };
 };
 
-type ScheduledTaskSummary = {
+type TaskSummary = {
   id: string;
   title: string;
   taskType: string;
   description: string | null;
-  scheduledStartAt: string;
+  scheduledStartAt: string | null;
   scheduledEndAt: string | null;
   status: string;
   priority: string;
@@ -131,7 +131,7 @@ type TicketDetail = TicketSummary & {
     comment: string | null;
     createdAt: string;
   }>;
-  scheduledTasks: ScheduledTaskSummary[];
+  tasks: TaskSummary[];
   serviceReports: Array<{
     id: string;
     diagnosis: string;
@@ -246,7 +246,7 @@ const actionStatusOptions = [
   { label: "Resolved", value: "RESOLVED" }
 ];
 
-const scheduledTaskTypeOptions = [
+const TaskTypeOptions = [
   { label: "Corrective Service", value: "CORRECTIVE_SERVICE" },
   { label: "Machine Maintenance", value: "MACHINE_MAINTENANCE" },
   { label: "Component Replacement", value: "COMPONENT_REPLACEMENT" },
@@ -288,8 +288,8 @@ export function TicketWorkbench() {
   const [leadTechnicianId, setLeadTechnicianId] = useState("");
   const [assignmentComment, setAssignmentComment] = useState("");
   const [savingAssignments, setSavingAssignments] = useState(false);
-  const [showScheduleForm, setShowScheduleForm] = useState(false);
-  const [scheduleForm, setScheduleForm] = useState({
+  const [showTaskForm, setShowTaskForm] = useState(false);
+  const [taskForm, setTaskForm] = useState({
     title: "",
     taskType: "CORRECTIVE_SERVICE",
     scheduledStartAt: "",
@@ -299,7 +299,7 @@ export function TicketWorkbench() {
     notifyRecipientPhone: "",
     notifyRecipientEmail: ""
   });
-  const [savingSchedule, setSavingSchedule] = useState(false);
+  const [savingTask, setSavingTask] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [actionMessage, setActionMessage] = useState<string | null>(null);
   const [acknowledgementUrl, setAcknowledgementUrl] = useState<string | null>(null);
@@ -370,8 +370,8 @@ export function TicketWorkbench() {
         ?? ""
     );
     setAssignmentComment("");
-    setShowScheduleForm(false);
-    setScheduleForm({
+    setShowTaskForm(false);
+    setTaskForm({
       title: `Visit for ${selectedTicket.ticketNumber}`,
       taskType: "CORRECTIVE_SERVICE",
       scheduledStartAt: "",
@@ -599,36 +599,36 @@ export function TicketWorkbench() {
     event.preventDefault();
     if (!selectedTicket || !user?.id) return;
 
-    setSavingSchedule(true);
+    setSavingTask(true);
     setError(null);
     setActionMessage(null);
 
     try {
-      await apiRequest("/api/scheduled-tasks", {
+      await apiRequest("/api/tasks", {
         method: "POST",
         body: JSON.stringify({
           ticketId: selectedTicket.id,
-          title: scheduleForm.title || `Visit for ${selectedTicket.ticketNumber}`,
-          taskType: scheduleForm.taskType,
-          description: scheduleForm.description || null,
-          scheduledStartAt: new Date(scheduleForm.scheduledStartAt).toISOString(),
-          scheduledEndAt: scheduleForm.scheduledEndAt ? new Date(scheduleForm.scheduledEndAt).toISOString() : null,
+          title: taskForm.title || `Visit for ${selectedTicket.ticketNumber}`,
+          taskType: taskForm.taskType,
+          description: taskForm.description || null,
+          scheduledStartAt: taskForm.scheduledStartAt ? new Date(taskForm.scheduledStartAt).toISOString() : null,
+          scheduledEndAt: taskForm.scheduledEndAt ? new Date(taskForm.scheduledEndAt).toISOString() : null,
           priority: selectedTicket.priority,
-          notifyRecipientName: scheduleForm.notifyRecipientName || null,
-          notifyRecipientPhone: scheduleForm.notifyRecipientPhone || null,
-          notifyRecipientEmail: scheduleForm.notifyRecipientEmail || null,
+          notifyRecipientName: taskForm.notifyRecipientName || null,
+          notifyRecipientPhone: taskForm.notifyRecipientPhone || null,
+          notifyRecipientEmail: taskForm.notifyRecipientEmail || null,
           assignedTechnicianIds: [user.id]
         })
       });
-      setActionMessage("Scheduled visit created.");
-      setShowScheduleForm(false);
+      setActionMessage("Task created.");
+      setShowTaskForm(false);
       await loadTickets();
       const response = await apiRequest<TicketDetailResponse>(`/api/tickets/${selectedTicket.id}`);
       setSelectedTicket(response.data);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unable to schedule visit.");
     } finally {
-      setSavingSchedule(false);
+      setSavingTask(false);
     }
   }
 
@@ -977,16 +977,18 @@ export function TicketWorkbench() {
                   ) : null}
                 </DetailGroup>
 
-                <DetailGroup title={`Scheduled Visits (${selectedTicket.scheduledTasks.length})`}>
-                  {selectedTicket.scheduledTasks.length > 0 ? (
+                <DetailGroup title={`Tasks (${selectedTicket.tasks.length})`}>
+                  {selectedTicket.tasks.length > 0 ? (
                     <div className="grid gap-2">
-                      {selectedTicket.scheduledTasks.map((task) => (
+                      {selectedTicket.tasks.map((task) => (
                         <div key={task.id} className="field-panel-subtle">
                           <div className="flex flex-wrap items-start justify-between gap-2">
                             <div>
-                              <p className="text-sm font-semibold">{task.title}</p>
+                              <Link className="text-sm font-semibold text-[#155e75] underline-offset-4 hover:underline dark:text-[#67e8f9]" href={`/technician/tasks/${task.id}`}>
+                                {task.title}
+                              </Link>
                               <p className="field-muted mt-1">
-                                {formatDate(task.scheduledStartAt)}
+                            {formatDate(task.scheduledStartAt)}
                                 {task.scheduledEndAt ? ` to ${formatDate(task.scheduledEndAt)}` : ""}
                               </p>
                               <p className="field-muted mt-1">
@@ -1005,7 +1007,7 @@ export function TicketWorkbench() {
                       ))}
                     </div>
                   ) : (
-                    <p className="field-muted">No scheduled visits linked to this ticket.</p>
+                    <p className="field-muted">No tasks linked to this ticket.</p>
                   )}
                 </DetailGroup>
 
@@ -1019,28 +1021,28 @@ export function TicketWorkbench() {
                   <button
                     className="field-button-secondary"
                     type="button"
-                    onClick={() => setShowScheduleForm((current) => !current)}
+                    onClick={() => setShowTaskForm((current) => !current)}
                   >
                     Schedule Visit
                   </button>
-                  {showScheduleForm ? (
+                  {showTaskForm ? (
                     <form className="grid gap-3 rounded-md border border-[#d9dee3] p-3 dark:border-[#2f3742]" onSubmit={createScheduledVisit}>
                       <label className="block">
                         <span className="field-label">Title</span>
                         <input
                           className="field-input h-11"
-                          value={scheduleForm.title}
-                          onChange={(event) => setScheduleForm((current) => ({ ...current, title: event.target.value }))}
+                          value={taskForm.title}
+                          onChange={(event) => setTaskForm((current) => ({ ...current, title: event.target.value }))}
                         />
                       </label>
                       <label className="block">
                         <span className="field-label">Task Type</span>
                         <select
                           className="field-input h-11"
-                          value={scheduleForm.taskType}
-                          onChange={(event) => setScheduleForm((current) => ({ ...current, taskType: event.target.value }))}
+                          value={taskForm.taskType}
+                          onChange={(event) => setTaskForm((current) => ({ ...current, taskType: event.target.value }))}
                         >
-                          {scheduledTaskTypeOptions.map((option) => (
+                          {TaskTypeOptions.map((option) => (
                             <option key={option.value} value={option.value}>{option.label}</option>
                           ))}
                         </select>
@@ -1051,9 +1053,8 @@ export function TicketWorkbench() {
                           <input
                             className="field-input h-11"
                             type="datetime-local"
-                            value={scheduleForm.scheduledStartAt}
-                            required
-                            onChange={(event) => setScheduleForm((current) => ({ ...current, scheduledStartAt: event.target.value }))}
+                            value={taskForm.scheduledStartAt}
+                            onChange={(event) => setTaskForm((current) => ({ ...current, scheduledStartAt: event.target.value }))}
                           />
                         </label>
                         <label className="block">
@@ -1061,8 +1062,8 @@ export function TicketWorkbench() {
                           <input
                             className="field-input h-11"
                             type="datetime-local"
-                            value={scheduleForm.scheduledEndAt}
-                            onChange={(event) => setScheduleForm((current) => ({ ...current, scheduledEndAt: event.target.value }))}
+                            value={taskForm.scheduledEndAt}
+                            onChange={(event) => setTaskForm((current) => ({ ...current, scheduledEndAt: event.target.value }))}
                           />
                         </label>
                       </div>
@@ -1070,23 +1071,23 @@ export function TicketWorkbench() {
                         <span className="field-label">Description / Scope</span>
                         <textarea
                           className="field-textarea min-h-24"
-                          value={scheduleForm.description}
-                          onChange={(event) => setScheduleForm((current) => ({ ...current, description: event.target.value }))}
+                          value={taskForm.description}
+                          onChange={(event) => setTaskForm((current) => ({ ...current, description: event.target.value }))}
                         />
                       </label>
                       <section className="field-panel-subtle grid gap-3">
                         <div>
                           <h3 className="text-sm font-semibold">User to Notify</h3>
-                          <p className="field-muted mt-1">Prefilled from the requester. A WhatsApp schedule notification will be sent when this visit is created.</p>
+                          <p className="field-muted mt-1">Prefilled from the requester. A WhatsApp task notification will be sent when this visit is created.</p>
                         </div>
                         <div className="grid gap-3 sm:grid-cols-2">
                           <label className="block">
                             <span className="field-label">Name</span>
                             <input
                               className="field-input h-11"
-                              value={scheduleForm.notifyRecipientName}
+                              value={taskForm.notifyRecipientName}
                               required
-                              onChange={(event) => setScheduleForm((current) => ({ ...current, notifyRecipientName: event.target.value }))}
+                              onChange={(event) => setTaskForm((current) => ({ ...current, notifyRecipientName: event.target.value }))}
                             />
                           </label>
                           <label className="block">
@@ -1094,29 +1095,28 @@ export function TicketWorkbench() {
                             <input
                               className="field-input h-11"
                               type="email"
-                              value={scheduleForm.notifyRecipientEmail}
-                              onChange={(event) => setScheduleForm((current) => ({ ...current, notifyRecipientEmail: event.target.value }))}
+                              value={taskForm.notifyRecipientEmail}
+                              onChange={(event) => setTaskForm((current) => ({ ...current, notifyRecipientEmail: event.target.value }))}
                             />
                           </label>
                         </div>
                         <PhoneNumberInput
                           label="Phone"
-                          value={scheduleForm.notifyRecipientPhone}
+                          value={taskForm.notifyRecipientPhone}
                           required
-                          onChange={(value) => setScheduleForm((current) => ({ ...current, notifyRecipientPhone: value }))}
+                          onChange={(value) => setTaskForm((current) => ({ ...current, notifyRecipientPhone: value }))}
                         />
                       </section>
                       <button
                         className="field-button-primary disabled:opacity-50"
                         type="submit"
                         disabled={
-                          savingSchedule
-                          || !scheduleForm.scheduledStartAt
-                          || !scheduleForm.notifyRecipientName.trim()
-                          || !isValidPhoneNumber(scheduleForm.notifyRecipientPhone)
+                          savingTask
+                          || !taskForm.notifyRecipientName.trim()
+                          || !isValidPhoneNumber(taskForm.notifyRecipientPhone)
                         }
                       >
-                        {savingSchedule ? "Scheduling..." : "Create Scheduled Visit"}
+                        {savingTask ? "Scheduling..." : "Create Task"}
                       </button>
                     </form>
                   ) : null}
@@ -1656,7 +1656,8 @@ function acknowledgementSummary(acknowledgement: TicketDetail["serviceReports"][
   return `${acknowledgement.response.replaceAll("_", " ")}${name}${date}`;
 }
 
-function formatDate(value: string) {
+function formatDate(value: string | null) {
+  if (!value) return "Not confirmed";
   return new Intl.DateTimeFormat("en", {
     year: "numeric",
     month: "short",

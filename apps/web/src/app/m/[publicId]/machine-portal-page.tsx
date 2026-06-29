@@ -42,11 +42,11 @@ type MachineDocument = {
   createdAt: string;
 };
 
-type ScheduledTaskSummary = {
+type TaskSummary = {
   id: string;
   title: string;
   taskType: ActivityType;
-  scheduledStartAt: string;
+  scheduledStartAt: string | null;
   scheduledEndAt: string | null;
   status: string;
   priority: string;
@@ -91,7 +91,7 @@ type PortalResponse = {
       closed: TicketSummary[];
     };
     logs: LogSummary[];
-    scheduledTasks: ScheduledTaskSummary[];
+    tasks: TaskSummary[];
     documents: MachineDocument[];
     requestAttachmentMaxFileMb: number;
     requestAttachmentMaxTotalMb: number;
@@ -311,8 +311,8 @@ export function MachinePortalPage({ publicId }: { publicId: string }) {
                   <DocumentRow key={document.id} document={document} onDownload={downloadDocument} />
                 ))}
               </ListPanel>
-              <ListPanel title="Scheduled Visits" empty="No scheduled visits for this machine.">
-                {portal.scheduledTasks.map((task) => <ScheduledTaskRow key={task.id} task={task} />)}
+              <ListPanel title="Tasks" empty="No tasks for this machine.">
+                {portal.tasks.map((task) => <TaskRow key={task.id} task={task} />)}
               </ListPanel>
               <ListPanel title="Active Tickets" empty="No active tickets.">
                 {portal.tickets.active.map((ticket) => <TicketRow key={ticket.id} publicId={publicId} ticket={ticket} />)}
@@ -360,14 +360,14 @@ function ListPanel({ title, empty, children }: { title: string; empty: string; c
   );
 }
 
-function ScheduledTaskRow({ task }: { task: ScheduledTaskSummary }) {
+function TaskRow({ task }: { task: TaskSummary }) {
   const assignedStaff = task.assignments.map((assignment) => assignment.technician.name).filter(Boolean).join(", ") || "To be confirmed";
 
   return (
     <div className="field-panel-subtle text-sm">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <span className="font-semibold">{formatDateTimeRange(task.scheduledStartAt, task.scheduledEndAt)}</span>
-        <span className={`status-badge ${scheduleStatusTone(task.status)}`}>{task.status.replaceAll("_", " ")}</span>
+        <span className={`status-badge ${taskStatusTone(task.status)}`}>{task.status.replaceAll("_", " ")}</span>
       </div>
       <p className="mt-2 font-medium text-neutral-800 dark:text-neutral-100">{task.title}</p>
       <p className="field-muted mt-1">{activityTypeLabel(task.taskType)} / {task.priority.replaceAll("_", " ")}</p>
@@ -476,11 +476,12 @@ function statusTone(status: string) {
   }
 }
 
-function scheduleStatusTone(status: string) {
+function taskStatusTone(status: string) {
   switch (status) {
     case "IN_PROGRESS":
       return "status-cyan";
-    case "RESCHEDULED":
+    case "WAITING_COMPONENT":
+    case "WAITING_CUSTOMER":
       return "status-amber";
     case "COMPLETED":
       return "status-green";
@@ -500,7 +501,8 @@ function formatDate(value: string) {
   }).format(new Date(value));
 }
 
-function formatDateTime(value: string) {
+function formatDateTime(value: string | null) {
+  if (!value) return "Not confirmed";
   return new Intl.DateTimeFormat("en", {
     year: "numeric",
     month: "short",
@@ -510,7 +512,8 @@ function formatDateTime(value: string) {
   }).format(new Date(value));
 }
 
-function formatDateTimeRange(start: string, end: string | null) {
+function formatDateTimeRange(start: string | null, end: string | null) {
+  if (!start && !end) return "Not confirmed";
   if (!end) return formatDateTime(start);
   return `${formatDateTime(start)} to ${formatDateTime(end)}`;
 }

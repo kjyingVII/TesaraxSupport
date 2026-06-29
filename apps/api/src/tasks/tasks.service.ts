@@ -1,13 +1,13 @@
 import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
-import { Prisma, ScheduledTaskStatus, ScheduledTaskType, TicketPriority, UserRole } from "@prisma/client";
+import { Prisma, TaskStatus, TaskType, TicketPriority, UserRole } from "@prisma/client";
 import { AuditService } from "../audit/audit.service";
 import { parseNullablePhoneNumber } from "../common/phone-number";
 import { NotificationsService } from "../notifications/notifications.service";
 import { PrismaService } from "../prisma/prisma.service";
-import { CreateScheduledTaskDto } from "./dto/create-scheduled-task.dto";
-import { UpdateScheduledTaskDto } from "./dto/update-scheduled-task.dto";
+import { CreateTaskDto } from "./dto/create-task.dto";
+import { UpdateTaskDto } from "./dto/update-task.dto";
 
-type ListScheduledTasksInput = {
+type ListTasksInput = {
   customerId?: string;
   machineId?: string;
   ticketId?: string;
@@ -21,17 +21,17 @@ type ListScheduledTasksInput = {
 };
 
 @Injectable()
-export class ScheduledTasksService {
+export class TasksService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly auditService: AuditService,
     private readonly notificationsService: NotificationsService
   ) {}
 
-  async list(input: ListScheduledTasksInput) {
+  async list(input: ListTasksInput) {
     const page = this.parsePositiveInteger(input.page, 1);
     const pageSize = this.parsePositiveInteger(input.pageSize, 25);
-    const where: Prisma.ScheduledTaskWhereInput = {};
+    const where: Prisma.TaskWhereInput = {};
 
     if (input.customerId?.trim()) where.customerId = input.customerId.trim();
     if (input.machineId?.trim()) where.machineId = input.machineId.trim();
@@ -63,7 +63,7 @@ export class ScheduledTasksService {
     }
 
     const [items, total] = await this.prisma.$transaction([
-      this.prisma.scheduledTask.findMany({
+      this.prisma.task.findMany({
         where,
         include: this.includeTask(),
         orderBy: [
@@ -73,7 +73,7 @@ export class ScheduledTasksService {
         skip: (page - 1) * pageSize,
         take: pageSize
       }),
-      this.prisma.scheduledTask.count({ where })
+      this.prisma.task.count({ where })
     ]);
 
     return {
@@ -87,22 +87,45 @@ export class ScheduledTasksService {
   }
 
   async getById(id: string) {
-    const task = await this.prisma.scheduledTask.findUnique({
+    const task = await this.prisma.task.findUnique({
       where: { id },
       include: this.includeTask()
     });
 
-    if (!task) throw new NotFoundException("Scheduled task not found.");
+    if (!task) throw new NotFoundException("Task not found.");
     return { data: task };
   }
 
-  async create(dto: CreateScheduledTaskDto, actorUserId: string) {
+  async listComments(taskId: string) {
+    await this.ensureTaskExists(taskId);
+
+    const comments = await this.prisma.taskComment.findMany({
+      where: { taskId },
+      include: {
+        createdByUser: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            role: true
+          }
+        }
+      },
+      orderBy: {
+        createdAt: "asc"
+      }
+    });
+
+    return { data: comments };
+  }
+
+  async create(dto: CreateTaskDto, actorUserId: string) {
     const title = this.requiredString(dto.title, "Title is required.");
     const taskType = this.parseTaskType(dto.taskType);
-    const scheduledStartAt = this.parseDate(dto.scheduledStartAt, "scheduledStartAt");
+    const scheduledStartAt = this.parseNullableDate(dto.scheduledStartAt, "scheduledStartAt");
     const scheduledEndAt = this.parseNullableDate(dto.scheduledEndAt, "scheduledEndAt");
-    if (scheduledEndAt && scheduledEndAt <= scheduledStartAt) {
-      throw new BadRequestException("Scheduled end time must be after start time.");
+    if (scheduledStartAt && scheduledEndAt && scheduledEndAt <= scheduledStartAt) {
+      throw new BadRequestException("scheduled end time must be after start time.");
     }
 
     const context = await this.resolveTaskContext(dto);
@@ -113,7 +136,7 @@ export class ScheduledTasksService {
     const notifyRecipientEmail = this.cleanNullableString(dto.notifyRecipientEmail);
 
     const task = await this.prisma.$transaction(async (tx) => {
-      const created = await tx.scheduledTask.create({
+      const created = await tx.task.create({
         data: {
           customerId: context.customerId,
           machineId: context.machineId,
@@ -123,7 +146,7 @@ export class ScheduledTasksService {
           description: this.cleanNullableString(dto.description),
           scheduledStartAt,
           scheduledEndAt,
-          status: dto.status ? this.parseStatus(dto.status) : ScheduledTaskStatus.SCHEDULED,
+          status: dto.status ? this.parseStatus(dto.status) : scheduledStartAt ? TaskStatus.SCHEDULED : TaskStatus.PENDING,
           priority: dto.priority ? this.parsePriority(dto.priority) : context.priority,
           notifyRecipientName,
           notifyRecipientPhone,
@@ -134,7 +157,7 @@ export class ScheduledTasksService {
       });
 
       await this.replaceAssignments(tx, created.id, assignedTechnicianIds, actorUserId);
-      return tx.scheduledTask.findUniqueOrThrow({
+      return tx.task.findUniqueOrThrow({
         where: { id: created.id },
         include: this.includeTask()
       });
@@ -142,23 +165,58 @@ export class ScheduledTasksService {
 
     await this.auditService.write({
       actorUserId,
-      action: "CREATE_SCHEDULED_TASK",
-      entityType: "ScheduledTask",
+      action: "CREATE_TASK",
+      entityType: "Task",
       entityId: task.id,
       afterData: task
     });
 
-    await this.notificationsService.logScheduledTaskCreated(task.id);
+    await this.notificationsService.logTaskCreated(task.id);
 
     return { data: task };
   }
 
-  async update(id: string, dto: UpdateScheduledTaskDto, actorUserId: string) {
-    const before = await this.prisma.scheduledTask.findUnique({
+  async createComment(taskId: string, dto: { comment?: string }, actorUserId: string) {
+    await this.ensureTaskExists(taskId);
+    const commentText = this.requiredString(dto.comment, "Comment is required.");
+
+    const comment = await this.prisma.taskComment.create({
+      data: {
+        taskId,
+        comment: commentText,
+        createdByUserId: actorUserId
+      },
+      include: {
+        createdByUser: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            role: true
+          }
+        }
+      }
+    });
+
+    await this.auditService.write({
+      actorUserId,
+      action: "CREATE_TASK_COMMENT",
+      entityType: "Task",
+      entityId: taskId,
+      afterData: {
+        commentId: comment.id
+      }
+    });
+
+    return { data: comment };
+  }
+
+  async update(id: string, dto: UpdateTaskDto, actorUserId: string) {
+    const before = await this.prisma.task.findUnique({
       where: { id },
       include: this.includeTask()
     });
-    if (!before) throw new NotFoundException("Scheduled task not found.");
+    if (!before) throw new NotFoundException("Task not found.");
 
     const context = dto.ticketId !== undefined || dto.machineId !== undefined || dto.customerId !== undefined
       ? await this.resolveTaskContext({
@@ -173,7 +231,7 @@ export class ScheduledTasksService {
           priority: before.priority
         };
 
-    const data: Prisma.ScheduledTaskUpdateInput = {
+    const data: Prisma.TaskUpdateInput = {
       customer: { connect: { id: context.customerId } },
       machine: { connect: { id: context.machineId } },
       ticket: context.ticketId ? { connect: { id: context.ticketId } } : { disconnect: true }
@@ -182,9 +240,19 @@ export class ScheduledTasksService {
     if (dto.title !== undefined) data.title = this.requiredString(dto.title, "Title cannot be empty.");
     if (dto.taskType !== undefined) data.taskType = this.parseTaskType(dto.taskType);
     if (dto.description !== undefined) data.description = this.cleanNullableString(dto.description);
-    if (dto.scheduledStartAt !== undefined) data.scheduledStartAt = this.parseDate(dto.scheduledStartAt, "scheduledStartAt");
+    if (dto.scheduledStartAt !== undefined) data.scheduledStartAt = this.parseNullableDate(dto.scheduledStartAt, "scheduledStartAt");
     if (dto.scheduledEndAt !== undefined) data.scheduledEndAt = this.parseNullableDate(dto.scheduledEndAt, "scheduledEndAt");
-    if (dto.status !== undefined) data.status = this.parseStatus(dto.status);
+    if (dto.status !== undefined) {
+      const nextStatus = this.parseStatus(dto.status);
+      data.status = nextStatus;
+      if (nextStatus === TaskStatus.COMPLETED) {
+        data.completedAt = new Date();
+        data.completedByUser = { connect: { id: actorUserId } };
+      } else {
+        data.completedAt = null;
+        data.completedByUser = { disconnect: true };
+      }
+    }
     if (dto.priority !== undefined) data.priority = this.parsePriority(dto.priority);
     if (dto.notifyRecipientName !== undefined) data.notifyRecipientName = this.cleanNullableString(dto.notifyRecipientName);
     if (dto.notifyRecipientPhone !== undefined) data.notifyRecipientPhone = parseNullablePhoneNumber(dto.notifyRecipientPhone, "Notify recipient phone");
@@ -194,22 +262,22 @@ export class ScheduledTasksService {
       data.completedByUser = dto.completedByUserId ? { connect: { id: dto.completedByUserId } } : { disconnect: true };
     }
 
-    const start = dto.scheduledStartAt !== undefined ? data.scheduledStartAt as Date : before.scheduledStartAt;
+    const start = dto.scheduledStartAt !== undefined ? data.scheduledStartAt as Date | null : before.scheduledStartAt;
     const end = dto.scheduledEndAt !== undefined ? data.scheduledEndAt as Date | null : before.scheduledEndAt;
-    if (end && end <= start) throw new BadRequestException("Scheduled end time must be after start time.");
+    if (start && end && end <= start) throw new BadRequestException("scheduled end time must be after start time.");
 
     const assignedTechnicianIds = dto.assignedTechnicianIds ? this.uniqueStrings(dto.assignedTechnicianIds) : undefined;
     if (assignedTechnicianIds) await this.ensureActiveTechnicians(assignedTechnicianIds);
 
     const task = await this.prisma.$transaction(async (tx) => {
-      await tx.scheduledTask.update({
+      await tx.task.update({
         where: { id },
         data
       });
       if (assignedTechnicianIds) {
         await this.replaceAssignments(tx, id, assignedTechnicianIds, actorUserId);
       }
-      return tx.scheduledTask.findUniqueOrThrow({
+      return tx.task.findUniqueOrThrow({
         where: { id },
         include: this.includeTask()
       });
@@ -217,8 +285,8 @@ export class ScheduledTasksService {
 
     await this.auditService.write({
       actorUserId,
-      action: "UPDATE_SCHEDULED_TASK",
-      entityType: "ScheduledTask",
+      action: "UPDATE_TASK",
+      entityType: "Task",
       entityId: id,
       beforeData: before,
       afterData: task
@@ -228,26 +296,26 @@ export class ScheduledTasksService {
   }
 
   async cancel(id: string, actorUserId: string) {
-    return this.update(id, { status: ScheduledTaskStatus.CANCELLED }, actorUserId);
+    return this.update(id, { status: TaskStatus.CANCELLED }, actorUserId);
   }
 
   async complete(id: string, actorUserId: string) {
-    const task = await this.prisma.scheduledTask.update({
+    const task = await this.prisma.task.update({
       where: { id },
       data: {
-        status: ScheduledTaskStatus.COMPLETED,
+        status: TaskStatus.COMPLETED,
         completedByUserId: actorUserId,
         completedAt: new Date()
       },
       include: this.includeTask()
     }).catch(() => null);
 
-    if (!task) throw new NotFoundException("Scheduled task not found.");
+    if (!task) throw new NotFoundException("Task not found.");
 
     await this.auditService.write({
       actorUserId,
-      action: "COMPLETE_SCHEDULED_TASK",
-      entityType: "ScheduledTask",
+      action: "COMPLETE_TASK",
+      entityType: "Task",
       entityId: id,
       afterData: task
     });
@@ -256,24 +324,24 @@ export class ScheduledTasksService {
   }
 
   async notifyRescheduled(id: string, actorUserId: string) {
-    const task = await this.prisma.scheduledTask.findUnique({
+    const task = await this.prisma.task.findUnique({
       where: { id },
       include: this.includeTask()
     });
 
-    if (!task) throw new NotFoundException("Scheduled task not found.");
+    if (!task) throw new NotFoundException("Task not found.");
 
-    await this.notificationsService.logScheduledTaskRescheduled(id);
+    await this.notificationsService.logTaskRescheduled(id);
 
-    const updated = await this.prisma.scheduledTask.findUniqueOrThrow({
+    const updated = await this.prisma.task.findUniqueOrThrow({
       where: { id },
       include: this.includeTask()
     });
 
     await this.auditService.write({
       actorUserId,
-      action: "NOTIFY_SCHEDULED_TASK_RESCHEDULED",
-      entityType: "ScheduledTask",
+      action: "NOTIFY_TASK_RESCHEDULED",
+      entityType: "Task",
       entityId: id,
       beforeData: task,
       afterData: updated
@@ -330,13 +398,13 @@ export class ScheduledTasksService {
 
   private async replaceAssignments(
     tx: Prisma.TransactionClient,
-    scheduledTaskId: string,
+    taskId: string,
     technicianIds: string[],
     actorUserId?: string
   ) {
-    await tx.scheduledTaskAssignment.deleteMany({
+    await tx.taskAssignment.deleteMany({
       where: {
-        scheduledTaskId,
+        taskId,
         technicianId: {
           notIn: technicianIds
         }
@@ -344,16 +412,16 @@ export class ScheduledTasksService {
     });
 
     for (const technicianId of technicianIds) {
-      await tx.scheduledTaskAssignment.upsert({
+      await tx.taskAssignment.upsert({
         where: {
-          scheduledTaskId_technicianId: {
-            scheduledTaskId,
+          taskId_technicianId: {
+            taskId,
             technicianId
           }
         },
         update: {},
         create: {
-          scheduledTaskId,
+          taskId,
           technicianId,
           assignedByUserId: actorUserId
         }
@@ -371,6 +439,14 @@ export class ScheduledTasksService {
       }
     });
     if (count !== technicianIds.length) throw new BadRequestException("One or more assigned technicians are invalid or inactive.");
+  }
+
+  private async ensureTaskExists(id: string) {
+    const task = await this.prisma.task.findUnique({
+      where: { id },
+      select: { id: true }
+    });
+    if (!task) throw new NotFoundException("Task not found.");
   }
 
   private includeTask() {
@@ -431,19 +507,19 @@ export class ScheduledTasksService {
           createdAt: "asc"
         }
       }
-    } satisfies Prisma.ScheduledTaskInclude;
+    } satisfies Prisma.TaskInclude;
   }
 
   private parseTaskType(value: string | undefined) {
     const taskType = this.requiredString(value, "Task type is required.").toUpperCase();
-    if (!Object.values(ScheduledTaskType).includes(taskType as ScheduledTaskType)) throw new BadRequestException("Invalid task type.");
-    return taskType as ScheduledTaskType;
+    if (!Object.values(TaskType).includes(taskType as TaskType)) throw new BadRequestException("Invalid task type.");
+    return taskType as TaskType;
   }
 
   private parseStatus(value: string | undefined) {
     const status = this.requiredString(value, "Status is required.").toUpperCase();
-    if (!Object.values(ScheduledTaskStatus).includes(status as ScheduledTaskStatus)) throw new BadRequestException("Invalid scheduled task status.");
-    return status as ScheduledTaskStatus;
+    if (!Object.values(TaskStatus).includes(status as TaskStatus)) throw new BadRequestException("Invalid task status.");
+    return status as TaskStatus;
   }
 
   private parsePriority(value: string | undefined) {

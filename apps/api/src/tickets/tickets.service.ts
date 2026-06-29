@@ -279,7 +279,7 @@ export class TicketsService {
         machineLogs: {
           orderBy: { workDate: "desc" }
         },
-        scheduledTasks: {
+        tasks: {
           include: {
             assignments: {
               include: {

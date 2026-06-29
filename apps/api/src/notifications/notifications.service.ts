@@ -51,8 +51,8 @@ type WhatsAppScenarioSetting =
   | "whatsappTicketStatusChangedEnabled"
   | "whatsappServiceReportSubmittedEnabled"
   | "whatsappMachineLogCreatedEnabled"
-  | "whatsappScheduledTaskCreatedEnabled"
-  | "whatsappScheduledTaskRescheduledEnabled";
+  | "whatsappTaskCreatedEnabled"
+  | "whatsappTaskRescheduledEnabled";
 
 @Injectable()
 export class NotificationsService {
@@ -596,17 +596,17 @@ export class NotificationsService {
     });
   }
 
-  async logScheduledTaskCreated(scheduledTaskId: string) {
-    await this.logScheduledTaskNotification(scheduledTaskId, "created");
+  async logTaskCreated(taskId: string) {
+    await this.logTaskNotification(taskId, "created");
   }
 
-  async logScheduledTaskRescheduled(scheduledTaskId: string) {
-    await this.logScheduledTaskNotification(scheduledTaskId, "rescheduled");
+  async logTaskRescheduled(taskId: string) {
+    await this.logTaskNotification(taskId, "rescheduled");
   }
 
-  private async logScheduledTaskNotification(scheduledTaskId: string, mode: "created" | "rescheduled") {
-    const task = await this.prisma.scheduledTask.findUnique({
-      where: { id: scheduledTaskId },
+  private async logTaskNotification(taskId: string, mode: "created" | "rescheduled") {
+    const task = await this.prisma.task.findUnique({
+      where: { id: taskId },
       select: {
         id: true,
         title: true,
@@ -682,10 +682,10 @@ export class NotificationsService {
     ].filter((line) => line !== null).join("\n");
 
     if (
-      !(await this.shouldSendWhatsappScenario(isRescheduled ? "whatsappScheduledTaskRescheduledEnabled" : "whatsappScheduledTaskCreatedEnabled", {
-        relatedType: "ScheduledTask",
+      !(await this.shouldSendWhatsappScenario(isRescheduled ? "whatsappTaskRescheduledEnabled" : "whatsappTaskCreatedEnabled", {
+        relatedType: "Task",
         relatedId: task.id,
-        subject: isRescheduled ? `Scheduled visit reschedule WhatsApp skipped: ${task.title}` : `Scheduled visit WhatsApp skipped: ${task.title}`,
+        subject: isRescheduled ? `Task reschedule WhatsApp skipped: ${task.title}` : `Task WhatsApp skipped: ${task.title}`,
         message
       }))
     ) {
@@ -693,14 +693,14 @@ export class NotificationsService {
     }
 
     await this.logWhatsapp({
-      relatedType: "ScheduledTask",
+      relatedType: "Task",
       relatedId: task.id,
       recipient: {
         name: task.notifyRecipientName,
         phone: task.notifyRecipientPhone,
         email: task.notifyRecipientEmail
       },
-      subject: isRescheduled ? `Scheduled visit rescheduled: ${task.title}` : `Scheduled visit: ${task.title}`,
+      subject: isRescheduled ? `Task rescheduled: ${task.title}` : `Task: ${task.title}`,
       message,
       template: {
         eventKey: "scheduled_task_notification",
@@ -717,7 +717,7 @@ export class NotificationsService {
       }
     });
 
-    await this.prisma.scheduledTask.update({
+    await this.prisma.task.update({
       where: { id: task.id },
       data: { notifiedAt: new Date() }
     });
