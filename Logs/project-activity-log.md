@@ -1561,3 +1561,5 @@ This file records meaningful project updates, decisions, and implementation step
 - Added the missing TWILIO_CONTENT_SID_MACHINE_LOG_CREATED setting to .env.example so Twilio template mode can send machine log created notifications when configured.
 - Updated machine log WhatsApp notifications to match the approved machine_log_created template with machine, title, work time, summary, acknowledgement status, and public machine log detail URL.
 - Fixed docker-compose API environment mapping so machine log and daily task reminder WhatsApp template IDs from .env are passed into the container.
+- Updated machine log WhatsApp acknowledgement text so optional logs send 'Not required.' and required logs send the public acknowledgement/log URL in the approved template acknowledgement field.
+- Updated daily task reminder runner to create a skipped Notification Log entry once per day at the configured time when the reminder is disabled.

@@ -1,5 +1,5 @@
 import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from "@nestjs/common";
-import { Prisma, TaskStatus, UserRole } from "@prisma/client";
+import { NotificationChannel, NotificationStatus, Prisma, TaskStatus, UserRole } from "@prisma/client";
 import { NotificationsService } from "../notifications/notifications.service";
 import { PrismaService } from "../prisma/prisma.service";
 import { SettingsService } from "../settings/settings.service";
@@ -54,7 +54,6 @@ export class TaskRemindersService implements OnModuleInit, OnModuleDestroy {
 
     try {
       const settings = await this.settingsService.getCurrentSettings();
-      if (!settings.whatsappTaskDailyReminderEnabled) return;
 
       const timeZone = this.getTimeZone();
       const now = new Date();
@@ -63,6 +62,13 @@ export class TaskRemindersService implements OnModuleInit, OnModuleDestroy {
 
       if (this.compareTime(local.time, settings.whatsappTaskDailyReminderTime) < 0) return;
       if (await this.hasRunToday(dateKey)) return;
+
+      if (!settings.whatsappTaskDailyReminderEnabled) {
+        await this.logDisabledReminderSkip(dateKey, settings.whatsappTaskDailyReminderTime);
+        await this.markRun(dateKey);
+        this.logger.log(`Daily task reminder skipped for ${dateKey}; reminder is disabled in system settings.`);
+        return;
+      }
 
       const sentCount = await this.sendDailyReminders();
       await this.markRun(dateKey);
@@ -141,6 +147,20 @@ export class TaskRemindersService implements OnModuleInit, OnModuleDestroy {
     }
 
     return users.length;
+  }
+
+  private async logDisabledReminderSkip(dateKey: string, reminderTime: string) {
+    await this.prisma.notificationLog.create({
+      data: {
+        relatedType: "TaskDailyReminder",
+        relatedId: dateKey,
+        channel: NotificationChannel.WHATSAPP,
+        subject: `Daily task reminder skipped: ${dateKey}`,
+        messageSummary: `Daily task reminder was scheduled for ${reminderTime}, but it is disabled in system settings.`,
+        status: NotificationStatus.SKIPPED,
+        errorMessage: "Daily task reminder is disabled in system settings."
+      }
+    });
   }
 
   private compareTasks(a: ReminderTask, b: ReminderTask) {

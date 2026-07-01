@@ -565,7 +565,7 @@ export class NotificationsService {
     if (!machineLog?.notifyCustomer) return;
 
     const detailUrl = this.buildMachineLogDetailUrl(machineLog.machine.publicId, machineLog.id);
-    const acknowledgementStatus = this.machineLogAcknowledgementStatus(machineLog);
+    const acknowledgementStatus = this.machineLogAcknowledgementStatus(machineLog, detailUrl);
     const message = [
       "A machine log has been updated.",
       "",
@@ -1243,10 +1243,10 @@ export class NotificationsService {
     acknowledgement?: {
       response: string | null;
     } | null;
-  }) {
+  }, acknowledgementUrl: string) {
     if (machineLog.acknowledgement?.response) return "Completed.";
-    if (machineLog.requesterAcknowledgementRequired) return "Required. Please acknowledge in the support system.";
-    return "Optional. You may acknowledge in the support system if needed.";
+    if (machineLog.requesterAcknowledgementRequired) return acknowledgementUrl;
+    return "Not required.";
   }
 
   private async getMessageSignOffName(machineSupportCompanyName?: string | null) {
