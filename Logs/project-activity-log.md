@@ -1560,3 +1560,4 @@ This file records meaningful project updates, decisions, and implementation step
 - Implemented configurable daily WhatsApp task reminders for assigned staff, including admin settings for enable/disable and reminder time, the approved task_daily_reminder template mapping, and a once-per-day backend reminder runner.
 - Added the missing TWILIO_CONTENT_SID_MACHINE_LOG_CREATED setting to .env.example so Twilio template mode can send machine log created notifications when configured.
 - Updated machine log WhatsApp notifications to match the approved machine_log_created template with machine, title, work time, summary, acknowledgement status, and public machine log detail URL.
+- Fixed docker-compose API environment mapping so machine log and daily task reminder WhatsApp template IDs from .env are passed into the container.
