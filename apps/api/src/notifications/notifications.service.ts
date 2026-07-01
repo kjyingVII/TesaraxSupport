@@ -1129,9 +1129,18 @@ export class NotificationsService {
 
   private buildTwilioContentVariables(parameters: Array<string | number | boolean | null | undefined>) {
     return parameters.reduce<Record<string, string>>((variables, parameter, index) => {
-      variables[String(index + 1)] = this.truncate(String(parameter ?? "-"), 1024);
+      variables[String(index + 1)] = this.sanitizeTemplateVariable(parameter);
       return variables;
     }, {});
+  }
+
+  private sanitizeTemplateVariable(value: string | number | boolean | null | undefined) {
+    const sanitized = String(value ?? "-")
+      .replace(/[\r\n\t]+/g, " ")
+      .replace(/\s{2,}/g, " ")
+      .trim();
+
+    return this.truncate(sanitized || "-", 1024);
   }
 
   private defaultTemplateName(eventKey: string) {
@@ -1140,6 +1149,7 @@ export class NotificationsService {
       ticket_created_technician: "new_ticket_notification",
       ticket_status_changed: "ticket_status_change_notification",
       service_report_submitted: "service_report_submitted_notification",
+      machine_log_created: "machine_log_created",
       scheduled_task_notification: "scheduled_task_notification",
       task_daily_reminder: "task_daily_reminder"
     };

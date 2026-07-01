@@ -1563,3 +1563,4 @@ This file records meaningful project updates, decisions, and implementation step
 - Fixed docker-compose API environment mapping so machine log and daily task reminder WhatsApp template IDs from .env are passed into the container.
 - Updated machine log WhatsApp acknowledgement text so optional logs send 'Not required.' and required logs send the public acknowledgement/log URL in the approved template acknowledgement field.
 - Updated daily task reminder runner to create a skipped Notification Log entry once per day at the configured time when the reminder is disabled.
+- Sanitized WhatsApp template variables before sending through Twilio so multiline machine log summaries and other template values are converted to single-line safe content variables.
