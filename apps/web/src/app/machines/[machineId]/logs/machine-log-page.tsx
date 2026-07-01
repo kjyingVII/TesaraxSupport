@@ -5,7 +5,7 @@ import { AdminMenu } from "../../../../components/admin-menu";
 import { ThemeToggle } from "../../../../components/theme-toggle";
 import { buildMachineLogAcknowledgementMessage } from "../../../../lib/acknowledgement-message";
 import { apiBaseUrl, apiRequest } from "../../../../lib/api";
-import { getAccessToken, getAuthUser } from "../../../../lib/auth";
+import { getAccessToken, getAuthUser, type AuthUser } from "../../../../lib/auth";
 
 type MachineDetail = {
   id: string;
@@ -200,16 +200,19 @@ export function MachineLogPage({ machineId }: { machineId: string }) {
   const [documentFile, setDocumentFile] = useState<File | null>(null);
   const [uploadingDocument, setUploadingDocument] = useState(false);
   const [defaultSignOffName, setDefaultSignOffName] = useState<string | null>(null);
+  const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
   const [type, setType] = useState("");
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [loadingDetail, setLoadingDetail] = useState(false);
   const [deletingLog, setDeletingLog] = useState(false);
+  const [pendingDeleteLog, setPendingDeleteLog] = useState<MachineLogDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [meta, setMeta] = useState<TimelineResponse["meta"] | null>(null);
-  const isAdmin = getAuthUser()?.role === "ADMIN";
+  const isAdmin = currentUser?.role === "ADMIN";
 
   useEffect(() => {
+    setCurrentUser(getAuthUser());
     void loadPage();
   }, []);
 
@@ -306,14 +309,16 @@ export function MachineLogPage({ machineId }: { machineId: string }) {
   }
 
   async function deleteSelectedMachineLog(detail: MachineLogDetail) {
-    const confirmed = window.confirm(`Delete machine log "${detail.title}"? This action cannot be undone.`);
-    if (!confirmed) return;
+    setPendingDeleteLog(null);
+    await deleteMachineLog(detail.id);
+  }
 
+  async function deleteMachineLog(logId: string) {
     setDeletingLog(true);
     setError(null);
 
     try {
-      await apiRequest(`/api/machines/${machineId}/logs/${detail.id}`, {
+      await apiRequest(`/api/machines/${machineId}/logs/${logId}`, {
         method: "DELETE"
       });
       await loadPage();
@@ -518,7 +523,7 @@ export function MachineLogPage({ machineId }: { machineId: string }) {
                 defaultSignOffName={defaultSignOffName}
                 isAdmin={isAdmin}
                 deleting={deletingLog}
-                onDelete={deleteSelectedMachineLog}
+                onDelete={setPendingDeleteLog}
               />
             ) : null}
             {!loadingDetail && selectedDetail?.kind === "TICKET" ? (
@@ -526,6 +531,15 @@ export function MachineLogPage({ machineId }: { machineId: string }) {
             ) : null}
           </section>
         </div>
+
+        {pendingDeleteLog ? (
+          <DeleteMachineLogDialog
+            detail={pendingDeleteLog}
+            busy={deletingLog}
+            onClose={() => setPendingDeleteLog(null)}
+            onConfirm={() => void deleteSelectedMachineLog(pendingDeleteLog)}
+          />
+        ) : null}
       </section>
     </main>
   );
@@ -625,18 +639,6 @@ function MachineLogDetailPanel({
 
   return (
     <div className="mt-4 grid gap-4">
-      {isAdmin ? (
-        <div className="flex justify-end">
-          <button
-            className="rounded-md border border-red-300 px-4 py-2 text-sm font-semibold text-red-700 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-red-900/70 dark:text-red-300 dark:hover:bg-red-950/30"
-            type="button"
-            disabled={deleting}
-            onClick={() => onDelete(detail)}
-          >
-            {deleting ? "Deleting..." : "Delete Machine Log"}
-          </button>
-        </div>
-      ) : null}
       <InfoLine label="Activity Type" value={activityTypeLabel(detail.activityType)} />
       <InfoLine label="Work Time" value={formatDateTime(detail.workDate)} />
       <InfoLine label="End Time" value={detail.workEndAt ? formatDateTime(detail.workEndAt) : "Not recorded"} />
@@ -758,6 +760,84 @@ function MachineLogDetailPanel({
           <p className="field-muted mt-2">No attachments uploaded.</p>
         )}
       </div>
+      {isAdmin ? (
+        <div className="border-t border-[#d9dee3] pt-4 dark:border-[#2f3742]">
+          <button
+            className="w-full rounded-md border border-red-300 px-4 py-3 text-sm font-semibold text-red-700 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-red-900/70 dark:text-red-300 dark:hover:bg-red-950/30"
+            type="button"
+            disabled={deleting}
+            onClick={() => onDelete(detail)}
+          >
+            {deleting ? "Deleting..." : "Delete Machine Log"}
+          </button>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function DeleteMachineLogDialog({
+  detail,
+  busy,
+  onClose,
+  onConfirm
+}: {
+  detail: MachineLogDetail;
+  busy: boolean;
+  onClose: () => void;
+  onConfirm: () => void;
+}) {
+  return (
+    <div className="fixed inset-0 z-50 grid place-items-center bg-black/45 px-4 py-6 backdrop-blur-sm" role="dialog" aria-modal="true">
+      <section className="w-full max-w-lg rounded-lg border border-[#d9dee3] bg-white p-5 shadow-xl dark:border-[#2f3742] dark:bg-[#171a21]">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className="field-eyebrow">Delete Machine Log</p>
+            <h2 className="mt-1 text-xl font-semibold">Delete this machine log?</h2>
+          </div>
+          <button
+            className="field-button-secondary min-h-9 px-3"
+            type="button"
+            onClick={onClose}
+            disabled={busy}
+            aria-label="Close"
+          >
+            X
+          </button>
+        </div>
+
+        <div className="field-panel-subtle mt-5 text-sm">
+          <p className="font-semibold">{detail.title}</p>
+          <p className="field-muted mt-2">{activityTypeLabel(detail.activityType)}</p>
+          <p className="mt-3">
+            {formatDateTime(detail.workDate)}
+            {detail.workEndAt ? ` to ${formatDateTime(detail.workEndAt)}` : ""}
+          </p>
+          {detail.ticket ? (
+            <p className="field-muted mt-3">
+              Linked ticket: {detail.ticket.ticketNumber} / {detail.ticket.issueTitle}
+            </p>
+          ) : null}
+        </div>
+
+        <p className="mt-5 text-sm leading-6 text-neutral-700 dark:text-neutral-200">
+          This will remove the machine log, related acknowledgement record, and uploaded attachments. An audit record will be kept for traceability.
+        </p>
+
+        <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+          <button className="field-button-secondary" type="button" onClick={onClose} disabled={busy}>
+            Keep Machine Log
+          </button>
+          <button
+            className="grid min-h-10 place-items-center rounded-md border border-red-300 bg-red-50 px-4 text-sm font-semibold text-red-800 transition hover:border-red-500 hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-red-900 dark:bg-red-950 dark:text-red-100"
+            type="button"
+            onClick={onConfirm}
+            disabled={busy}
+          >
+            {busy ? "Deleting..." : "Delete Machine Log"}
+          </button>
+        </div>
+      </section>
     </div>
   );
 }
