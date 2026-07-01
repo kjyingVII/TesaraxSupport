@@ -5,7 +5,7 @@ import { AdminMenu } from "../../../../components/admin-menu";
 import { ThemeToggle } from "../../../../components/theme-toggle";
 import { buildMachineLogAcknowledgementMessage } from "../../../../lib/acknowledgement-message";
 import { apiBaseUrl, apiRequest } from "../../../../lib/api";
-import { getAccessToken } from "../../../../lib/auth";
+import { getAccessToken, getAuthUser } from "../../../../lib/auth";
 
 type MachineDetail = {
   id: string;
@@ -204,8 +204,10 @@ export function MachineLogPage({ machineId }: { machineId: string }) {
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [loadingDetail, setLoadingDetail] = useState(false);
+  const [deletingLog, setDeletingLog] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [meta, setMeta] = useState<TimelineResponse["meta"] | null>(null);
+  const isAdmin = getAuthUser()?.role === "ADMIN";
 
   useEffect(() => {
     void loadPage();
@@ -300,6 +302,25 @@ export function MachineLogPage({ machineId }: { machineId: string }) {
       setError(err instanceof Error ? err.message : "Unable to load timeline detail.");
     } finally {
       setLoadingDetail(false);
+    }
+  }
+
+  async function deleteSelectedMachineLog(detail: MachineLogDetail) {
+    const confirmed = window.confirm(`Delete machine log "${detail.title}"? This action cannot be undone.`);
+    if (!confirmed) return;
+
+    setDeletingLog(true);
+    setError(null);
+
+    try {
+      await apiRequest(`/api/machines/${machineId}/logs/${detail.id}`, {
+        method: "DELETE"
+      });
+      await loadPage();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unable to delete machine log.");
+    } finally {
+      setDeletingLog(false);
     }
   }
 
@@ -490,7 +511,15 @@ export function MachineLogPage({ machineId }: { machineId: string }) {
               </p>
             ) : null}
             {!loadingDetail && selectedDetail?.kind === "MACHINE_LOG" ? (
-              <MachineLogDetailPanel machine={machine} machineId={machineId} detail={selectedDetail.data} defaultSignOffName={defaultSignOffName} />
+              <MachineLogDetailPanel
+                machine={machine}
+                machineId={machineId}
+                detail={selectedDetail.data}
+                defaultSignOffName={defaultSignOffName}
+                isAdmin={isAdmin}
+                deleting={deletingLog}
+                onDelete={deleteSelectedMachineLog}
+              />
             ) : null}
             {!loadingDetail && selectedDetail?.kind === "TICKET" ? (
               <TicketDetailPanel detail={selectedDetail.data} />
@@ -514,12 +543,18 @@ function MachineLogDetailPanel({
   machine,
   machineId,
   detail,
-  defaultSignOffName
+  defaultSignOffName,
+  isAdmin,
+  deleting,
+  onDelete
 }: {
   machine: MachineDetail | null;
   machineId: string;
   detail: MachineLogDetail;
   defaultSignOffName: string | null;
+  isAdmin: boolean;
+  deleting: boolean;
+  onDelete: (detail: MachineLogDetail) => void;
 }) {
   const [linkStatus, setLinkStatus] = useState<string | null>(null);
   const [acknowledgementUrl, setAcknowledgementUrl] = useState<string | null>(null);
@@ -590,6 +625,18 @@ function MachineLogDetailPanel({
 
   return (
     <div className="mt-4 grid gap-4">
+      {isAdmin ? (
+        <div className="flex justify-end">
+          <button
+            className="rounded-md border border-red-300 px-4 py-2 text-sm font-semibold text-red-700 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-red-900/70 dark:text-red-300 dark:hover:bg-red-950/30"
+            type="button"
+            disabled={deleting}
+            onClick={() => onDelete(detail)}
+          >
+            {deleting ? "Deleting..." : "Delete Machine Log"}
+          </button>
+        </div>
+      ) : null}
       <InfoLine label="Activity Type" value={activityTypeLabel(detail.activityType)} />
       <InfoLine label="Work Time" value={formatDateTime(detail.workDate)} />
       <InfoLine label="End Time" value={detail.workEndAt ? formatDateTime(detail.workEndAt) : "Not recorded"} />

@@ -1,5 +1,8 @@
 import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
 import { MachineActivityType, Prisma } from "@prisma/client";
+import { unlink } from "fs/promises";
+import { join } from "path";
+import { AuditService } from "../audit/audit.service";
 import { AttachmentsService } from "../attachments/attachments.service";
 import { parseOptionalEmail } from "../common/email";
 import { parseOptionalPhoneNumber } from "../common/phone-number";
@@ -42,6 +45,7 @@ type TimelineItem = {
 export class MachineLogsService {
   constructor(
     private readonly prisma: PrismaService,
+    private readonly auditService: AuditService,
     private readonly attachmentsService: AttachmentsService,
     private readonly notificationsService: NotificationsService
   ) {}
@@ -288,6 +292,114 @@ export class MachineLogsService {
     return { data: log };
   }
 
+  async deleteLog(machineId: string, logId: string, actorUserId?: string) {
+    await this.ensureMachineExists(machineId);
+
+    const log = await this.prisma.machineLog.findFirst({
+      where: {
+        id: logId,
+        machineId
+      },
+      include: {
+        machine: {
+          select: {
+            id: true,
+            serviceReminderIntervalDays: true
+          }
+        },
+        ticket: {
+          select: {
+            id: true,
+            ticketNumber: true,
+            issueTitle: true
+          }
+        },
+        serviceReport: {
+          select: {
+            id: true,
+            resolutionStatus: true
+          }
+        },
+        loggedByUser: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            role: true
+          }
+        },
+        acknowledgement: {
+          include: {
+            attachments: true,
+            signatureAttachment: true
+          }
+        },
+        attachments: true
+      }
+    });
+
+    if (!log) {
+      throw new NotFoundException("Machine log not found.");
+    }
+
+    const attachmentStorageKeys = [
+      ...log.attachments.map((attachment) => attachment.storageKey),
+      ...(log.acknowledgement?.attachments.map((attachment) => attachment.storageKey) ?? []),
+      ...(log.acknowledgement?.signatureAttachment?.storageKey ? [log.acknowledgement.signatureAttachment.storageKey] : [])
+    ];
+
+    await this.prisma.$transaction(async (tx) => {
+      if (log.acknowledgement) {
+        await tx.acknowledgement.update({
+          where: { id: log.acknowledgement.id },
+          data: { signatureAttachmentId: null }
+        });
+
+        await tx.attachment.deleteMany({
+          where: {
+            OR: [
+              { machineLogId: log.id },
+              { acknowledgementId: log.acknowledgement.id }
+            ]
+          }
+        });
+
+        await tx.acknowledgement.delete({
+          where: { id: log.acknowledgement.id }
+        });
+      } else {
+        await tx.attachment.deleteMany({
+          where: { machineLogId: log.id }
+        });
+      }
+
+      await tx.machineLog.delete({
+        where: { id: log.id }
+      });
+
+      if (log.activityType === MachineActivityType.MACHINE_MAINTENANCE) {
+        await this.refreshMachineMaintenanceDates(tx, machineId, log.machine.serviceReminderIntervalDays);
+      }
+    });
+
+    await this.auditService.write({
+      actorUserId,
+      action: "DELETE_MACHINE_LOG",
+      entityType: "MachineLog",
+      entityId: log.id,
+      beforeData: log
+    });
+
+    await Promise.all(attachmentStorageKeys.map((storageKey) => this.deleteAttachmentFile(storageKey)));
+
+    return {
+      data: {
+        id: log.id,
+        deleted: true
+      }
+    };
+  }
+
   async getTimeline(machineId: string, input: TimelineInput) {
     await this.ensureMachineExists(machineId);
 
@@ -449,6 +561,47 @@ export class MachineLogsService {
     if (!user) {
       throw new NotFoundException("User not found.");
     }
+  }
+
+  private async refreshMachineMaintenanceDates(
+    tx: Prisma.TransactionClient,
+    machineId: string,
+    serviceReminderIntervalDays: number
+  ) {
+    const latestMaintenanceLog = await tx.machineLog.findFirst({
+      where: {
+        machineId,
+        activityType: MachineActivityType.MACHINE_MAINTENANCE
+      },
+      orderBy: { workDate: "desc" },
+      select: {
+        workDate: true,
+        nextServiceDueOverrideAt: true
+      }
+    });
+
+    await tx.machine.update({
+      where: { id: machineId },
+      data: {
+        lastServiceAt: latestMaintenanceLog?.workDate ?? null,
+        nextServiceDueAt: latestMaintenanceLog
+          ? latestMaintenanceLog.nextServiceDueOverrideAt ??
+            this.addDays(latestMaintenanceLog.workDate, serviceReminderIntervalDays)
+          : null
+      }
+    });
+  }
+
+  private async deleteAttachmentFile(storageKey: string) {
+    try {
+      await unlink(this.absoluteAttachmentPath(storageKey));
+    } catch {
+      // The database row is the source of truth; missing files should not block admin deletion.
+    }
+  }
+
+  private absoluteAttachmentPath(storageKey: string) {
+    return join(process.env.ATTACHMENT_STORAGE_ROOT ?? "/app/uploads", storageKey);
   }
 
   private parseActivityType(value: string | undefined) {

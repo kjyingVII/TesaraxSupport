@@ -1,6 +1,6 @@
-import { Body, Controller, Get, Param, Post, Query } from "@nestjs/common";
+import { Body, Controller, Delete, Get, Param, Post, Query } from "@nestjs/common";
 import { UserRole } from "@prisma/client";
-import { Roles } from "../auth/auth.decorators";
+import { CurrentUser, Roles } from "../auth/auth.decorators";
 import { CreateMachineLogDto } from "./dto/create-machine-log.dto";
 import { MachineLogsService } from "./machine-logs.service";
 
@@ -37,6 +37,16 @@ export class MachineLogsController {
   @Get("logs/:logId")
   getLogById(@Param("machineId") machineId: string, @Param("logId") logId: string) {
     return this.machineLogsService.getLogById(machineId, logId);
+  }
+
+  @Roles(UserRole.ADMIN)
+  @Delete("logs/:logId")
+  deleteLog(
+    @Param("machineId") machineId: string,
+    @Param("logId") logId: string,
+    @CurrentUser() user: { id: string }
+  ) {
+    return this.machineLogsService.deleteLog(machineId, logId, user.id);
   }
 
   @Get("timeline")
