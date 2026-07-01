@@ -24,6 +24,8 @@ type SystemSettings = {
   whatsappMachineLogCreatedEnabled: boolean;
   whatsappTaskCreatedEnabled: boolean;
   whatsappTaskRescheduledEnabled: boolean;
+  whatsappTaskDailyReminderEnabled: boolean;
+  whatsappTaskDailyReminderTime: string;
 };
 
 type SettingsResponse = {
@@ -46,7 +48,9 @@ const emptyForm = {
   whatsappServiceReportSubmittedEnabled: true,
   whatsappMachineLogCreatedEnabled: true,
   whatsappTaskCreatedEnabled: true,
-  whatsappTaskRescheduledEnabled: true
+  whatsappTaskRescheduledEnabled: true,
+  whatsappTaskDailyReminderEnabled: false,
+  whatsappTaskDailyReminderTime: "09:00"
 };
 
 export function SettingsPage() {
@@ -82,7 +86,9 @@ export function SettingsPage() {
         whatsappServiceReportSubmittedEnabled: response.data.whatsappServiceReportSubmittedEnabled,
         whatsappMachineLogCreatedEnabled: response.data.whatsappMachineLogCreatedEnabled,
         whatsappTaskCreatedEnabled: response.data.whatsappTaskCreatedEnabled,
-        whatsappTaskRescheduledEnabled: response.data.whatsappTaskRescheduledEnabled
+        whatsappTaskRescheduledEnabled: response.data.whatsappTaskRescheduledEnabled,
+        whatsappTaskDailyReminderEnabled: response.data.whatsappTaskDailyReminderEnabled,
+        whatsappTaskDailyReminderTime: response.data.whatsappTaskDailyReminderTime
       });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unable to load settings.");
@@ -114,7 +120,9 @@ export function SettingsPage() {
         whatsappServiceReportSubmittedEnabled: form.whatsappServiceReportSubmittedEnabled,
         whatsappMachineLogCreatedEnabled: form.whatsappMachineLogCreatedEnabled,
         whatsappTaskCreatedEnabled: form.whatsappTaskCreatedEnabled,
-        whatsappTaskRescheduledEnabled: form.whatsappTaskRescheduledEnabled
+        whatsappTaskRescheduledEnabled: form.whatsappTaskRescheduledEnabled,
+        whatsappTaskDailyReminderEnabled: form.whatsappTaskDailyReminderEnabled,
+        whatsappTaskDailyReminderTime: form.whatsappTaskDailyReminderTime
       };
 
       const response = await apiRequest<SettingsResponse>("/api/settings", {
@@ -138,7 +146,9 @@ export function SettingsPage() {
         whatsappServiceReportSubmittedEnabled: response.data.whatsappServiceReportSubmittedEnabled,
         whatsappMachineLogCreatedEnabled: response.data.whatsappMachineLogCreatedEnabled,
         whatsappTaskCreatedEnabled: response.data.whatsappTaskCreatedEnabled,
-        whatsappTaskRescheduledEnabled: response.data.whatsappTaskRescheduledEnabled
+        whatsappTaskRescheduledEnabled: response.data.whatsappTaskRescheduledEnabled,
+        whatsappTaskDailyReminderEnabled: response.data.whatsappTaskDailyReminderEnabled,
+        whatsappTaskDailyReminderTime: response.data.whatsappTaskDailyReminderTime
       });
       setMessage("Settings saved.");
     } catch (err) {
@@ -239,6 +249,19 @@ export function SettingsPage() {
                     description="Notify the selected contact when a task time is changed."
                     checked={form.whatsappTaskRescheduledEnabled}
                     onChange={(checked) => updateField("whatsappTaskRescheduledEnabled", checked)}
+                  />
+                  <ToggleInput
+                    label="Daily Task Reminder"
+                    description="Send assigned staff a daily WhatsApp reminder with their nearest open tasks."
+                    checked={form.whatsappTaskDailyReminderEnabled}
+                    onChange={(checked) => updateField("whatsappTaskDailyReminderEnabled", checked)}
+                  />
+                  <TextInput
+                    label="Daily Task Reminder Time"
+                    type="time"
+                    value={form.whatsappTaskDailyReminderTime}
+                    required
+                    onChange={(value) => updateField("whatsappTaskDailyReminderTime", value)}
                   />
                 </div>
               </section>

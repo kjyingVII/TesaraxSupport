@@ -1,5 +1,5 @@
 import { BadRequestException, Injectable } from "@nestjs/common";
-import { NotificationChannel, NotificationStatus, Prisma, TicketStatus } from "@prisma/client";
+import { NotificationChannel, NotificationStatus, Prisma, TaskStatus, TicketStatus } from "@prisma/client";
 import { parseRequiredPhoneNumber } from "../common/phone-number";
 import { PrismaService } from "../prisma/prisma.service";
 import { SettingsService } from "../settings/settings.service";
@@ -52,7 +52,16 @@ type WhatsAppScenarioSetting =
   | "whatsappServiceReportSubmittedEnabled"
   | "whatsappMachineLogCreatedEnabled"
   | "whatsappTaskCreatedEnabled"
-  | "whatsappTaskRescheduledEnabled";
+  | "whatsappTaskRescheduledEnabled"
+  | "whatsappTaskDailyReminderEnabled";
+
+type TaskDailyReminderItem = {
+  title: string;
+  machineName: string;
+  status: TaskStatus | string;
+  scheduledStartAt?: Date | null;
+  scheduledEndAt?: Date | null;
+};
 
 @Injectable()
 export class NotificationsService {
@@ -522,15 +531,23 @@ export class NotificationsService {
         id: true,
         activityType: true,
         workDate: true,
+        workEndAt: true,
         title: true,
         workSummary: true,
+        requesterAcknowledgementRequired: true,
         notifyCustomer: true,
         notifyRecipientName: true,
         notifyRecipientPhone: true,
         notifyRecipientEmail: true,
         notifyMessage: true,
+        acknowledgement: {
+          select: {
+            response: true
+          }
+        },
         machine: {
           select: {
+            publicId: true,
             machineName: true,
             serialNumber: true,
             location: true,
@@ -547,19 +564,23 @@ export class NotificationsService {
 
     if (!machineLog?.notifyCustomer) return;
 
-    const signOffName = await this.getMessageSignOffName(machineLog.machine.supportCompanyName);
+    const detailUrl = this.buildMachineLogDetailUrl(machineLog.machine.publicId, machineLog.id);
+    const acknowledgementStatus = this.machineLogAcknowledgementStatus(machineLog);
     const message = [
-      `A machine log has been added for ${machineLog.machine.machineName} (${machineLog.machine.serialNumber}).`,
-      `Customer: ${machineLog.machine.customer.name}`,
-      `Location: ${machineLog.machine.location}`,
-      `Type: ${machineLog.activityType}`,
-      `Work time: ${machineLog.workDate.toISOString()}`,
-      `Title: ${machineLog.title}`,
-      `Summary: ${machineLog.workSummary}`,
-      machineLog.notifyMessage ? `Note: ${machineLog.notifyMessage}` : null,
+      "A machine log has been updated.",
       "",
-      "Thank you.",
-      signOffName
+      `Machine: ${machineLog.machine.machineName}`,
+      `Title: ${machineLog.title}`,
+      `Work Time: ${this.formatMessageDateRange(machineLog.workDate, machineLog.workEndAt)}`,
+      `Summary: ${machineLog.workSummary}`,
+      "",
+      "Acknowledgement:",
+      acknowledgementStatus,
+      "",
+      "Please open the support system for details:",
+      detailUrl,
+      "",
+      "Thank you."
     ].filter(Boolean).join("\n");
 
     if (
@@ -587,10 +608,11 @@ export class NotificationsService {
         eventKey: "machine_log_created",
         parameters: [
           machineLog.machine.machineName,
-          machineLog.machine.serialNumber,
-          machineLog.activityType,
           machineLog.title,
-          machineLog.workDate.toISOString()
+          this.formatMessageDateRange(machineLog.workDate, machineLog.workEndAt),
+          this.truncate(machineLog.workSummary, 500),
+          acknowledgementStatus,
+          detailUrl
         ]
       }
     });
@@ -602,6 +624,70 @@ export class NotificationsService {
 
   async logTaskRescheduled(taskId: string) {
     await this.logTaskNotification(taskId, "rescheduled");
+  }
+
+  async logTaskDailyReminder(input: {
+    userId: string;
+    recipient: NotificationRecipient;
+    tasks: TaskDailyReminderItem[];
+    additionalTaskCount: number;
+    dashboardUrl: string;
+  }) {
+    if (input.tasks.length === 0) return;
+
+    const recipientName = this.cleanOptionalString(input.recipient.name) ?? "Team member";
+    const taskSummary = input.tasks.map((task, index) => {
+      return [
+        `${index + 1}. ${task.title}`,
+        `Machine: ${task.machineName}`,
+        `Time: ${this.formatReminderTaskTime(task)}`,
+        `Status: ${this.formatMessageValue(task.status)}`
+      ].join("\n");
+    }).join("\n\n");
+
+    const message = [
+      `Good morning, ${recipientName}`,
+      "",
+      "This is a reminder of your scheduled task.",
+      taskSummary,
+      "",
+      `You currently have ${input.additionalTaskCount} additional task(s) assigned to you.`,
+      "",
+      "Review the assignments and ensure all necessary preparations are made prior to the scheduled task.",
+      "",
+      "Please open the link below and log in for more information.",
+      input.dashboardUrl,
+      "",
+      "Thank you."
+    ].join("\n");
+
+    if (
+      !(await this.shouldSendWhatsappScenario("whatsappTaskDailyReminderEnabled", {
+        relatedType: "TaskDailyReminder",
+        relatedId: input.userId,
+        subject: `Task daily reminder WhatsApp skipped: ${recipientName}`,
+        message
+      }))
+    ) {
+      return;
+    }
+
+    await this.logWhatsapp({
+      relatedType: "TaskDailyReminder",
+      relatedId: input.userId,
+      recipient: input.recipient,
+      subject: `Daily task reminder: ${recipientName}`,
+      message,
+      template: {
+        eventKey: "task_daily_reminder",
+        parameters: [
+          recipientName,
+          taskSummary,
+          String(input.additionalTaskCount),
+          input.dashboardUrl
+        ]
+      }
+    });
   }
 
   private async logTaskNotification(taskId: string, mode: "created" | "rescheduled") {
@@ -1054,7 +1140,8 @@ export class NotificationsService {
       ticket_created_technician: "new_ticket_notification",
       ticket_status_changed: "ticket_status_change_notification",
       service_report_submitted: "service_report_submitted_notification",
-      scheduled_task_notification: "scheduled_task_notification"
+      scheduled_task_notification: "scheduled_task_notification",
+      task_daily_reminder: "task_daily_reminder"
     };
 
     return templates[eventKey];
@@ -1114,6 +1201,12 @@ export class NotificationsService {
     return `${this.formatMessageDate(start)} to ${this.formatMessageDate(end)}`;
   }
 
+  private formatReminderTaskTime(task: TaskDailyReminderItem) {
+    if (task.status === TaskStatus.PENDING) return "Pending";
+    if (!task.scheduledStartAt && !task.scheduledEndAt) return "Pending";
+    return this.formatMessageDateRange(task.scheduledStartAt, task.scheduledEndAt);
+  }
+
   private formatMessageDate(value?: Date | null) {
     if (!value) return "Not recorded";
     return new Intl.DateTimeFormat("en", {
@@ -1138,6 +1231,22 @@ export class NotificationsService {
   private buildMachineAccessUrl(publicId: string) {
     const webAppUrl = process.env.WEB_APP_URL ?? "http://localhost:3000";
     return `${webAppUrl.replace(/\/$/, "")}/m/${publicId}/access`;
+  }
+
+  private buildMachineLogDetailUrl(publicId: string, logId: string) {
+    const webAppUrl = process.env.WEB_APP_URL ?? "http://localhost:3000";
+    return `${webAppUrl.replace(/\/$/, "")}/m/${publicId}/logs/${logId}`;
+  }
+
+  private machineLogAcknowledgementStatus(machineLog: {
+    requesterAcknowledgementRequired: boolean;
+    acknowledgement?: {
+      response: string | null;
+    } | null;
+  }) {
+    if (machineLog.acknowledgement?.response) return "Completed.";
+    if (machineLog.requesterAcknowledgementRequired) return "Required. Please acknowledge in the support system.";
+    return "Optional. You may acknowledge in the support system if needed.";
   }
 
   private async getMessageSignOffName(machineSupportCompanyName?: string | null) {

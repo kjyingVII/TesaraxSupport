@@ -15,4 +15,6 @@ export type UpdateSystemSettingsDto = {
   whatsappMachineLogCreatedEnabled?: boolean;
   whatsappTaskCreatedEnabled?: boolean;
   whatsappTaskRescheduledEnabled?: boolean;
+  whatsappTaskDailyReminderEnabled?: boolean;
+  whatsappTaskDailyReminderTime?: string;
 };

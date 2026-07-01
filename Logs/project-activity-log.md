@@ -1557,3 +1557,6 @@ This file records meaningful project updates, decisions, and implementation step
 - Updated task forms so end time can be saved even when start time is not confirmed, while keeping task status editable across all seven task statuses without transition restrictions.
 - Added task detail quick status buttons below Mark Completed, allowing technician/admin to switch between Pending, Scheduled, In Progress, Waiting Component, Waiting Customer, Completed, and Cancelled directly from the task page.
 - Added admin-only Close Ticket and Cancel Ticket actions to the ticket workbench and standalone ticket detail page, with confirmation prompts and audit/status history through the existing ticket status API.
+- Implemented configurable daily WhatsApp task reminders for assigned staff, including admin settings for enable/disable and reminder time, the approved task_daily_reminder template mapping, and a once-per-day backend reminder runner.
+- Added the missing TWILIO_CONTENT_SID_MACHINE_LOG_CREATED setting to .env.example so Twilio template mode can send machine log created notifications when configured.
+- Updated machine log WhatsApp notifications to match the approved machine_log_created template with machine, title, work time, summary, acknowledgement status, and public machine log detail URL.

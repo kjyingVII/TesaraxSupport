@@ -25,6 +25,8 @@ export type SystemSettings = {
   whatsappMachineLogCreatedEnabled: boolean;
   whatsappTaskCreatedEnabled: boolean;
   whatsappTaskRescheduledEnabled: boolean;
+  whatsappTaskDailyReminderEnabled: boolean;
+  whatsappTaskDailyReminderTime: string;
 };
 
 const defaultSettings: SystemSettings = {
@@ -43,7 +45,9 @@ const defaultSettings: SystemSettings = {
   whatsappServiceReportSubmittedEnabled: true,
   whatsappMachineLogCreatedEnabled: true,
   whatsappTaskCreatedEnabled: true,
-  whatsappTaskRescheduledEnabled: true
+  whatsappTaskRescheduledEnabled: true,
+  whatsappTaskDailyReminderEnabled: false,
+  whatsappTaskDailyReminderTime: "09:00"
 };
 
 @Injectable()
@@ -123,6 +127,12 @@ export class SettingsService {
     }
     if (dto.whatsappTaskRescheduledEnabled !== undefined) {
       next.whatsappTaskRescheduledEnabled = this.parseBoolean(dto.whatsappTaskRescheduledEnabled, "Task rescheduled WhatsApp notification");
+    }
+    if (dto.whatsappTaskDailyReminderEnabled !== undefined) {
+      next.whatsappTaskDailyReminderEnabled = this.parseBoolean(dto.whatsappTaskDailyReminderEnabled, "Task daily reminder WhatsApp notification");
+    }
+    if (dto.whatsappTaskDailyReminderTime !== undefined) {
+      next.whatsappTaskDailyReminderTime = this.parseTime(dto.whatsappTaskDailyReminderTime, "Task daily reminder time");
     }
 
     if (next.requestAttachmentMaxFileMb > next.requestAttachmentMaxTotalMb) {
@@ -207,7 +217,12 @@ export class SettingsService {
       whatsappTaskRescheduledEnabled: this.readBoolean(
         raw.whatsappTaskRescheduledEnabled,
         this.readBoolean(raw.whatsappScheduledTaskRescheduledEnabled, defaultSettings.whatsappTaskRescheduledEnabled)
-      )
+      ),
+      whatsappTaskDailyReminderEnabled: this.readBoolean(
+        raw.whatsappTaskDailyReminderEnabled,
+        defaultSettings.whatsappTaskDailyReminderEnabled
+      ),
+      whatsappTaskDailyReminderTime: this.readTime(raw.whatsappTaskDailyReminderTime, defaultSettings.whatsappTaskDailyReminderTime)
     };
   }
 
@@ -235,6 +250,17 @@ export class SettingsService {
       throw new BadRequestException(`${label} must be true or false.`);
     }
     return value;
+  }
+
+  private parseTime(value: string, label: string) {
+    if (typeof value !== "string" || !/^([01]\d|2[0-3]):[0-5]\d$/.test(value)) {
+      throw new BadRequestException(`${label} must use HH:mm format.`);
+    }
+    return value;
+  }
+
+  private readTime(value: unknown, fallback: string) {
+    return typeof value === "string" && /^([01]\d|2[0-3]):[0-5]\d$/.test(value) ? value : fallback;
   }
 
   private cleanNullableString(value: string | null | undefined) {
