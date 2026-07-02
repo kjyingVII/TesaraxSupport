@@ -1567,3 +1567,5 @@ This file records meaningful project updates, decisions, and implementation step
 - Added an admin-only machine log delete action that removes related acknowledgement and attachment records, writes an audit log, best-effort deletes uploaded files, and refreshes machine maintenance dates when a maintenance log is removed.
 - Moved the admin-only machine log delete action to the bottom of the Details panel so deletion happens after selecting and reviewing a machine log.
 - Replaced the browser machine log delete confirmation with an in-app modal showing the selected log, work time, and delete impact before confirmation.
+- Updated daily task reminder WhatsApp template parameters to use three fixed task slots, filling unused slots with "No task" and "-", and skipped processing users with zero assigned open tasks.
+- Aligned daily task reminder WhatsApp parameters with the approved 12-variable template by removing task status fields and formatting task start times as YYYY-MM-DD 09:00am or "pending".

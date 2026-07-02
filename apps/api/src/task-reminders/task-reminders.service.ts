@@ -125,8 +125,12 @@ export class TaskRemindersService implements OnModuleInit, OnModuleDestroy {
       }
     });
 
+    let sentCount = 0;
+
     for (const user of users) {
       const tasks = user.taskAssignments.map((assignment) => assignment.task).sort((a, b) => this.compareTasks(a, b));
+      if (tasks.length === 0) continue;
+
       await this.notificationsService.logTaskDailyReminder({
         userId: user.id,
         recipient: {
@@ -144,9 +148,10 @@ export class TaskRemindersService implements OnModuleInit, OnModuleDestroy {
         additionalTaskCount: Math.max(tasks.length - 3, 0),
         dashboardUrl: this.buildDashboardUrl()
       });
+      sentCount += 1;
     }
 
-    return users.length;
+    return sentCount;
   }
 
   private async logDisabledReminderSkip(dateKey: string, reminderTime: string) {

@@ -640,10 +640,23 @@ export class NotificationsService {
       return [
         `${index + 1}. ${task.title}`,
         `Machine: ${task.machineName}`,
-        `Time: ${this.formatReminderTaskTime(task)}`,
-        `Status: ${this.formatMessageValue(task.status)}`
+        `Time: ${this.formatReminderTaskTime(task)}`
       ].join("\n");
     }).join("\n\n");
+    const taskSlots = Array.from({ length: 3 }, (_, index) => {
+      const task = input.tasks[index];
+      return task
+        ? {
+            title: task.title,
+            machineName: task.machineName,
+            time: this.formatReminderTaskTime(task)
+          }
+        : {
+            title: "No task",
+            machineName: "-",
+            time: "-"
+          };
+    });
 
     const message = [
       `Good morning, ${recipientName}`,
@@ -682,7 +695,15 @@ export class NotificationsService {
         eventKey: "task_daily_reminder",
         parameters: [
           recipientName,
-          taskSummary,
+          taskSlots[0].title,
+          taskSlots[0].machineName,
+          taskSlots[0].time,
+          taskSlots[1].title,
+          taskSlots[1].machineName,
+          taskSlots[1].time,
+          taskSlots[2].title,
+          taskSlots[2].machineName,
+          taskSlots[2].time,
           String(input.additionalTaskCount),
           input.dashboardUrl
         ]
@@ -1212,9 +1233,24 @@ export class NotificationsService {
   }
 
   private formatReminderTaskTime(task: TaskDailyReminderItem) {
-    if (task.status === TaskStatus.PENDING) return "Pending";
-    if (!task.scheduledStartAt && !task.scheduledEndAt) return "Pending";
-    return this.formatMessageDateRange(task.scheduledStartAt, task.scheduledEndAt);
+    if (!task.scheduledStartAt) return "pending";
+    return this.formatReminderTaskDate(task.scheduledStartAt);
+  }
+
+  private formatReminderTaskDate(value: Date) {
+    const parts = new Intl.DateTimeFormat("en", {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: true,
+      timeZone: this.getMessageTimeZone()
+    }).formatToParts(value);
+    const part = (type: Intl.DateTimeFormatPartTypes) => parts.find((item) => item.type === type)?.value ?? "";
+    const dayPeriod = part("dayPeriod").toLowerCase();
+
+    return `${part("year")}-${part("month")}-${part("day")} ${part("hour")}:${part("minute")}${dayPeriod}`;
   }
 
   private formatMessageDate(value?: Date | null) {
