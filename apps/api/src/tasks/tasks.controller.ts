@@ -12,6 +12,7 @@ export class TasksController {
 
   @Get()
   list(
+    @CurrentUser() user: { id: string; role: UserRole },
     @Query("customerId") customerId?: string,
     @Query("machineId") machineId?: string,
     @Query("ticketId") ticketId?: string,
@@ -34,17 +35,17 @@ export class TasksController {
       search,
       page,
       pageSize
-    });
+    }, user);
   }
 
   @Get(":id")
-  getById(@Param("id") id: string) {
-    return this.tasksService.getById(id);
+  getById(@Param("id") id: string, @CurrentUser() user: { id: string; role: UserRole }) {
+    return this.tasksService.getById(id, user);
   }
 
   @Get(":id/comments")
-  listComments(@Param("id") id: string) {
-    return this.tasksService.listComments(id);
+  listComments(@Param("id") id: string, @CurrentUser() user: { id: string; role: UserRole }) {
+    return this.tasksService.listComments(id, user);
   }
 
   @Post()
@@ -53,27 +54,27 @@ export class TasksController {
   }
 
   @Post(":id/comments")
-  createComment(@Param("id") id: string, @Body() dto: { comment?: string }, @CurrentUser() user: { id: string }) {
-    return this.tasksService.createComment(id, dto, user.id);
+  createComment(@Param("id") id: string, @Body() dto: { comment?: string }, @CurrentUser() user: { id: string; role: UserRole }) {
+    return this.tasksService.createComment(id, dto, user.id, user);
   }
 
   @Patch(":id")
-  update(@Param("id") id: string, @Body() dto: UpdateTaskDto, @CurrentUser() user: { id: string }) {
-    return this.tasksService.update(id, dto, user.id);
+  update(@Param("id") id: string, @Body() dto: UpdateTaskDto, @CurrentUser() user: { id: string; role: UserRole }) {
+    return this.tasksService.update(id, dto, user.id, user);
   }
 
   @Patch(":id/cancel")
-  cancel(@Param("id") id: string, @CurrentUser() user: { id: string }) {
-    return this.tasksService.cancel(id, user.id);
+  cancel(@Param("id") id: string, @CurrentUser() user: { id: string; role: UserRole }) {
+    return this.tasksService.cancel(id, user.id, user);
   }
 
   @Patch(":id/complete")
-  complete(@Param("id") id: string, @CurrentUser() user: { id: string }) {
-    return this.tasksService.complete(id, user.id);
+  complete(@Param("id") id: string, @CurrentUser() user: { id: string; role: UserRole }) {
+    return this.tasksService.complete(id, user.id, user);
   }
 
   @Patch(":id/notify-reschedule")
-  notifyRescheduled(@Param("id") id: string, @CurrentUser() user: { id: string }) {
-    return this.tasksService.notifyRescheduled(id, user.id);
+  notifyRescheduled(@Param("id") id: string, @CurrentUser() user: { id: string; role: UserRole }) {
+    return this.tasksService.notifyRescheduled(id, user.id, user);
   }
 }

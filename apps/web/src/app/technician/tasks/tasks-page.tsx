@@ -6,7 +6,6 @@ import { FormEvent, useEffect, useMemo, useState } from "react";
 import { AdminMenu } from "../../../components/admin-menu";
 import { ThemeToggle } from "../../../components/theme-toggle";
 import { apiRequest } from "../../../lib/api";
-import { getAuthUser, type AuthUser } from "../../../lib/auth";
 
 type Task = {
   id: string;
@@ -16,6 +15,7 @@ type Task = {
   scheduledStartAt: string | null;
   scheduledEndAt: string | null;
   status: string;
+  visibility: string;
   priority: string;
   notifyRecipientName: string | null;
   notifyRecipientPhone: string | null;
@@ -72,7 +72,6 @@ const statusOptions = [
 
 export function TasksPage() {
   const router = useRouter();
-  const [user] = useState<AuthUser | null>(() => getAuthUser());
   const [tasks, setTasks] = useState<Task[]>([]);
   const [statusFilter, setStatusFilter] = useState("ACTIVE");
   const [search, setSearch] = useState("");
@@ -98,7 +97,6 @@ export function TasksPage() {
       page: "1",
       pageSize: "50"
     });
-    if (user?.role === "TECHNICIAN" && user.id) params.set("technicianId", user.id);
     if (nextStatus && nextStatus !== "ACTIVE") params.set("status", nextStatus);
     if (nextSearch.trim()) params.set("search", nextSearch.trim());
 
@@ -225,6 +223,9 @@ export function TasksPage() {
                       {task.title}
                     </Link>
                     <span className={`status-badge ${statusTone(task.status)}`}>{task.status.replaceAll("_", " ")}</span>
+                    <span className={`status-badge ${task.visibility === "PRIVATE" ? "status-violet" : "status-neutral"}`}>
+                      {task.visibility === "PRIVATE" ? "Private" : "Team"}
+                    </span>
                     <span className="status-badge status-neutral">{task.taskType.replaceAll("_", " ")}</span>
                   </div>
                   <p className="field-muted mt-2">
@@ -241,11 +242,15 @@ export function TasksPage() {
                   <p className="field-muted mt-3">
                     Assigned: {task.assignments.map((assignment) => assignment.technician.name).join(", ") || "Unassigned"}
                   </p>
-                  <p className="field-muted mt-1">
-                    Notify: {task.notifyRecipientName || "Not recorded"}
-                    {task.notifyRecipientPhone ? ` / ${task.notifyRecipientPhone}` : ""}
-                    {task.notifiedAt ? ` / sent ${formatDateTime(task.notifiedAt)}` : ""}
-                  </p>
+                  {task.visibility === "PRIVATE" ? (
+                    <p className="field-muted mt-1">Private task. User notification not sent.</p>
+                  ) : (
+                    <p className="field-muted mt-1">
+                      Notify: {task.notifyRecipientName || "Not recorded"}
+                      {task.notifyRecipientPhone ? ` / ${task.notifyRecipientPhone}` : ""}
+                      {task.notifiedAt ? ` / sent ${formatDateTime(task.notifiedAt)}` : ""}
+                    </p>
+                  )}
                   {task.ticket ? (
                     <p className="mt-3">
                       <Link className="field-link" href={`/technician/tickets/${task.ticket.id}`}>

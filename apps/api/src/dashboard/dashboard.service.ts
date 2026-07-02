@@ -1,5 +1,5 @@
 import { Injectable } from "@nestjs/common";
-import { Prisma, TaskStatus, TicketStatus } from "@prisma/client";
+import { Prisma, TaskStatus, TaskVisibility, TicketStatus } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
 
 type WorkDashboardInput = {
@@ -20,6 +20,7 @@ type DashboardItem = {
   dueAt: Date | null;
   status: string;
   priority: string;
+  visibility?: string;
   assignedTo: Array<{ id: string; name: string; role: string }>;
   href: string;
   isOverdue: boolean;
@@ -140,6 +141,7 @@ export class DashboardService {
         dueAt: task.scheduledEndAt ?? task.scheduledStartAt,
         status: task.status,
         priority: task.priority,
+        visibility: task.visibility,
         assignedTo: task.assignments.map((assignment) => ({
           id: assignment.technician.id,
           name: assignment.technician.name,
@@ -198,29 +200,41 @@ export class DashboardService {
       ]
     };
 
+    const andConditions: Prisma.TaskWhereInput[] = [];
+
     if (scope === "mine") {
-      where.assignments = {
-        some: {
-          technicianId: userId
-        }
-      };
+      andConditions.push({
+        OR: [
+          { createdByUserId: userId },
+          {
+            assignments: {
+              some: {
+                technicianId: userId
+              }
+            }
+          }
+        ]
+      });
+    } else {
+      andConditions.push({
+        visibility: TaskVisibility.TEAM
+      });
     }
 
     if (search) {
-      where.AND = [
-        {
-          OR: [
-            { title: { contains: search, mode: "insensitive" } },
-            { description: { contains: search, mode: "insensitive" } },
-            { machine: { machineName: { contains: search, mode: "insensitive" } } },
-            { machine: { serialNumber: { contains: search, mode: "insensitive" } } },
-            { customer: { name: { contains: search, mode: "insensitive" } } },
-            { ticket: { ticketNumber: { contains: search, mode: "insensitive" } } }
-          ]
-        }
-      ];
+      andConditions.push({
+        OR: [
+          { title: { contains: search, mode: "insensitive" } },
+          { description: { contains: search, mode: "insensitive" } },
+          { machine: { machineName: { contains: search, mode: "insensitive" } } },
+          { machine: { serialNumber: { contains: search, mode: "insensitive" } } },
+          { customer: { name: { contains: search, mode: "insensitive" } } },
+          { ticket: { ticketNumber: { contains: search, mode: "insensitive" } } }
+        ]
+      });
     }
 
+    if (andConditions.length) where.AND = andConditions;
     return where;
   }
 

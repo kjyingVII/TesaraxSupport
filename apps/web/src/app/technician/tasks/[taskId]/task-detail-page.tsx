@@ -14,6 +14,7 @@ type Task = {
   scheduledStartAt: string | null;
   scheduledEndAt: string | null;
   status: string;
+  visibility: string;
   priority: string;
   notifyRecipientName: string | null;
   notifyRecipientPhone: string | null;
@@ -205,6 +206,9 @@ export function TaskDetailPage({ taskId }: { taskId: string }) {
                   <div>
                     <div className="flex flex-wrap items-center gap-2">
                       <span className={`status-badge ${statusTone(task.status)}`}>{task.status.replaceAll("_", " ")}</span>
+                      <span className={`status-badge ${task.visibility === "PRIVATE" ? "status-violet" : "status-neutral"}`}>
+                        {task.visibility === "PRIVATE" ? "Private" : "Team"}
+                      </span>
                       <span className="status-badge status-neutral">{task.taskType.replaceAll("_", " ")}</span>
                       <span className="status-badge status-blue">{task.priority.replaceAll("_", " ")}</span>
                     </div>
@@ -228,6 +232,7 @@ export function TaskDetailPage({ taskId }: { taskId: string }) {
                   <Info label="Model" value={task.machine.model} />
                   <Info label="Location" value={task.machine.location} />
                   <Info label="Created By" value={`${task.createdByUser.name} / ${task.createdByUser.role}`} />
+                  <Info label="Visibility" value={task.visibility === "PRIVATE" ? "Private task" : "Team task"} />
                   <Info label="Completed By" value={task.completedByUser ? `${task.completedByUser.name} / ${formatDateTime(task.completedAt)}` : "Not completed"} />
                 </div>
 
@@ -311,12 +316,16 @@ export function TaskDetailPage({ taskId }: { taskId: string }) {
 
               <section className="field-panel">
                 <h2 className="field-section-title">User Notification</h2>
-                <div className="mt-4 grid gap-2 text-sm">
-                  <Info label="Name" value={task.notifyRecipientName || "Not recorded"} />
-                  <Info label="Phone" value={task.notifyRecipientPhone || "Not recorded"} />
-                  <Info label="Email" value={task.notifyRecipientEmail || "Not recorded"} />
-                  <Info label="Last Sent" value={task.notifiedAt ? formatDateTime(task.notifiedAt) : "Not sent"} />
-                </div>
+                {task.visibility === "PRIVATE" ? (
+                  <p className="field-muted mt-4 text-sm">Private task. User notifications are not sent.</p>
+                ) : (
+                  <div className="mt-4 grid gap-2 text-sm">
+                    <Info label="Name" value={task.notifyRecipientName || "Not recorded"} />
+                    <Info label="Phone" value={task.notifyRecipientPhone || "Not recorded"} />
+                    <Info label="Email" value={task.notifyRecipientEmail || "Not recorded"} />
+                    <Info label="Last Sent" value={task.notifiedAt ? formatDateTime(task.notifiedAt) : "Not sent"} />
+                  </div>
+                )}
               </section>
 
               <section className="field-panel">

@@ -1,5 +1,5 @@
 import { BadRequestException, Injectable } from "@nestjs/common";
-import { NotificationChannel, NotificationStatus, Prisma, TaskStatus, TicketStatus } from "@prisma/client";
+import { NotificationChannel, NotificationStatus, Prisma, TaskStatus, TaskVisibility, TicketStatus } from "@prisma/client";
 import { parseRequiredPhoneNumber } from "../common/phone-number";
 import { PrismaService } from "../prisma/prisma.service";
 import { SettingsService } from "../settings/settings.service";
@@ -718,6 +718,7 @@ export class NotificationsService {
         id: true,
         title: true,
         taskType: true,
+        visibility: true,
         description: true,
         scheduledStartAt: true,
         scheduledEndAt: true,
@@ -761,6 +762,7 @@ export class NotificationsService {
     });
 
     if (!task) return;
+    if (task.visibility === TaskVisibility.PRIVATE) return;
 
     const signOffName = await this.getMessageSignOffName(task.machine.supportCompanyName);
     const taskLink = this.buildMachineAccessUrl(task.machine.publicId);

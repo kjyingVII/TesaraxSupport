@@ -1571,3 +1571,6 @@ This file records meaningful project updates, decisions, and implementation step
 - Aligned daily task reminder WhatsApp parameters with the approved 12-variable template by removing task status fields and formatting task start times as YYYY-MM-DD 09:00am or "pending".
 - Added admin task reminder endpoints to list staff reminder targets and manually send a WhatsApp daily task reminder for a selected staff member.
 - Added a Manual Task Reminder panel to Admin > Notifications so admins can select a staff member and send the WhatsApp daily task reminder for their assigned open tasks.
+- Wrapped the technician dashboard route with the shared protected-page guard so reminder links redirect unauthenticated staff to login and return them to the dashboard after login.
+- Added task visibility support with Team and Private modes, backend access filtering, public portal hiding for private tasks, private-task notification suppression, and frontend controls/badges for task list, detail, create, edit, and dashboard views.
+- Made new task user notifications optional behind a Notify User checkbox, hid notification fields for private tasks, and made task creation skip WhatsApp notification logs unless notification is explicitly requested or legacy recipient data is supplied.

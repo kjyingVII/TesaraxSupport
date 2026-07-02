@@ -59,10 +59,16 @@ const priorityOptions = [
   { label: "Low", value: "LOW" }
 ];
 
+const visibilityOptions = [
+  { label: "Team task", value: "TEAM" },
+  { label: "Private task", value: "PRIVATE" }
+];
+
 const emptyForm = {
   machineId: "",
   title: "",
   taskType: "MACHINE_MAINTENANCE",
+  visibility: "TEAM",
   priority: "NORMAL",
   scheduledStartAt: "",
   scheduledEndAt: "",
@@ -80,6 +86,7 @@ export function NewTaskPage() {
   const [technicians, setTechnicians] = useState<Technician[]>([]);
   const [selectedTechnicianIds, setSelectedTechnicianIds] = useState<string[]>([]);
   const [form, setForm] = useState(emptyForm);
+  const [notifyUser, setNotifyUser] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -87,6 +94,8 @@ export function NewTaskPage() {
   const selectedMachine = useMemo(() => {
     return machines.find((machine) => machine.id === form.machineId);
   }, [machines, form.machineId]);
+
+  const isPrivateTask = form.visibility === "PRIVATE";
 
   useEffect(() => {
     void loadForm();
@@ -132,13 +141,15 @@ export function NewTaskPage() {
           machineId: form.machineId,
           title: form.title,
           taskType: form.taskType,
+          visibility: form.visibility,
           priority: form.priority,
           scheduledStartAt: form.scheduledStartAt ? new Date(form.scheduledStartAt).toISOString() : null,
           scheduledEndAt: form.scheduledEndAt ? new Date(form.scheduledEndAt).toISOString() : null,
           description: form.description || null,
-          notifyRecipientName: form.notifyRecipientName || null,
-          notifyRecipientPhone: form.notifyRecipientPhone || null,
-          notifyRecipientEmail: form.notifyRecipientEmail || null,
+          notifyUser: !isPrivateTask && notifyUser,
+          notifyRecipientName: !isPrivateTask && notifyUser ? form.notifyRecipientName || null : null,
+          notifyRecipientPhone: !isPrivateTask && notifyUser ? form.notifyRecipientPhone || null : null,
+          notifyRecipientEmail: !isPrivateTask && notifyUser ? form.notifyRecipientEmail || null : null,
           internalRemarks: form.internalRemarks || null,
           assignedTechnicianIds: selectedTechnicianIds
         })
@@ -223,6 +234,29 @@ export function NewTaskPage() {
                 </label>
               </div>
 
+              <section className="field-panel-subtle grid gap-3">
+                <div>
+                  <h2 className="field-section-title text-base">Visibility</h2>
+                  <p className="field-muted mt-1">Team tasks are visible to staff and can notify users. Private tasks are visible only to you, assigned staff, and admins.</p>
+                </div>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {visibilityOptions.map((option) => (
+                    <button
+                      key={option.value}
+                      className={`rounded-md border px-4 py-3 text-left text-sm font-semibold transition ${
+                        form.visibility === option.value
+                          ? "border-[#155e75] bg-[#e0f2fe] text-[#075985] dark:border-[#22d3ee] dark:bg-[#0c4a6e] dark:text-[#bae6fd]"
+                          : "border-[#d9dee3] text-[#3c4043] hover:border-[#155e75] dark:border-[#2f3742] dark:text-[#d7dde4] dark:hover:border-[#22d3ee]"
+                      }`}
+                      type="button"
+                      onClick={() => updateField("visibility", option.value)}
+                    >
+                      {option.label}
+                    </button>
+                  ))}
+                </div>
+              </section>
+
               <div className="grid gap-4 md:grid-cols-3">
                 <label className="block">
                   <span className="field-label">Priority</span>
@@ -240,22 +274,40 @@ export function NewTaskPage() {
 
               <TextAreaInput label="Description" value={form.description} onChange={(value) => updateField("description", value)} />
 
-              <section className="field-panel-subtle grid gap-4">
-                <div>
-                  <h2 className="field-section-title text-base">User to Notify</h2>
-                  <p className="field-muted mt-1">A WhatsApp task notification will be sent to this contact when the task is created.</p>
-                </div>
-                <div className="grid gap-4 md:grid-cols-2">
-                  <TextInput label="Name" value={form.notifyRecipientName} required onChange={(value) => updateField("notifyRecipientName", value)} />
-                  <TextInput label="Email" type="email" value={form.notifyRecipientEmail} onChange={(value) => updateField("notifyRecipientEmail", value)} />
-                </div>
-                <PhoneNumberInput
-                  label="Phone"
-                  value={form.notifyRecipientPhone}
-                  required
-                  onChange={(value) => updateField("notifyRecipientPhone", value)}
-                />
-              </section>
+              {!isPrivateTask ? (
+                <section className="field-panel-subtle grid gap-4">
+                  <label className="flex items-start gap-3">
+                    <input
+                      className="mt-1 h-4 w-4 accent-[#155e75]"
+                      type="checkbox"
+                      checked={notifyUser}
+                      onChange={(event) => setNotifyUser(event.target.checked)}
+                    />
+                    <span>
+                      <span className="block text-sm font-semibold">Notify User</span>
+                      <span className="field-muted mt-1 block text-sm">Send a WhatsApp task notification when this task is created.</span>
+                    </span>
+                  </label>
+
+                  {notifyUser ? (
+                    <>
+                      <div>
+                        <h2 className="field-section-title text-base">User to Notify</h2>
+                      </div>
+                      <div className="grid gap-4 md:grid-cols-2">
+                        <TextInput label="Name" value={form.notifyRecipientName} required onChange={(value) => updateField("notifyRecipientName", value)} />
+                        <TextInput label="Email" type="email" value={form.notifyRecipientEmail} onChange={(value) => updateField("notifyRecipientEmail", value)} />
+                      </div>
+                      <PhoneNumberInput
+                        label="Phone"
+                        value={form.notifyRecipientPhone}
+                        required
+                        onChange={(value) => updateField("notifyRecipientPhone", value)}
+                      />
+                    </>
+                  ) : null}
+                </section>
+              ) : null}
 
               <SearchableMultiSelect
                 label="Assigned Technicians"
@@ -283,8 +335,7 @@ export function NewTaskPage() {
                     saving
                     || !form.machineId
                     || !form.title.trim()
-                    || !form.notifyRecipientName.trim()
-                    || !isValidPhoneNumber(form.notifyRecipientPhone)
+                    || (!isPrivateTask && notifyUser && (!form.notifyRecipientName.trim() || !isValidPhoneNumber(form.notifyRecipientPhone)))
                   }
                 >
                   {saving ? "Creating..." : "Create task"}

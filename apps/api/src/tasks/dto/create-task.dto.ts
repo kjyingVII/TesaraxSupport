@@ -8,7 +8,9 @@ export type CreateTaskDto = {
   scheduledStartAt?: string;
   scheduledEndAt?: string | null;
   status?: string;
+  visibility?: string;
   priority?: string;
+  notifyUser?: boolean;
   notifyRecipientName?: string | null;
   notifyRecipientPhone?: string | null;
   notifyRecipientEmail?: string | null;

@@ -1,5 +1,5 @@
 import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
-import { Prisma, TaskStatus, TaskType, TicketPriority, UserRole } from "@prisma/client";
+import { Prisma, TaskStatus, TaskType, TaskVisibility, TicketPriority, UserRole } from "@prisma/client";
 import { AuditService } from "../audit/audit.service";
 import { parseNullablePhoneNumber } from "../common/phone-number";
 import { NotificationsService } from "../notifications/notifications.service";
@@ -20,6 +20,11 @@ type ListTasksInput = {
   pageSize?: string;
 };
 
+type TaskActor = {
+  id: string;
+  role: UserRole;
+};
+
 @Injectable()
 export class TasksService {
   constructor(
@@ -28,10 +33,12 @@ export class TasksService {
     private readonly notificationsService: NotificationsService
   ) {}
 
-  async list(input: ListTasksInput) {
+  async list(input: ListTasksInput, actor: TaskActor) {
     const page = this.parsePositiveInteger(input.page, 1);
     const pageSize = this.parsePositiveInteger(input.pageSize, 25);
-    const where: Prisma.TaskWhereInput = {};
+    const where: Prisma.TaskWhereInput = {
+      AND: [this.taskAccessWhere(actor)]
+    };
 
     if (input.customerId?.trim()) where.customerId = input.customerId.trim();
     if (input.machineId?.trim()) where.machineId = input.machineId.trim();
@@ -51,14 +58,19 @@ export class TasksService {
     }
     if (input.search?.trim()) {
       const search = input.search.trim();
-      where.OR = [
-        { title: { contains: search, mode: "insensitive" } },
-        { description: { contains: search, mode: "insensitive" } },
-        { internalRemarks: { contains: search, mode: "insensitive" } },
-        { machine: { machineName: { contains: search, mode: "insensitive" } } },
-        { machine: { serialNumber: { contains: search, mode: "insensitive" } } },
-        { customer: { name: { contains: search, mode: "insensitive" } } },
-        { ticket: { ticketNumber: { contains: search, mode: "insensitive" } } }
+      where.AND = [
+        ...(Array.isArray(where.AND) ? where.AND : []),
+        {
+          OR: [
+            { title: { contains: search, mode: "insensitive" } },
+            { description: { contains: search, mode: "insensitive" } },
+            { internalRemarks: { contains: search, mode: "insensitive" } },
+            { machine: { machineName: { contains: search, mode: "insensitive" } } },
+            { machine: { serialNumber: { contains: search, mode: "insensitive" } } },
+            { customer: { name: { contains: search, mode: "insensitive" } } },
+            { ticket: { ticketNumber: { contains: search, mode: "insensitive" } } }
+          ]
+        }
       ];
     }
 
@@ -86,9 +98,12 @@ export class TasksService {
     };
   }
 
-  async getById(id: string) {
-    const task = await this.prisma.task.findUnique({
-      where: { id },
+  async getById(id: string, actor: TaskActor) {
+    const task = await this.prisma.task.findFirst({
+      where: {
+        id,
+        AND: [this.taskAccessWhere(actor)]
+      },
       include: this.includeTask()
     });
 
@@ -96,8 +111,8 @@ export class TasksService {
     return { data: task };
   }
 
-  async listComments(taskId: string) {
-    await this.ensureTaskExists(taskId);
+  async listComments(taskId: string, actor: TaskActor) {
+    await this.ensureTaskAccessible(taskId, actor);
 
     const comments = await this.prisma.taskComment.findMany({
       where: { taskId },
@@ -129,11 +144,18 @@ export class TasksService {
     }
 
     const context = await this.resolveTaskContext(dto);
+    const visibility = dto.visibility ? this.parseVisibility(dto.visibility) : TaskVisibility.TEAM;
     const assignedTechnicianIds = this.uniqueStrings(dto.assignedTechnicianIds ?? []);
+    if (visibility === TaskVisibility.PRIVATE && assignedTechnicianIds.length === 0) {
+      assignedTechnicianIds.push(actorUserId);
+    }
     await this.ensureActiveTechnicians(assignedTechnicianIds);
-    const notifyRecipientName = this.cleanNullableString(dto.notifyRecipientName);
-    const notifyRecipientPhone = parseNullablePhoneNumber(dto.notifyRecipientPhone, "Notify recipient phone");
-    const notifyRecipientEmail = this.cleanNullableString(dto.notifyRecipientEmail);
+    const requestedNotification = dto.notifyUser === true
+      || (dto.notifyUser === undefined && Boolean(dto.notifyRecipientName || dto.notifyRecipientPhone));
+    const shouldNotifyUser = visibility === TaskVisibility.TEAM && requestedNotification;
+    const notifyRecipientName = shouldNotifyUser ? this.cleanNullableString(dto.notifyRecipientName) : null;
+    const notifyRecipientPhone = shouldNotifyUser ? parseNullablePhoneNumber(dto.notifyRecipientPhone, "Notify recipient phone") : null;
+    const notifyRecipientEmail = shouldNotifyUser ? this.cleanNullableString(dto.notifyRecipientEmail) : null;
 
     const task = await this.prisma.$transaction(async (tx) => {
       const created = await tx.task.create({
@@ -147,6 +169,7 @@ export class TasksService {
           scheduledStartAt,
           scheduledEndAt,
           status: dto.status ? this.parseStatus(dto.status) : scheduledStartAt ? TaskStatus.SCHEDULED : TaskStatus.PENDING,
+          visibility,
           priority: dto.priority ? this.parsePriority(dto.priority) : context.priority,
           notifyRecipientName,
           notifyRecipientPhone,
@@ -171,13 +194,15 @@ export class TasksService {
       afterData: task
     });
 
-    await this.notificationsService.logTaskCreated(task.id);
+    if (shouldNotifyUser) {
+      await this.notificationsService.logTaskCreated(task.id);
+    }
 
     return { data: task };
   }
 
-  async createComment(taskId: string, dto: { comment?: string }, actorUserId: string) {
-    await this.ensureTaskExists(taskId);
+  async createComment(taskId: string, dto: { comment?: string }, actorUserId: string, actor: TaskActor) {
+    await this.ensureTaskAccessible(taskId, actor);
     const commentText = this.requiredString(dto.comment, "Comment is required.");
 
     const comment = await this.prisma.taskComment.create({
@@ -211,9 +236,12 @@ export class TasksService {
     return { data: comment };
   }
 
-  async update(id: string, dto: UpdateTaskDto, actorUserId: string) {
-    const before = await this.prisma.task.findUnique({
-      where: { id },
+  async update(id: string, dto: UpdateTaskDto, actorUserId: string, actor?: TaskActor) {
+    const before = await this.prisma.task.findFirst({
+      where: {
+        id,
+        ...(actor ? { AND: [this.taskAccessWhere(actor)] } : {})
+      },
       include: this.includeTask()
     });
     if (!before) throw new NotFoundException("Task not found.");
@@ -253,10 +281,20 @@ export class TasksService {
         data.completedByUser = { disconnect: true };
       }
     }
+    if (dto.visibility !== undefined) {
+      const nextVisibility = this.parseVisibility(dto.visibility);
+      data.visibility = nextVisibility;
+      if (nextVisibility === TaskVisibility.PRIVATE) {
+        data.notifyRecipientName = null;
+        data.notifyRecipientPhone = null;
+        data.notifyRecipientEmail = null;
+      }
+    }
     if (dto.priority !== undefined) data.priority = this.parsePriority(dto.priority);
-    if (dto.notifyRecipientName !== undefined) data.notifyRecipientName = this.cleanNullableString(dto.notifyRecipientName);
-    if (dto.notifyRecipientPhone !== undefined) data.notifyRecipientPhone = parseNullablePhoneNumber(dto.notifyRecipientPhone, "Notify recipient phone");
-    if (dto.notifyRecipientEmail !== undefined) data.notifyRecipientEmail = this.cleanNullableString(dto.notifyRecipientEmail);
+    const effectiveVisibility = dto.visibility !== undefined ? this.parseVisibility(dto.visibility) : before.visibility;
+    if (dto.notifyRecipientName !== undefined && effectiveVisibility === TaskVisibility.TEAM) data.notifyRecipientName = this.cleanNullableString(dto.notifyRecipientName);
+    if (dto.notifyRecipientPhone !== undefined && effectiveVisibility === TaskVisibility.TEAM) data.notifyRecipientPhone = parseNullablePhoneNumber(dto.notifyRecipientPhone, "Notify recipient phone");
+    if (dto.notifyRecipientEmail !== undefined && effectiveVisibility === TaskVisibility.TEAM) data.notifyRecipientEmail = this.cleanNullableString(dto.notifyRecipientEmail);
     if (dto.internalRemarks !== undefined) data.internalRemarks = this.cleanNullableString(dto.internalRemarks);
     if (dto.completedByUserId !== undefined) {
       data.completedByUser = dto.completedByUserId ? { connect: { id: dto.completedByUserId } } : { disconnect: true };
@@ -267,6 +305,9 @@ export class TasksService {
     if (start && end && end <= start) throw new BadRequestException("scheduled end time must be after start time.");
 
     const assignedTechnicianIds = dto.assignedTechnicianIds ? this.uniqueStrings(dto.assignedTechnicianIds) : undefined;
+    if (assignedTechnicianIds && effectiveVisibility === TaskVisibility.PRIVATE && !assignedTechnicianIds.includes(actorUserId)) {
+      assignedTechnicianIds.push(actorUserId);
+    }
     if (assignedTechnicianIds) await this.ensureActiveTechnicians(assignedTechnicianIds);
 
     const task = await this.prisma.$transaction(async (tx) => {
@@ -295,11 +336,13 @@ export class TasksService {
     return { data: task };
   }
 
-  async cancel(id: string, actorUserId: string) {
-    return this.update(id, { status: TaskStatus.CANCELLED }, actorUserId);
+  async cancel(id: string, actorUserId: string, actor: TaskActor) {
+    return this.update(id, { status: TaskStatus.CANCELLED }, actorUserId, actor);
   }
 
-  async complete(id: string, actorUserId: string) {
+  async complete(id: string, actorUserId: string, actor: TaskActor) {
+    await this.ensureTaskAccessible(id, actor);
+
     const task = await this.prisma.task.update({
       where: { id },
       data: {
@@ -323,13 +366,17 @@ export class TasksService {
     return { data: task };
   }
 
-  async notifyRescheduled(id: string, actorUserId: string) {
-    const task = await this.prisma.task.findUnique({
-      where: { id },
+  async notifyRescheduled(id: string, actorUserId: string, actor: TaskActor) {
+    const task = await this.prisma.task.findFirst({
+      where: {
+        id,
+        AND: [this.taskAccessWhere(actor)]
+      },
       include: this.includeTask()
     });
 
     if (!task) throw new NotFoundException("Task not found.");
+    if (task.visibility === TaskVisibility.PRIVATE) throw new BadRequestException("Private tasks do not send user notifications.");
 
     await this.notificationsService.logTaskRescheduled(id);
 
@@ -449,6 +496,35 @@ export class TasksService {
     if (!task) throw new NotFoundException("Task not found.");
   }
 
+  private async ensureTaskAccessible(id: string, actor: TaskActor) {
+    const task = await this.prisma.task.findFirst({
+      where: {
+        id,
+        AND: [this.taskAccessWhere(actor)]
+      },
+      select: { id: true }
+    });
+    if (!task) throw new NotFoundException("Task not found.");
+  }
+
+  private taskAccessWhere(actor: TaskActor): Prisma.TaskWhereInput {
+    if (actor.role === UserRole.ADMIN) return {};
+
+    return {
+      OR: [
+        { visibility: TaskVisibility.TEAM },
+        { createdByUserId: actor.id },
+        {
+          assignments: {
+            some: {
+              technicianId: actor.id
+            }
+          }
+        }
+      ]
+    };
+  }
+
   private includeTask() {
     return {
       customer: true,
@@ -520,6 +596,12 @@ export class TasksService {
     const status = this.requiredString(value, "Status is required.").toUpperCase();
     if (!Object.values(TaskStatus).includes(status as TaskStatus)) throw new BadRequestException("Invalid task status.");
     return status as TaskStatus;
+  }
+
+  private parseVisibility(value: string | undefined) {
+    const visibility = this.requiredString(value, "Visibility is required.").toUpperCase();
+    if (!Object.values(TaskVisibility).includes(visibility as TaskVisibility)) throw new BadRequestException("Invalid task visibility.");
+    return visibility as TaskVisibility;
   }
 
   private parsePriority(value: string | undefined) {

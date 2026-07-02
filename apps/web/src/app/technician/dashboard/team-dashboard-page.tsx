@@ -24,6 +24,7 @@ type DashboardItem = {
   dueAt: string | null;
   status: string;
   priority: string;
+  visibility?: string;
   assignedTo: Array<{
     id: string;
     name: string;
@@ -313,6 +314,7 @@ function DashboardRow({ item }: { item: DashboardItem }) {
             </Link>
             <p className="mt-1 text-xs text-[#5f6368] dark:text-[#a8b0ba]">
               {item.recordType === "TASK" ? "Task" : "Ticket"}
+              {item.recordType === "TASK" && item.visibility === "PRIVATE" ? " / Private" : ""}
               {item.subtitle ? ` / ${item.subtitle}` : ""}
             </p>
           </div>

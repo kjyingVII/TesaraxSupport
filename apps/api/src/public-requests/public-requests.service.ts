@@ -5,6 +5,7 @@ import {
   Prisma,
   ServiceResolutionStatus,
   TaskStatus,
+  TaskVisibility,
   TicketCommentVisibility,
   TicketPriority,
   TicketStatus
@@ -295,6 +296,7 @@ export class PublicRequestsService {
         },
         tasks: {
           where: {
+            visibility: TaskVisibility.TEAM,
             status: {
               in: [TaskStatus.PENDING, TaskStatus.SCHEDULED, TaskStatus.IN_PROGRESS, TaskStatus.WAITING_COMPONENT, TaskStatus.WAITING_CUSTOMER]
             }

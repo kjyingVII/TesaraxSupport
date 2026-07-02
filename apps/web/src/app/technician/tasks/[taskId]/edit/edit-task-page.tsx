@@ -24,6 +24,7 @@ type Task = {
   scheduledStartAt: string | null;
   scheduledEndAt: string | null;
   status: string;
+  visibility: string;
   priority: string;
   notifyRecipientName: string | null;
   notifyRecipientPhone: string | null;
@@ -83,9 +84,15 @@ const statusOptions = [
   { label: "Cancelled", value: "CANCELLED" }
 ];
 
+const visibilityOptions = [
+  { label: "Team task", value: "TEAM" },
+  { label: "Private task", value: "PRIVATE" }
+];
+
 const emptyForm = {
   title: "",
   taskType: "MACHINE_MAINTENANCE",
+  visibility: "TEAM",
   priority: "NORMAL",
   status: "SCHEDULED",
   scheduledStartAt: "",
@@ -112,6 +119,8 @@ export function EditTaskPage({ taskId }: { taskId: string }) {
   const hasValidPhone = useMemo(() => {
     return !form.notifyRecipientPhone.trim() || isValidPhoneNumber(form.notifyRecipientPhone);
   }, [form.notifyRecipientPhone]);
+
+  const isPrivateTask = form.visibility === "PRIVATE";
 
   const taskTimeChanged = useMemo(() => {
     if (!task) return false;
@@ -140,6 +149,7 @@ export function EditTaskPage({ taskId }: { taskId: string }) {
       setForm({
         title: taskResponse.data.title,
         taskType: taskResponse.data.taskType,
+        visibility: taskResponse.data.visibility ?? "TEAM",
         priority: taskResponse.data.priority,
         status: taskResponse.data.status,
         scheduledStartAt: taskResponse.data.scheduledStartAt ? toDateTimeLocal(taskResponse.data.scheduledStartAt) : "",
@@ -163,7 +173,7 @@ export function EditTaskPage({ taskId }: { taskId: string }) {
 
   function handleSaveSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (taskTimeChanged) {
+    if (taskTimeChanged && !isPrivateTask) {
       setShowNotifyDialog(true);
       return;
     }
@@ -183,20 +193,21 @@ export function EditTaskPage({ taskId }: { taskId: string }) {
         body: JSON.stringify({
           title: form.title,
           taskType: form.taskType,
+          visibility: form.visibility,
           priority: form.priority,
           status: form.status,
           scheduledStartAt: form.scheduledStartAt ? new Date(form.scheduledStartAt).toISOString() : null,
           scheduledEndAt: form.scheduledEndAt ? new Date(form.scheduledEndAt).toISOString() : null,
           description: form.description || null,
-          notifyRecipientName: form.notifyRecipientName || null,
-          notifyRecipientPhone: form.notifyRecipientPhone || null,
-          notifyRecipientEmail: form.notifyRecipientEmail || null,
+          notifyRecipientName: isPrivateTask ? null : form.notifyRecipientName || null,
+          notifyRecipientPhone: isPrivateTask ? null : form.notifyRecipientPhone || null,
+          notifyRecipientEmail: isPrivateTask ? null : form.notifyRecipientEmail || null,
           internalRemarks: form.internalRemarks || null,
           assignedTechnicianIds: selectedTechnicianIds
         })
       });
 
-      if (notifyUser) {
+      if (notifyUser && !isPrivateTask) {
         await apiRequest<TaskResponse>(`/api/tasks/${taskId}/notify-reschedule`, {
           method: "PATCH"
         });
@@ -270,6 +281,29 @@ export function EditTaskPage({ taskId }: { taskId: string }) {
                 </label>
               </div>
 
+              <section className="field-panel-subtle grid gap-3">
+                <div>
+                  <h2 className="field-section-title text-base">Visibility</h2>
+                  <p className="field-muted mt-1">Team tasks are visible to staff and can notify users. Private tasks are visible only to you, assigned staff, and admins.</p>
+                </div>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {visibilityOptions.map((option) => (
+                    <button
+                      key={option.value}
+                      className={`rounded-md border px-4 py-3 text-left text-sm font-semibold transition ${
+                        form.visibility === option.value
+                          ? "border-[#155e75] bg-[#e0f2fe] text-[#075985] dark:border-[#22d3ee] dark:bg-[#0c4a6e] dark:text-[#bae6fd]"
+                          : "border-[#d9dee3] text-[#3c4043] hover:border-[#155e75] dark:border-[#2f3742] dark:text-[#d7dde4] dark:hover:border-[#22d3ee]"
+                      }`}
+                      type="button"
+                      onClick={() => updateField("visibility", option.value)}
+                    >
+                      {option.label}
+                    </button>
+                  ))}
+                </div>
+              </section>
+
               <div className="grid gap-4 md:grid-cols-3">
                 <label className="block">
                   <span className="field-label">Status</span>
@@ -297,17 +331,23 @@ export function EditTaskPage({ taskId }: { taskId: string }) {
               <TextInput label="End Time" type="datetime-local" value={form.scheduledEndAt} onChange={(value) => updateField("scheduledEndAt", value)} />
               <TextAreaInput label="Description" value={form.description} onChange={(value) => updateField("description", value)} />
 
-              <section className="field-panel-subtle grid gap-4">
-                <div>
-                  <h2 className="field-section-title text-base">User to Notify</h2>
-                  <p className="field-muted mt-1">Update the contact used for task communication. Editing this task does not resend WhatsApp automatically.</p>
+              {!isPrivateTask ? (
+                <section className="field-panel-subtle grid gap-4">
+                  <div>
+                    <h2 className="field-section-title text-base">User to Notify</h2>
+                    <p className="field-muted mt-1">Update the contact used for task communication. Editing this task does not resend WhatsApp automatically.</p>
+                  </div>
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <TextInput label="Name" value={form.notifyRecipientName} onChange={(value) => updateField("notifyRecipientName", value)} />
+                    <TextInput label="Email" type="email" value={form.notifyRecipientEmail} onChange={(value) => updateField("notifyRecipientEmail", value)} />
+                  </div>
+                  <PhoneNumberInput label="Phone" value={form.notifyRecipientPhone} onChange={(value) => updateField("notifyRecipientPhone", value)} />
+                </section>
+              ) : (
+                <div className="field-alert-warning p-3 text-sm">
+                  Private task will not send WhatsApp notification to the machine user.
                 </div>
-                <div className="grid gap-4 md:grid-cols-2">
-                  <TextInput label="Name" value={form.notifyRecipientName} onChange={(value) => updateField("notifyRecipientName", value)} />
-                  <TextInput label="Email" type="email" value={form.notifyRecipientEmail} onChange={(value) => updateField("notifyRecipientEmail", value)} />
-                </div>
-                <PhoneNumberInput label="Phone" value={form.notifyRecipientPhone} onChange={(value) => updateField("notifyRecipientPhone", value)} />
-              </section>
+              )}
 
               <SearchableMultiSelect
                 label="Assigned Technicians"
@@ -331,7 +371,7 @@ export function EditTaskPage({ taskId }: { taskId: string }) {
                 <button
                   className="field-button-primary disabled:cursor-not-allowed disabled:opacity-50"
                   type="submit"
-                  disabled={saving || !form.title.trim() || !hasValidPhone}
+                  disabled={saving || !form.title.trim() || (!isPrivateTask && !hasValidPhone)}
                 >
                   {saving ? "Saving..." : "Save Changes"}
                 </button>
@@ -350,6 +390,7 @@ export function EditTaskPage({ taskId }: { taskId: string }) {
             saving={saving}
             onClose={() => setShowNotifyDialog(false)}
             onSaveOnly={() => void saveTask(false)}
+            canSendNotification={!isPrivateTask}
             onSaveAndNotify={() => void saveTask(true)}
           />
         ) : null}
@@ -367,7 +408,8 @@ function RescheduleNotifyDialog({
   saving,
   onClose,
   onSaveOnly,
-  onSaveAndNotify
+  onSaveAndNotify,
+  canSendNotification
 }: {
   taskTitle: string;
   recipientName: string;
@@ -378,8 +420,9 @@ function RescheduleNotifyDialog({
   onClose: () => void;
   onSaveOnly: () => void;
   onSaveAndNotify: () => void;
+  canSendNotification: boolean;
 }) {
-  const canNotify = Boolean(recipientName.trim() && isValidPhoneNumber(recipientPhone));
+  const canNotify = canSendNotification && Boolean(recipientName.trim() && isValidPhoneNumber(recipientPhone));
 
   return (
     <div className="fixed inset-0 z-50 grid place-items-center bg-black/45 px-4 py-6 backdrop-blur-sm" role="dialog" aria-modal="true">
@@ -409,7 +452,11 @@ function RescheduleNotifyDialog({
           The task time changed. You can save the change silently, or send/log a WhatsApp reschedule notification for the user.
         </p>
 
-        {!canNotify ? (
+        {!canSendNotification ? (
+          <div className="field-alert-warning mt-4 p-3 text-sm">
+            Private tasks do not send WhatsApp notifications.
+          </div>
+        ) : !canNotify ? (
           <div className="field-alert-warning mt-4 p-3 text-sm">
             Add a valid notification name and phone number before sending WhatsApp.
           </div>

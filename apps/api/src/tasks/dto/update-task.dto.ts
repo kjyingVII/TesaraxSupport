@@ -8,6 +8,7 @@ export type UpdateTaskDto = {
   scheduledStartAt?: string;
   scheduledEndAt?: string | null;
   status?: string;
+  visibility?: string;
   priority?: string;
   notifyRecipientName?: string | null;
   notifyRecipientPhone?: string | null;

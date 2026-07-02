@@ -98,6 +98,11 @@ enum TaskType {
   OTHER
 }
 
+enum TaskVisibility {
+  TEAM
+  PRIVATE
+}
+
 enum AttachmentRelatedType {
   TICKET
   TICKET_COMMENT
@@ -431,6 +436,7 @@ model Task {
   scheduledStartAt   DateTime?
   scheduledEndAt     DateTime?
   status             TaskStatus          @default(PENDING)
+  visibility         TaskVisibility      @default(TEAM)
   priority           TicketPriority      @default(NORMAL)
   notifyRecipientName String?
   notifyRecipientPhone String?
@@ -451,6 +457,7 @@ model Task {
   @@index([machineId])
   @@index([ticketId])
   @@index([status])
+  @@index([visibility])
   @@index([scheduledStartAt])
   @@index([notifyRecipientPhone])
   @@index([createdByUserId])
@@ -458,6 +465,7 @@ model Task {
   @@index([machineId, scheduledStartAt], map: "Task_machineId_scheduledStartAt_idx")
   @@index([ticketId, scheduledStartAt], map: "Task_ticketId_scheduledStartAt_idx")
   @@index([status, scheduledStartAt], map: "Task_status_scheduledStartAt_idx")
+  @@index([visibility, scheduledStartAt], map: "Task_visibility_scheduledStartAt_idx")
 }
 
 model TaskAssignment {
