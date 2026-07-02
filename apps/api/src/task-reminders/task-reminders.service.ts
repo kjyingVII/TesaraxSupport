@@ -1,4 +1,4 @@
-import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from "@nestjs/common";
+import { BadRequestException, Injectable, Logger, NotFoundException, OnModuleDestroy, OnModuleInit } from "@nestjs/common";
 import { NotificationChannel, NotificationStatus, Prisma, TaskStatus, UserRole } from "@prisma/client";
 import { NotificationsService } from "../notifications/notifications.service";
 import { PrismaService } from "../prisma/prisma.service";
@@ -81,24 +81,79 @@ export class TaskRemindersService implements OnModuleInit, OnModuleDestroy {
   }
 
   private async sendDailyReminders() {
-    const users = await this.prisma.user.findMany({
+    const users = await this.getReminderUsers();
+
+    let sentCount = 0;
+
+    for (const user of users) {
+      const result = await this.sendReminderForLoadedUser(user);
+      if (result) sentCount += 1;
+    }
+
+    return sentCount;
+  }
+
+  async listStaffReminderTargets() {
+    const users = await this.getReminderUsers({ requirePhone: false, requireOpenTasks: false });
+
+    return {
+      data: users.map((user) => {
+        const tasks = user.taskAssignments.map((assignment) => assignment.task).sort((a, b) => this.compareTasks(a, b));
+        return {
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          phone: user.phone,
+          role: user.role,
+          openTaskCount: tasks.length,
+          nextTaskTitle: tasks[0]?.title ?? null,
+          nextTaskStartAt: tasks[0]?.scheduledStartAt ?? null
+        };
+      })
+    };
+  }
+
+  async sendManualReminder(userId: string) {
+    const user = await this.getReminderUser(userId);
+    if (!user) {
+      throw new NotFoundException("Staff member not found.");
+    }
+
+    const result = await this.sendReminderForLoadedUser(user);
+    if (!result) {
+      throw new BadRequestException("Selected staff has no open assigned tasks.");
+    }
+
+    return result;
+  }
+
+  private async getReminderUsers(options: { requirePhone?: boolean; requireOpenTasks?: boolean } = {}) {
+    const requirePhone = options.requirePhone ?? true;
+    const requireOpenTasks = options.requireOpenTasks ?? true;
+
+    return this.prisma.user.findMany({
       where: {
         isActive: true,
         role: { in: [UserRole.ADMIN, UserRole.SUPERVISOR, UserRole.TECHNICIAN] },
-        phone: { not: null },
-        taskAssignments: {
-          some: {
-            task: {
-              status: { in: OPEN_TASK_STATUSES }
+        ...(requirePhone ? { phone: { not: null } } : {}),
+        ...(requireOpenTasks
+          ? {
+              taskAssignments: {
+                some: {
+                  task: {
+                    status: { in: OPEN_TASK_STATUSES }
+                  }
+                }
+              }
             }
-          }
-        }
+          : {})
       },
       select: {
         id: true,
         name: true,
         email: true,
         phone: true,
+        role: true,
         taskAssignments: {
           where: {
             task: {
@@ -124,34 +179,34 @@ export class TaskRemindersService implements OnModuleInit, OnModuleDestroy {
         }
       }
     });
+  }
 
-    let sentCount = 0;
+  private async getReminderUser(userId: string) {
+    const users = await this.getReminderUsers({ requirePhone: false, requireOpenTasks: false });
+    return users.find((user) => user.id === userId) ?? null;
+  }
 
-    for (const user of users) {
-      const tasks = user.taskAssignments.map((assignment) => assignment.task).sort((a, b) => this.compareTasks(a, b));
-      if (tasks.length === 0) continue;
+  private async sendReminderForLoadedUser(user: Awaited<ReturnType<TaskRemindersService["getReminderUsers"]>>[number]) {
+    const tasks = user.taskAssignments.map((assignment) => assignment.task).sort((a, b) => this.compareTasks(a, b));
+    if (tasks.length === 0) return null;
 
-      await this.notificationsService.logTaskDailyReminder({
-        userId: user.id,
-        recipient: {
-          name: user.name,
-          phone: user.phone,
-          email: user.email
-        },
-        tasks: tasks.slice(0, 3).map((task) => ({
-          title: task.title,
-          machineName: task.machine.machineName,
-          status: task.status,
-          scheduledStartAt: task.scheduledStartAt,
-          scheduledEndAt: task.scheduledEndAt
-        })),
-        additionalTaskCount: Math.max(tasks.length - 3, 0),
-        dashboardUrl: this.buildDashboardUrl()
-      });
-      sentCount += 1;
-    }
-
-    return sentCount;
+    return this.notificationsService.logTaskDailyReminder({
+      userId: user.id,
+      recipient: {
+        name: user.name,
+        phone: user.phone,
+        email: user.email
+      },
+      tasks: tasks.slice(0, 3).map((task) => ({
+        title: task.title,
+        machineName: task.machine.machineName,
+        status: task.status,
+        scheduledStartAt: task.scheduledStartAt,
+        scheduledEndAt: task.scheduledEndAt
+      })),
+      additionalTaskCount: Math.max(tasks.length - 3, 0),
+      dashboardUrl: this.buildDashboardUrl()
+    });
   }
 
   private async logDisabledReminderSkip(dateKey: string, reminderTime: string) {

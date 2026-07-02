@@ -1569,3 +1569,5 @@ This file records meaningful project updates, decisions, and implementation step
 - Replaced the browser machine log delete confirmation with an in-app modal showing the selected log, work time, and delete impact before confirmation.
 - Updated daily task reminder WhatsApp template parameters to use three fixed task slots, filling unused slots with "No task" and "-", and skipped processing users with zero assigned open tasks.
 - Aligned daily task reminder WhatsApp parameters with the approved 12-variable template by removing task status fields and formatting task start times as YYYY-MM-DD 09:00am or "pending".
+- Added admin task reminder endpoints to list staff reminder targets and manually send a WhatsApp daily task reminder for a selected staff member.
+- Added a Manual Task Reminder panel to Admin > Notifications so admins can select a staff member and send the WhatsApp daily task reminder for their assigned open tasks.

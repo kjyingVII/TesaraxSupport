@@ -685,7 +685,7 @@ export class NotificationsService {
       return;
     }
 
-    await this.logWhatsapp({
+    return this.logWhatsapp({
       relatedType: "TaskDailyReminder",
       relatedId: input.userId,
       recipient: input.recipient,

@@ -42,6 +42,21 @@ type NotificationLogListResponse = {
   };
 };
 
+type ReminderStaff = {
+  id: string;
+  name: string;
+  email: string;
+  phone: string | null;
+  role: string;
+  openTaskCount: number;
+  nextTaskTitle: string | null;
+  nextTaskStartAt: string | null;
+};
+
+type ReminderStaffResponse = {
+  data: ReminderStaff[];
+};
+
 type NotificationFilterState = {
   channel: string;
   status: string;
@@ -52,6 +67,10 @@ type NotificationFilterState = {
 export function NotificationLogsPage() {
   const [logs, setLogs] = useState<NotificationLog[]>([]);
   const [selectedLog, setSelectedLog] = useState<NotificationLog | null>(null);
+  const [staff, setStaff] = useState<ReminderStaff[]>([]);
+  const [selectedStaffId, setSelectedStaffId] = useState("");
+  const [sendingReminder, setSendingReminder] = useState(false);
+  const [reminderMessage, setReminderMessage] = useState<string | null>(null);
   const [channel, setChannel] = useState("");
   const [status, setStatus] = useState("");
   const [relatedType, setRelatedType] = useState("");
@@ -62,6 +81,7 @@ export function NotificationLogsPage() {
 
   useEffect(() => {
     void loadLogs();
+    void loadStaff();
   }, []);
 
   async function loadLogs(overrides?: Partial<NotificationFilterState>) {
@@ -108,6 +128,42 @@ export function NotificationLogsPage() {
     void loadLogs(filters);
   }
 
+  async function loadStaff() {
+    try {
+      const response = await apiRequest<ReminderStaffResponse>("/api/admin/task-reminders/staff");
+      setStaff(response.data);
+      setSelectedStaffId((current) => current || response.data.find((item) => item.openTaskCount > 0)?.id || response.data[0]?.id || "");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unable to load staff reminder targets.");
+    }
+  }
+
+  async function sendReminder(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!selectedStaffId) return;
+
+    setSendingReminder(true);
+    setError(null);
+    setReminderMessage(null);
+
+    try {
+      const response = await apiRequest<NotificationLog>(`/api/admin/task-reminders/staff/${selectedStaffId}/send`, {
+        method: "POST",
+        body: JSON.stringify({})
+      });
+      setReminderMessage(`Reminder processed with status ${response.status}.`);
+      setSelectedLog(response);
+      await loadLogs();
+      await loadStaff();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unable to send task reminder.");
+    } finally {
+      setSendingReminder(false);
+    }
+  }
+
+  const selectedStaff = staff.find((item) => item.id === selectedStaffId) ?? null;
+
   return (
     <main className="field-page">
       <section className="field-shell max-w-7xl">
@@ -126,6 +182,46 @@ export function NotificationLogsPage() {
         </header>
 
         <AdminMenu />
+
+        <section className="field-panel mt-5">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+            <div>
+              <h2 className="field-section-title">Manual Task Reminder</h2>
+              <p className="field-muted mt-1">
+                Send the approved daily WhatsApp reminder to one staff member based on their assigned open tasks.
+              </p>
+            </div>
+            <form className="grid gap-3 md:min-w-[520px] md:grid-cols-[minmax(220px,1fr)_auto]" onSubmit={sendReminder}>
+              <select
+                className="field-input mt-0 h-11"
+                value={selectedStaffId}
+                onChange={(event) => setSelectedStaffId(event.target.value)}
+              >
+                {staff.length === 0 ? <option value="">No staff found</option> : null}
+                {staff.map((item) => (
+                  <option key={item.id} value={item.id}>
+                    {item.name} / {item.role} / {item.openTaskCount} open task(s)
+                  </option>
+                ))}
+              </select>
+              <button
+                className="field-button-primary disabled:cursor-not-allowed disabled:opacity-50"
+                type="submit"
+                disabled={sendingReminder || !selectedStaffId}
+              >
+                {sendingReminder ? "Sending..." : "Send Reminder"}
+              </button>
+            </form>
+          </div>
+          {selectedStaff ? (
+            <div className="mt-4 grid gap-2 text-sm md:grid-cols-3">
+              <MiniDetail label="Phone" value={selectedStaff.phone ?? "No phone number"} />
+              <MiniDetail label="Open Tasks" value={String(selectedStaff.openTaskCount)} />
+              <MiniDetail label="Next Task" value={selectedStaff.nextTaskTitle ?? "No open task"} />
+            </div>
+          ) : null}
+          {reminderMessage ? <div className="field-alert-success mt-4 p-3 text-sm">{reminderMessage}</div> : null}
+        </section>
 
         <div className="mt-5 grid gap-5 lg:grid-cols-[minmax(0,0.95fr)_minmax(380px,0.75fr)]">
           <section className="field-panel p-0">
@@ -150,6 +246,7 @@ export function NotificationLogsPage() {
                   <option value="Ticket">Ticket</option>
                   <option value="ServiceReport">Service Report</option>
                   <option value="MachineLog">Machine Log</option>
+                  <option value="TaskDailyReminder">Task Reminder</option>
                 </select>
                 <input
                   className="field-input mt-0 h-11"
@@ -233,6 +330,15 @@ export function NotificationLogsPage() {
         </div>
       </section>
     </main>
+  );
+}
+
+function MiniDetail({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="field-panel-subtle">
+      <p className="field-meta-label">{label}</p>
+      <p className="mt-1 break-words text-neutral-800 dark:text-neutral-100">{value}</p>
+    </div>
   );
 }
 
