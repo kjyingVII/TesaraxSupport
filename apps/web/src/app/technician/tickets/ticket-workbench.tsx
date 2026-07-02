@@ -257,14 +257,14 @@ const TaskTypeOptions = [
   { label: "Other", value: "OTHER" }
 ];
 
-type QuickFilter = "" | "MY" | "PENDING_ACK" | "FOLLOW_UP" | "MACHINE_DOWN" | "URGENT";
+type QuickFilter = "" | "MY" | "PENDING_ACK" | "FOLLOW_UP" | "HIGH" | "URGENT";
 
 const quickFilters: Array<{ label: string; value: QuickFilter }> = [
   { label: "All", value: "" },
   { label: "My Tickets", value: "MY" },
   { label: "Pending Ack", value: "PENDING_ACK" },
   { label: "Follow Up", value: "FOLLOW_UP" },
-  { label: "Machine Down", value: "MACHINE_DOWN" },
+  { label: "High", value: "HIGH" },
   { label: "Urgent", value: "URGENT" }
 ];
 
@@ -402,7 +402,7 @@ export function TicketWorkbench() {
     if (nextQuickFilter === "MY" && user?.id) params.set("assignedTechnicianId", user.id);
     if (nextQuickFilter === "PENDING_ACK") params.set("status", "PENDING_ACKNOWLEDGEMENT");
     if (nextQuickFilter === "FOLLOW_UP") params.set("status", "FOLLOW_UP_REQUIRED");
-    if (nextQuickFilter === "MACHINE_DOWN") params.set("priority", "MACHINE_DOWN");
+    if (nextQuickFilter === "HIGH") params.set("priority", "HIGH");
     if (nextQuickFilter === "URGENT") params.set("priority", "URGENT");
 
     try {

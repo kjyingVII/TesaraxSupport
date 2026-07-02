@@ -20,8 +20,8 @@ export enum TicketStatus {
 export enum TicketPriority {
   Low = "LOW",
   Normal = "NORMAL",
+  High = "HIGH",
   Urgent = "URGENT",
-  MachineDown = "MACHINE_DOWN"
 }
 
 export enum MachineActivityType {

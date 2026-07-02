@@ -334,7 +334,7 @@ function DashboardRow({ item }: { item: DashboardItem }) {
         <span className={`status-badge ${statusTone(item.status)}`}>{item.status.replaceAll("_", " ")}</span>
       </td>
       <td className="px-4 py-3">
-        <span className={item.priority === "URGENT" || item.priority === "MACHINE_DOWN" ? "font-semibold text-amber-700 dark:text-amber-300" : "text-[#5f6368] dark:text-[#a8b0ba]"}>
+        <span className={item.priority === "URGENT" || item.priority === "HIGH" ? "font-semibold text-amber-700 dark:text-amber-300" : "text-[#5f6368] dark:text-[#a8b0ba]"}>
           {item.priority.replaceAll("_", " ")}
         </span>
       </td>
@@ -433,8 +433,8 @@ function compareValues(a: string | number, b: string | number) {
 
 function priorityRank(priority: string) {
   const ranks: Record<string, number> = {
-    MACHINE_DOWN: 1,
-    URGENT: 2,
+    URGENT: 1,
+    HIGH: 2,
     NORMAL: 3,
     LOW: 4
   };

@@ -55,6 +55,7 @@ const taskTypeOptions = [
 
 const priorityOptions = [
   { label: "Normal", value: "NORMAL" },
+  { label: "High", value: "HIGH" },
   { label: "Urgent", value: "URGENT" },
   { label: "Low", value: "LOW" }
 ];

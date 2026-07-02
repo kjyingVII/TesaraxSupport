@@ -1834,7 +1834,7 @@ export class PublicRequestsService {
     }
 
     if (!Object.values(TicketPriority).includes(priority as TicketPriority)) {
-      throw new BadRequestException("Priority must be LOW, NORMAL, URGENT, or MACHINE_DOWN.");
+      throw new BadRequestException("Priority must be LOW, NORMAL, HIGH, or URGENT.");
     }
 
     return priority as TicketPriority;

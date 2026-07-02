@@ -391,8 +391,8 @@ export function RequestTicketForm({ publicId }: { publicId: string }) {
                     >
                       <option value="LOW">Low</option>
                       <option value="NORMAL">Normal</option>
+                      <option value="HIGH">High</option>
                       <option value="URGENT">Urgent</option>
-                      <option value="MACHINE_DOWN">Machine down</option>
                     </select>
                   </label>
                 </FormPanel>

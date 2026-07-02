@@ -29,8 +29,8 @@ enum TicketStatus {
 enum TicketPriority {
   LOW
   NORMAL
+  HIGH
   URGENT
-  MACHINE_DOWN
 }
 
 enum MachineActivityType {

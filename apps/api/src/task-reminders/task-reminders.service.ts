@@ -1,5 +1,5 @@
 import { BadRequestException, Injectable, Logger, NotFoundException, OnModuleDestroy, OnModuleInit } from "@nestjs/common";
-import { NotificationChannel, NotificationStatus, Prisma, TaskStatus, UserRole } from "@prisma/client";
+import { NotificationChannel, NotificationStatus, Prisma, TaskStatus, TicketPriority, UserRole } from "@prisma/client";
 import { NotificationsService } from "../notifications/notifications.service";
 import { PrismaService } from "../prisma/prisma.service";
 import { SettingsService } from "../settings/settings.service";
@@ -18,6 +18,7 @@ type ReminderTask = {
   id: string;
   title: string;
   status: TaskStatus;
+  priority: TicketPriority;
   scheduledStartAt: Date | null;
   scheduledEndAt: Date | null;
   machine: {
@@ -166,6 +167,7 @@ export class TaskRemindersService implements OnModuleInit, OnModuleDestroy {
                 id: true,
                 title: true,
                 status: true,
+                priority: true,
                 scheduledStartAt: true,
                 scheduledEndAt: true,
                 machine: {
@@ -201,6 +203,7 @@ export class TaskRemindersService implements OnModuleInit, OnModuleDestroy {
         title: task.title,
         machineName: task.machine.machineName,
         status: task.status,
+        priority: task.priority,
         scheduledStartAt: task.scheduledStartAt,
         scheduledEndAt: task.scheduledEndAt
       })),
@@ -224,6 +227,9 @@ export class TaskRemindersService implements OnModuleInit, OnModuleDestroy {
   }
 
   private compareTasks(a: ReminderTask, b: ReminderTask) {
+    const priorityDifference = this.priorityRank(a.priority) - this.priorityRank(b.priority);
+    if (priorityDifference !== 0) return priorityDifference;
+
     const aDate = a.scheduledStartAt ?? a.scheduledEndAt;
     const bDate = b.scheduledStartAt ?? b.scheduledEndAt;
 
@@ -240,6 +246,17 @@ export class TaskRemindersService implements OnModuleInit, OnModuleDestroy {
     };
 
     return (statusOrder[a.status] ?? 99) - (statusOrder[b.status] ?? 99) || a.title.localeCompare(b.title);
+  }
+
+  private priorityRank(priority: TicketPriority | string) {
+    const ranks: Record<string, number> = {
+      [TicketPriority.URGENT]: 1,
+      [TicketPriority.HIGH]: 2,
+      [TicketPriority.NORMAL]: 3,
+      [TicketPriority.LOW]: 4
+    };
+
+    return ranks[priority] ?? 99;
   }
 
   private async hasRunToday(dateKey: string) {

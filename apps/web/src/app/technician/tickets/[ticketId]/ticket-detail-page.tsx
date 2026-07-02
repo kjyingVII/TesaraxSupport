@@ -518,7 +518,7 @@ function statusTone(status: string) {
       return "status-amber";
     case "WAITING_FOR_PARTS":
     case "URGENT":
-    case "MACHINE_DOWN":
+    case "HIGH":
       return "status-orange";
     case "PENDING_ACKNOWLEDGEMENT":
       return "status-emerald";
