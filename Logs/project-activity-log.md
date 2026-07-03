@@ -1577,3 +1577,4 @@ This file records meaningful project updates, decisions, and implementation step
 - Renamed Machine Down priority to High priority across Prisma, shared types, request/task forms, ticket filters, dashboard priority sorting, and daily task reminder ordering so high-priority pending tasks are reminded before normal/low tasks.
 - Tightened dashboard active, due today, and overdue counts/filters to exclude completed, cancelled, resolved, and closed work items while keeping completed-this-week separate.
 - Updated dashboard default task/ticket list ordering to sort by priority first and due date second, while keeping manual column sorting available.
+- Updated machine log acknowledgement links to include an acknowledgement intent, preserve the intended log URL through machine access login, and auto-open the acknowledgement form after successful machine access.

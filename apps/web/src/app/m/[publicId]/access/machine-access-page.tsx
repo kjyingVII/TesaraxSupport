@@ -98,7 +98,7 @@ export function MachineAccessPage({ publicId }: { publicId: string }) {
         expiresAt: Date.now() + response.data.expiresInSeconds * 1000
       });
 
-      router.push(`/m/${publicId}`);
+      router.push(safeNextPath(publicId) ?? `/m/${publicId}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unable to access machine.");
     } finally {
@@ -173,6 +173,16 @@ export function MachineAccessPage({ publicId }: { publicId: string }) {
       </section>
     </main>
   );
+}
+
+function safeNextPath(publicId: string) {
+  if (typeof window === "undefined") return null;
+  const next = new URLSearchParams(window.location.search).get("next");
+  if (!next) return null;
+
+  if (next.startsWith(`/m/${publicId}/`) || next === `/m/${publicId}`) return next;
+
+  return null;
 }
 
 function TextInput({

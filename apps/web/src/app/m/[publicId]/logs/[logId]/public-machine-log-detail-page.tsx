@@ -93,7 +93,7 @@ export function PublicMachineLogDetailPage({ publicId, logId }: { publicId: stri
   async function loadLog(mounted = true) {
     const session = getMachineAccessSession(publicId);
     if (!session) {
-      router.replace(`/m/${publicId}/access`);
+      router.replace(machineAccessPath(publicId));
       return;
     }
 
@@ -105,6 +105,9 @@ export function PublicMachineLogDetailPage({ publicId, logId }: { publicId: stri
       });
       if (!mounted) return;
       setLog(response.data);
+      if (shouldOpenAcknowledgement() && !response.data.acknowledgement?.response) {
+        setShowAcknowledgementForm(true);
+      }
       setRequesterName((current) => current || session.requesterName || response.data.requesterConfirmedName || "");
       setRequesterPhone((current) => current || session.requesterPhone || response.data.requesterContactPhone || "");
       setRequesterEmail((current) => current || session.requesterEmail || response.data.requesterContactEmail || "");
@@ -129,7 +132,7 @@ export function PublicMachineLogDetailPage({ publicId, logId }: { publicId: stri
     event.preventDefault();
     const session = getMachineAccessSession(publicId);
     if (!session) {
-      router.replace(`/m/${publicId}/access`);
+      router.replace(machineAccessPath(publicId));
       return;
     }
 
@@ -419,6 +422,17 @@ function SignaturePreview({ downloadUrl }: { downloadUrl: string }) {
       )}
     </div>
   );
+}
+
+function machineAccessPath(publicId: string) {
+  if (typeof window === "undefined") return `/m/${publicId}/access`;
+  const next = `${window.location.pathname}${window.location.search}`;
+  return `/m/${publicId}/access?next=${encodeURIComponent(next)}`;
+}
+
+function shouldOpenAcknowledgement() {
+  if (typeof window === "undefined") return false;
+  return new URLSearchParams(window.location.search).get("acknowledge") === "1";
 }
 
 function SignaturePad({

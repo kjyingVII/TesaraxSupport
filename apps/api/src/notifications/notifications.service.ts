@@ -565,7 +565,8 @@ export class NotificationsService {
     if (!machineLog?.notifyCustomer) return;
 
     const detailUrl = this.buildMachineLogDetailUrl(machineLog.machine.publicId, machineLog.id);
-    const acknowledgementStatus = this.machineLogAcknowledgementStatus(machineLog, detailUrl);
+    const acknowledgementUrl = this.buildMachineLogAcknowledgementUrl(machineLog.machine.publicId, machineLog.id);
+    const acknowledgementStatus = this.machineLogAcknowledgementStatus(machineLog, acknowledgementUrl);
     const message = [
       "A machine log has been updated.",
       "",
@@ -1284,6 +1285,10 @@ export class NotificationsService {
   private buildMachineLogDetailUrl(publicId: string, logId: string) {
     const webAppUrl = process.env.WEB_APP_URL ?? "http://localhost:3000";
     return `${webAppUrl.replace(/\/$/, "")}/m/${publicId}/logs/${logId}`;
+  }
+
+  private buildMachineLogAcknowledgementUrl(publicId: string, logId: string) {
+    return `${this.buildMachineLogDetailUrl(publicId, logId)}?acknowledge=1`;
   }
 
   private machineLogAcknowledgementStatus(machineLog: {
