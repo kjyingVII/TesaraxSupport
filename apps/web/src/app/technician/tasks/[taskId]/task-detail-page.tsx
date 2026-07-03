@@ -1,10 +1,12 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { FormEvent, useEffect, useState } from "react";
 import { AdminMenu } from "../../../../components/admin-menu";
 import { ThemeToggle } from "../../../../components/theme-toggle";
 import { apiRequest } from "../../../../lib/api";
+import { getAuthUser, type AuthUser } from "../../../../lib/auth";
 
 type Task = {
   id: string;
@@ -85,14 +87,18 @@ const taskStatusOptions = [
 ];
 
 export function TaskDetailPage({ taskId }: { taskId: string }) {
+  const router = useRouter();
+  const [user] = useState<AuthUser | null>(() => getAuthUser());
   const [task, setTask] = useState<Task | null>(null);
   const [comments, setComments] = useState<TaskComment[]>([]);
   const [comment, setComment] = useState("");
   const [loading, setLoading] = useState(true);
   const [savingComment, setSavingComment] = useState(false);
-  const [busyAction, setBusyAction] = useState<"complete" | "status" | null>(null);
+  const [busyAction, setBusyAction] = useState<"complete" | "status" | "delete" | null>(null);
+  const [pendingDeleteTask, setPendingDeleteTask] = useState<Task | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const isAdmin = user?.role === "ADMIN";
 
   useEffect(() => {
     void loadTask();
@@ -169,6 +175,24 @@ export function TaskDetailPage({ taskId }: { taskId: string }) {
       setError(err instanceof Error ? err.message : "Unable to add comment.");
     } finally {
       setSavingComment(false);
+    }
+  }
+
+  async function deleteTask() {
+    if (!pendingDeleteTask) return;
+
+    setBusyAction("delete");
+    setError(null);
+    setMessage(null);
+
+    try {
+      await apiRequest(`/api/tasks/${pendingDeleteTask.id}`, { method: "DELETE" });
+      router.push("/technician/tasks");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unable to delete task.");
+      setPendingDeleteTask(null);
+    } finally {
+      setBusyAction(null);
     }
   }
 
@@ -357,11 +381,96 @@ export function TaskDetailPage({ taskId }: { taskId: string }) {
                   </div>
                 </div>
               </section>
+
+              {isAdmin ? (
+                <section className="field-panel">
+                  <h2 className="field-section-title">Admin Delete</h2>
+                  <p className="field-muted mt-3 text-sm">
+                    Delete this task only after confirming it is no longer needed for planning or audit review.
+                  </p>
+                  <button
+                    className="mt-4 w-full rounded-md border border-red-300 px-4 py-3 text-sm font-semibold text-red-700 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-red-900/70 dark:text-red-300 dark:hover:bg-red-950/30"
+                    type="button"
+                    disabled={busyAction !== null}
+                    onClick={() => setPendingDeleteTask(task)}
+                  >
+                    Delete Task
+                  </button>
+                </section>
+              ) : null}
             </aside>
           </div>
         ) : null}
       </section>
+      {pendingDeleteTask ? (
+        <DeleteTaskDialog
+          task={pendingDeleteTask}
+          busy={busyAction === "delete"}
+          onClose={() => setPendingDeleteTask(null)}
+          onConfirm={() => void deleteTask()}
+        />
+      ) : null}
     </main>
+  );
+}
+
+function DeleteTaskDialog({
+  task,
+  busy,
+  onClose,
+  onConfirm
+}: {
+  task: Task;
+  busy: boolean;
+  onClose: () => void;
+  onConfirm: () => void;
+}) {
+  return (
+    <div className="fixed inset-0 z-50 grid place-items-center bg-black/45 px-4 py-6 backdrop-blur-sm" role="dialog" aria-modal="true">
+      <section className="w-full max-w-lg rounded-lg border border-[#d9dee3] bg-white p-5 shadow-xl dark:border-[#2f3742] dark:bg-[#171a21]">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className="field-eyebrow">Delete Task</p>
+            <h2 className="mt-1 text-xl font-semibold">Delete this task?</h2>
+          </div>
+          <button className="field-button-secondary min-h-9 px-3" type="button" onClick={onClose} disabled={busy} aria-label="Close">
+            X
+          </button>
+        </div>
+
+        <div className="field-panel-subtle mt-5 text-sm">
+          <p className="font-semibold">{task.title}</p>
+          <p className="field-muted mt-2">{task.customer.name} / {task.machine.machineName}</p>
+          <p className="mt-3">
+            {formatDateTime(task.scheduledStartAt)}
+            {task.scheduledEndAt ? ` to ${formatDateTime(task.scheduledEndAt)}` : ""}
+          </p>
+          {task.ticket ? (
+            <p className="field-muted mt-3">
+              Linked ticket: {task.ticket.ticketNumber} / {task.ticket.issueTitle}
+            </p>
+          ) : null}
+        </div>
+
+        <p className="mt-5 text-sm leading-6 text-neutral-700 dark:text-neutral-200">
+          This will permanently remove the task, its assignments, and internal task comments. An audit record will be kept for traceability.
+        </p>
+
+        <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+          <button className="field-button-secondary" type="button" onClick={onClose} disabled={busy}>
+            Keep Task
+          </button>
+          <button
+            className="grid min-h-10 place-items-center rounded-md border border-red-300 bg-red-50 px-4 text-sm font-semibold text-red-800 transition hover:border-red-500 hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-red-900 dark:bg-red-950 dark:text-red-100"
+            type="button"
+            onClick={onConfirm}
+            disabled={busy}
+          >
+            {busy ? "Deleting..." : "Delete Task"}
+          </button>
+        </div>
+      </section>
+    </div>
   );
 }
 

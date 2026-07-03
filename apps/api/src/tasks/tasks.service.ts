@@ -397,6 +397,46 @@ export class TasksService {
     return { data: updated };
   }
 
+  async delete(id: string, actorUserId: string) {
+    const task = await this.prisma.task.findUnique({
+      where: { id },
+      include: {
+        ...this.includeTask(),
+        comments: {
+          include: {
+            createdByUser: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+                role: true
+              }
+            }
+          },
+          orderBy: { createdAt: "asc" }
+        }
+      }
+    });
+
+    if (!task) throw new NotFoundException("Task not found.");
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.taskComment.deleteMany({ where: { taskId: id } });
+      await tx.taskAssignment.deleteMany({ where: { taskId: id } });
+      await tx.task.delete({ where: { id } });
+    });
+
+    await this.auditService.write({
+      actorUserId,
+      action: "DELETE_TASK",
+      entityType: "Task",
+      entityId: id,
+      beforeData: task
+    });
+
+    return { data: { id } };
+  }
+
   private async resolveTaskContext(dto: { ticketId?: string | null; machineId?: string; customerId?: string }) {
     const ticketId = this.cleanNullableString(dto.ticketId);
     if (ticketId) {

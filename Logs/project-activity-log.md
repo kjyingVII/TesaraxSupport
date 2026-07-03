@@ -1579,3 +1579,4 @@ This file records meaningful project updates, decisions, and implementation step
 - Updated dashboard default task/ticket list ordering to sort by priority first and due date second, while keeping manual column sorting available.
 - Updated machine log acknowledgement links to include an acknowledgement intent, preserve the intended log URL through machine access login, and auto-open the acknowledgement form after successful machine access.
 - Hid submitted user signatures from the public Machine Activity machine log detail page and added an explicit View Signature toggle on the admin/technician machine log detail panel.
+- Added admin-only task and ticket deletion with in-app confirmation dialogs, audit logging, dependent record cleanup, and attachment file cleanup for deleted ticket records.

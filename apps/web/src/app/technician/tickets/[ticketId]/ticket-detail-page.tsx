@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
 import { AdminMenu } from "../../../../components/admin-menu";
 import { ThemeToggle } from "../../../../components/theme-toggle";
@@ -117,10 +118,12 @@ type TicketDetailResponse = {
 };
 
 export function TicketDetailPage({ ticketId }: { ticketId: string }) {
+  const router = useRouter();
   const [user] = useState<AuthUser | null>(() => getAuthUser());
   const [ticket, setTicket] = useState<TicketDetail | null>(null);
   const [loading, setLoading] = useState(true);
-  const [actionBusy, setActionBusy] = useState(false);
+  const [actionBusy, setActionBusy] = useState<"status" | "delete" | null>(null);
+  const [pendingDeleteTicket, setPendingDeleteTicket] = useState<TicketDetail | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const canAdminCloseTicket = user?.role === "ADMIN";
@@ -167,7 +170,7 @@ export function TicketDetailPage({ ticketId }: { ticketId: string }) {
 
   async function updateTicketStatus(nextStatus: "CLOSED" | "CANCELLED") {
     if (!ticket || !user?.id) return;
-    setActionBusy(true);
+    setActionBusy("status");
     setMessage(null);
     setError(null);
 
@@ -185,7 +188,7 @@ export function TicketDetailPage({ ticketId }: { ticketId: string }) {
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unable to update ticket status.");
     } finally {
-      setActionBusy(false);
+      setActionBusy(null);
     }
   }
 
@@ -195,6 +198,24 @@ export function TicketDetailPage({ ticketId }: { ticketId: string }) {
     const confirmed = window.confirm(`Are you sure you want to ${label} ticket ${ticket.ticketNumber}?`);
     if (!confirmed) return;
     void updateTicketStatus(nextStatus);
+  }
+
+  async function deleteTicket() {
+    if (!pendingDeleteTicket) return;
+
+    setActionBusy("delete");
+    setMessage(null);
+    setError(null);
+
+    try {
+      await apiRequest(`/api/tickets/${pendingDeleteTicket.id}`, { method: "DELETE" });
+      router.push("/technician/tickets");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unable to delete ticket.");
+      setPendingDeleteTicket(null);
+    } finally {
+      setActionBusy(null);
+    }
   }
 
   return (
@@ -266,7 +287,7 @@ export function TicketDetailPage({ ticketId }: { ticketId: string }) {
                     <button
                       className="field-button-secondary disabled:cursor-not-allowed disabled:opacity-50"
                       type="button"
-                      disabled={actionBusy || ticket.status === "CLOSED"}
+                      disabled={actionBusy !== null || ticket.status === "CLOSED"}
                       onClick={() => confirmAdminTicketStatus("CLOSED")}
                     >
                       Close Ticket
@@ -274,7 +295,7 @@ export function TicketDetailPage({ ticketId }: { ticketId: string }) {
                     <button
                       className="grid min-h-10 place-items-center rounded-md border border-red-300 bg-red-50 px-4 text-sm font-semibold text-red-800 transition hover:border-red-500 hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-red-900 dark:bg-red-950 dark:text-red-100"
                       type="button"
-                      disabled={actionBusy || ticket.status === "CANCELLED"}
+                      disabled={actionBusy !== null || ticket.status === "CANCELLED"}
                       onClick={() => confirmAdminTicketStatus("CANCELLED")}
                     >
                       Cancel Ticket
@@ -282,6 +303,18 @@ export function TicketDetailPage({ ticketId }: { ticketId: string }) {
                   </>
                 ) : null}
               </div>
+              {canAdminCloseTicket ? (
+                <div className="mt-5 border-t border-[#d9dee3] pt-4 dark:border-[#2f3742]">
+                  <button
+                    className="rounded-md border border-red-300 px-4 py-3 text-sm font-semibold text-red-700 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-red-900/70 dark:text-red-300 dark:hover:bg-red-950/30"
+                    type="button"
+                    disabled={actionBusy !== null}
+                    onClick={() => setPendingDeleteTicket(ticket)}
+                  >
+                    Delete Ticket
+                  </button>
+                </div>
+              ) : null}
             </section>
 
             <section className="grid gap-5 lg:grid-cols-2">
@@ -456,7 +489,68 @@ export function TicketDetailPage({ ticketId }: { ticketId: string }) {
           </div>
         ) : null}
       </section>
+      {pendingDeleteTicket ? (
+        <DeleteTicketDialog
+          ticket={pendingDeleteTicket}
+          busy={actionBusy === "delete"}
+          onClose={() => setPendingDeleteTicket(null)}
+          onConfirm={() => void deleteTicket()}
+        />
+      ) : null}
     </main>
+  );
+}
+
+function DeleteTicketDialog({
+  ticket,
+  busy,
+  onClose,
+  onConfirm
+}: {
+  ticket: TicketDetail;
+  busy: boolean;
+  onClose: () => void;
+  onConfirm: () => void;
+}) {
+  return (
+    <div className="fixed inset-0 z-50 grid place-items-center bg-black/45 px-4 py-6 backdrop-blur-sm" role="dialog" aria-modal="true">
+      <section className="w-full max-w-lg rounded-lg border border-[#d9dee3] bg-white p-5 shadow-xl dark:border-[#2f3742] dark:bg-[#171a21]">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className="field-eyebrow">Delete Ticket</p>
+            <h2 className="mt-1 text-xl font-semibold">Delete this ticket?</h2>
+          </div>
+          <button className="field-button-secondary min-h-9 px-3" type="button" onClick={onClose} disabled={busy} aria-label="Close">
+            X
+          </button>
+        </div>
+
+        <div className="field-panel-subtle mt-5 text-sm">
+          <p className="font-semibold">{ticket.ticketNumber} / {ticket.issueTitle}</p>
+          <p className="field-muted mt-2">{ticket.machine.customer.name} / {ticket.machine.machineName}</p>
+          <p className="field-muted mt-2">Requester: {ticket.requesterName}</p>
+          <p className="mt-3">Status: {ticket.status.replaceAll("_", " ")}</p>
+        </div>
+
+        <p className="mt-5 text-sm leading-6 text-neutral-700 dark:text-neutral-200">
+          This will permanently remove the ticket, status history, service reports, acknowledgements, comments, assignments, and uploaded ticket/report files. Linked tasks and machine logs will be kept but unlinked from this ticket. An audit record will be kept for traceability.
+        </p>
+
+        <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+          <button className="field-button-secondary" type="button" onClick={onClose} disabled={busy}>
+            Keep Ticket
+          </button>
+          <button
+            className="grid min-h-10 place-items-center rounded-md border border-red-300 bg-red-50 px-4 text-sm font-semibold text-red-800 transition hover:border-red-500 hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-red-900 dark:bg-red-950 dark:text-red-100"
+            type="button"
+            onClick={onConfirm}
+            disabled={busy}
+          >
+            {busy ? "Deleting..." : "Delete Ticket"}
+          </button>
+        </div>
+      </section>
+    </div>
   );
 }
 

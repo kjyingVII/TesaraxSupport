@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Patch, Post, Query } from "@nestjs/common";
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query } from "@nestjs/common";
 import { UserRole } from "@prisma/client";
 import { CurrentUser, Roles } from "../auth/auth.decorators";
 import { CreateTaskDto } from "./dto/create-task.dto";
@@ -76,5 +76,11 @@ export class TasksController {
   @Patch(":id/notify-reschedule")
   notifyRescheduled(@Param("id") id: string, @CurrentUser() user: { id: string; role: UserRole }) {
     return this.tasksService.notifyRescheduled(id, user.id, user);
+  }
+
+  @Delete(":id")
+  @Roles(UserRole.ADMIN)
+  delete(@Param("id") id: string, @CurrentUser() user: { id: string }) {
+    return this.tasksService.delete(id, user.id);
   }
 }

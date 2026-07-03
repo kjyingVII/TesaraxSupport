@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Patch, Post, Query } from "@nestjs/common";
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query } from "@nestjs/common";
 import { UserRole } from "@prisma/client";
 import { CurrentUser, Roles } from "../auth/auth.decorators";
 import { AssignTicketDto } from "./dto/assign-ticket.dto";
@@ -74,5 +74,11 @@ export class TicketsController {
   @Post(":id/comments")
   createComment(@Param("id") id: string, @Body() dto: CreateTicketCommentDto, @CurrentUser() user: { id: string }) {
     return this.ticketsService.createComment(id, dto, user.id);
+  }
+
+  @Delete(":id")
+  @Roles(UserRole.ADMIN)
+  delete(@Param("id") id: string, @CurrentUser() user: { id: string }) {
+    return this.ticketsService.delete(id, user.id);
   }
 }

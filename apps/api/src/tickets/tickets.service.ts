@@ -1,5 +1,7 @@
 import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
 import { Prisma, TicketCommentVisibility, TicketPriority, TicketStatus, UserRole } from "@prisma/client";
+import { unlink } from "fs/promises";
+import { join } from "path";
 import { AuditService } from "../audit/audit.service";
 import { AttachmentsService } from "../attachments/attachments.service";
 import { NotificationsService } from "../notifications/notifications.service";
@@ -668,8 +670,205 @@ export class TicketsService {
     };
   }
 
+  async delete(id: string, actorUserId: string) {
+    const ticket = await this.prisma.ticket.findUnique({
+      where: { id },
+      include: {
+        machine: {
+          include: {
+            customer: true
+          }
+        },
+        assignedTechnician: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            role: true
+          }
+        },
+        assignments: {
+          include: {
+            assignedToUser: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+                role: true
+              }
+            },
+            assignedByUser: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+                role: true
+              }
+            },
+            unassignedByUser: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+                role: true
+              }
+            }
+          }
+        },
+        attachments: true,
+        comments: {
+          include: {
+            attachments: true,
+            createdByUser: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+                role: true
+              }
+            }
+          }
+        },
+        statusHistory: true,
+        serviceReports: {
+          include: {
+            attachments: true,
+            acknowledgement: {
+              include: {
+                attachments: true,
+                signatureAttachment: true
+              }
+            },
+            technician: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+                role: true
+              }
+            }
+          }
+        },
+        acknowledgements: {
+          include: {
+            attachments: true,
+            signatureAttachment: true
+          }
+        },
+        machineLogs: {
+          select: {
+            id: true,
+            serviceReportId: true
+          }
+        },
+        tasks: {
+          select: {
+            id: true
+          }
+        }
+      }
+    });
+
+    if (!ticket) throw new NotFoundException("Ticket not found.");
+
+    const serviceReportIds = ticket.serviceReports.map((report) => report.id);
+    const commentIds = ticket.comments.map((comment) => comment.id);
+    const acknowledgementIds = [
+      ...ticket.acknowledgements.map((acknowledgement) => acknowledgement.id),
+      ...ticket.serviceReports.flatMap((report) => report.acknowledgement ? [report.acknowledgement.id] : [])
+    ];
+    const signatureAttachmentIds = [
+      ...ticket.acknowledgements.flatMap((acknowledgement) => acknowledgement.signatureAttachmentId ? [acknowledgement.signatureAttachmentId] : []),
+      ...ticket.serviceReports.flatMap((report) => report.acknowledgement?.signatureAttachmentId ? [report.acknowledgement.signatureAttachmentId] : [])
+    ];
+    const attachmentStorageKeys = Array.from(new Set([
+      ...ticket.attachments.map((attachment) => attachment.storageKey),
+      ...ticket.comments.flatMap((comment) => comment.attachments.map((attachment) => attachment.storageKey)),
+      ...ticket.serviceReports.flatMap((report) => report.attachments.map((attachment) => attachment.storageKey)),
+      ...ticket.acknowledgements.flatMap((acknowledgement) => acknowledgement.attachments.map((attachment) => attachment.storageKey)),
+      ...ticket.acknowledgements.flatMap((acknowledgement) => acknowledgement.signatureAttachment?.storageKey ? [acknowledgement.signatureAttachment.storageKey] : []),
+      ...ticket.serviceReports.flatMap((report) => report.acknowledgement?.attachments.map((attachment) => attachment.storageKey) ?? []),
+      ...ticket.serviceReports.flatMap((report) => report.acknowledgement?.signatureAttachment?.storageKey ? [report.acknowledgement.signatureAttachment.storageKey] : [])
+    ]));
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.task.updateMany({
+        where: { ticketId: id },
+        data: { ticketId: null }
+      });
+
+      await tx.machineLog.updateMany({
+        where: {
+          OR: [
+            { ticketId: id },
+            serviceReportIds.length > 0 ? { serviceReportId: { in: serviceReportIds } } : { id: "__never__" }
+          ]
+        },
+        data: {
+          ticketId: null,
+          serviceReportId: null
+        }
+      });
+
+      if (acknowledgementIds.length > 0) {
+        await tx.acknowledgement.updateMany({
+          where: { id: { in: acknowledgementIds } },
+          data: { signatureAttachmentId: null }
+        });
+      }
+
+      await tx.attachment.deleteMany({
+        where: {
+          OR: [
+            { ticketId: id },
+            commentIds.length > 0 ? { ticketCommentId: { in: commentIds } } : { id: "__never__" },
+            serviceReportIds.length > 0 ? { serviceReportId: { in: serviceReportIds } } : { id: "__never__" },
+            acknowledgementIds.length > 0 ? { acknowledgementId: { in: acknowledgementIds } } : { id: "__never__" },
+            signatureAttachmentIds.length > 0 ? { id: { in: signatureAttachmentIds } } : { id: "__never__" }
+          ]
+        }
+      });
+
+      if (acknowledgementIds.length > 0) {
+        await tx.acknowledgement.deleteMany({
+          where: { id: { in: acknowledgementIds } }
+        });
+      }
+
+      await tx.ticketComment.deleteMany({ where: { ticketId: id } });
+      await tx.ticketAssignment.deleteMany({ where: { ticketId: id } });
+      await tx.ticketStatusHistory.deleteMany({ where: { ticketId: id } });
+      await tx.serviceReport.deleteMany({ where: { ticketId: id } });
+      await tx.ticket.delete({ where: { id } });
+    });
+
+    await this.auditService.write({
+      actorUserId,
+      action: "DELETE_TICKET",
+      entityType: "Ticket",
+      entityId: id,
+      beforeData: ticket
+    });
+
+    await Promise.all(attachmentStorageKeys.map((storageKey) => this.deleteAttachmentFile(storageKey)));
+
+    return { data: { id } };
+  }
+
   private async ensureAllowedTransition(current: TicketStatus, next: TicketStatus) {
     return;
+  }
+
+  private async deleteAttachmentFile(storageKey: string) {
+    try {
+      await unlink(this.absoluteAttachmentPath(storageKey));
+    } catch {
+      // Database deletion is the source of truth; missing files should not block admin deletion.
+    }
+  }
+
+  private absoluteAttachmentPath(storageKey: string) {
+    return join(process.env.ATTACHMENT_STORAGE_ROOT ?? "/app/uploads", storageKey);
   }
 
   private async ensureTicketExists(id: string) {
