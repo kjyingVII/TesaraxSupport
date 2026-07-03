@@ -262,9 +262,6 @@ export function PublicMachineLogDetailPage({ publicId, logId }: { publicId: stri
                   {log.acknowledgement.requesterComment ? (
                     <DetailLine label="Comment" value={log.acknowledgement.requesterComment} multiline />
                   ) : null}
-                  {log.acknowledgement.signatureAttachment ? (
-                    <SignaturePreview downloadUrl={machineLogDownloadUrl(log.acknowledgement.signatureAttachment.id)} />
-                  ) : null}
                 </div>
               ) : showAcknowledgementForm ? (
                 <form className="mt-4 grid gap-4" onSubmit={submitAcknowledgement}>
@@ -382,45 +379,6 @@ function TextInput({
         onChange={(event) => onChange(event.target.value)}
       />
     </label>
-  );
-}
-
-function SignaturePreview({ downloadUrl }: { downloadUrl: string }) {
-  const [signatureDataUrl, setSignatureDataUrl] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    let mounted = true;
-
-    async function loadSignature() {
-      try {
-        const response = await fetch(downloadUrl);
-        if (!response.ok) throw new Error("Unable to load signature.");
-        const text = await response.text();
-        if (mounted) setSignatureDataUrl(text);
-      } catch (err) {
-        if (mounted) setError(err instanceof Error ? err.message : "Unable to load signature.");
-      }
-    }
-
-    void loadSignature();
-
-    return () => {
-      mounted = false;
-    };
-  }, [downloadUrl]);
-
-  return (
-    <div>
-      <p className="field-meta-label">Signature</p>
-      {signatureDataUrl ? (
-        <div className="mt-2 rounded-md border border-[#d9dee3] bg-white p-3 dark:border-[#2f3742]">
-          <img className="max-h-36 w-full object-contain" src={signatureDataUrl} alt="Acknowledgement signature" />
-        </div>
-      ) : (
-        <p className="field-muted mt-2">{error ?? "Loading signature..."}</p>
-      )}
-    </div>
   );
 }
 

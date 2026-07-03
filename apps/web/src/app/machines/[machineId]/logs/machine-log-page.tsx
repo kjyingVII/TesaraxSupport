@@ -574,6 +574,11 @@ function MachineLogDetailPanel({
   const [acknowledgementUrl, setAcknowledgementUrl] = useState<string | null>(null);
   const [acknowledgementMessage, setAcknowledgementMessage] = useState<string | null>(null);
   const [creatingLink, setCreatingLink] = useState(false);
+  const [showSignature, setShowSignature] = useState(false);
+
+  useEffect(() => {
+    setShowSignature(false);
+  }, [detail.id]);
 
   async function createAcknowledgementLink() {
     setCreatingLink(true);
@@ -718,6 +723,18 @@ function MachineLogDetailPanel({
             {detail.acknowledgement.requesterComment ? (
               <div className="sm:col-span-2">
                 <InfoLine label="Comment" value={detail.acknowledgement.requesterComment} />
+              </div>
+            ) : null}
+            {detail.acknowledgement.signatureAttachment ? (
+              <div className="sm:col-span-2">
+                <button
+                  className="field-button-secondary min-h-10"
+                  type="button"
+                  onClick={() => setShowSignature((current) => !current)}
+                >
+                  {showSignature ? "Hide Signature" : "View Signature"}
+                </button>
+                {showSignature ? <SignaturePreview attachmentId={detail.acknowledgement.signatureAttachment.id} /> : null}
               </div>
             ) : null}
           </div>
@@ -958,6 +975,56 @@ function attachmentDownloadUrl(id: string) {
   const token = getAccessToken();
   const params = token ? `?accessToken=${encodeURIComponent(token)}` : "";
   return `${apiBaseUrl}/api/attachments/${id}/download${params}`;
+}
+
+function SignaturePreview({ attachmentId }: { attachmentId: string }) {
+  const [signatureDataUrl, setSignatureDataUrl] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadSignature() {
+      try {
+        const response = await fetch(attachmentDownloadUrl(attachmentId));
+        if (!response.ok) {
+          throw new Error("Signature is not available.");
+        }
+
+        const text = await response.text();
+        if (!cancelled) {
+          setSignatureDataUrl(text);
+          setError(null);
+        }
+      } catch (err) {
+        if (!cancelled) {
+          setSignatureDataUrl(null);
+          setError(err instanceof Error ? err.message : "Signature is not available.");
+        }
+      }
+    }
+
+    setSignatureDataUrl(null);
+    setError(null);
+    void loadSignature();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [attachmentId]);
+
+  return (
+    <div className="mt-3">
+      <p className="field-meta-label">Acknowledged By</p>
+      {signatureDataUrl ? (
+        <div className="mt-2 rounded-md border border-[#d9dee3] bg-white p-3 dark:border-[#2f3742]">
+          <img className="max-h-40 w-full object-contain" src={signatureDataUrl} alt="User acknowledgement signature" />
+        </div>
+      ) : (
+        <p className="field-muted mt-2">{error ?? "Loading signature..."}</p>
+      )}
+    </div>
+  );
 }
 
 function readFileAsDataUrl(file: File) {
