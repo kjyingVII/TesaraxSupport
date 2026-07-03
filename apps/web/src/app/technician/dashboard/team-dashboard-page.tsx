@@ -9,7 +9,7 @@ import { apiRequest } from "../../../lib/api";
 type DashboardScope = "team" | "mine";
 type QuickFilter = "active" | "today" | "overdue" | "completed" | "all";
 type RecordFilter = "all" | "tickets" | "tasks";
-type SortField = "name" | "machine" | "start" | "end" | "status" | "priority";
+type SortField = "priorityDue" | "name" | "machine" | "start" | "end" | "status" | "priority";
 type SortDirection = "asc" | "desc";
 
 type DashboardItem = {
@@ -64,7 +64,7 @@ export function TeamDashboardPage() {
   const [scope, setScope] = useState<DashboardScope>("team");
   const [quickFilter, setQuickFilter] = useState<QuickFilter>("active");
   const [recordFilter, setRecordFilter] = useState<RecordFilter>("all");
-  const [sortField, setSortField] = useState<SortField>("end");
+  const [sortField, setSortField] = useState<SortField>("priorityDue");
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
   const [search, setSearch] = useState("");
   const [dashboard, setDashboard] = useState<DashboardResponse["data"] | null>(null);
@@ -78,10 +78,11 @@ export function TeamDashboardPage() {
       if (recordFilter === "tickets" && item.recordType !== "TICKET") return false;
       if (recordFilter === "tasks" && item.recordType !== "TASK") return false;
       if (quickFilter === "all") return true;
-      if (quickFilter === "today") return isToday(item.dueAt ?? item.startAt ?? item.updatedAt);
-      if (quickFilter === "overdue") return item.isOverdue;
-      if (quickFilter === "completed") return Boolean(item.completedAt) || ["COMPLETED", "CLOSED", "RESOLVED", "CANCELLED"].includes(item.status);
-      return !["COMPLETED", "CLOSED", "RESOLVED", "CANCELLED"].includes(item.status);
+      const isTerminal = isTerminalStatus(item.status);
+      if (quickFilter === "today") return !isTerminal && isToday(item.dueAt ?? item.startAt ?? item.updatedAt);
+      if (quickFilter === "overdue") return !isTerminal && item.isOverdue;
+      if (quickFilter === "completed") return Boolean(item.completedAt) || isTerminal;
+      return !isTerminal;
     });
 
     return [...filtered].sort((a, b) => compareDashboardItems(a, b, sortField, sortDirection));
@@ -421,6 +422,8 @@ function sortValue(item: DashboardItem, field: SortField) {
       return item.status;
     case "priority":
       return priorityRank(item.priority);
+    case "priorityDue":
+      return `${String(priorityRank(item.priority)).padStart(2, "0")} ${String(item.dueAt ? new Date(item.dueAt).getTime() : Number.MAX_SAFE_INTEGER).padStart(16, "0")} ${item.title}`;
     default:
       return item.title;
   }
@@ -449,6 +452,10 @@ function isToday(value: string | null) {
   return date.getFullYear() === now.getFullYear()
     && date.getMonth() === now.getMonth()
     && date.getDate() === now.getDate();
+}
+
+function isTerminalStatus(status: string) {
+  return ["COMPLETED", "CLOSED", "RESOLVED", "CANCELLED"].includes(status);
 }
 
 function formatDateTime(value: string) {

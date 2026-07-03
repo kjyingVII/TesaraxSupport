@@ -285,28 +285,43 @@ export class DashboardService {
 
   private buildMetrics(items: DashboardItem[], now: Date) {
     const activeStatuses = new Set(["PENDING", "SCHEDULED", "IN_PROGRESS", "WAITING_COMPONENT", "WAITING_CUSTOMER", "NEW", "ASSIGNED", "WAITING_FOR_REQUESTER", "WAITING_FOR_PARTS", "PENDING_ACKNOWLEDGEMENT", "FOLLOW_UP_REQUIRED"]);
+    const openItems = items.filter((item) => !this.isTerminalStatus(item.status));
 
     return {
       total: items.length,
-      active: items.filter((item) => activeStatuses.has(item.status)).length,
-      today: items.filter((item) => item.dueAt && this.isSameDay(item.dueAt, now)).length,
-      overdue: items.filter((item) => item.isOverdue).length,
+      active: openItems.filter((item) => activeStatuses.has(item.status)).length,
+      today: openItems.filter((item) => item.dueAt && this.isSameDay(item.dueAt, now)).length,
+      overdue: openItems.filter((item) => item.isOverdue).length,
       completedThisWeek: items.filter((item) => item.completedAt && item.completedAt >= this.addDays(now, -7)).length
     };
   }
 
   private sortItems(a: DashboardItem, b: DashboardItem, now: Date) {
-    if (a.isOverdue !== b.isOverdue) return a.isOverdue ? -1 : 1;
-
     const aCompleted = Boolean(a.completedAt);
     const bCompleted = Boolean(b.completedAt);
     if (aCompleted !== bCompleted) return aCompleted ? 1 : -1;
 
-    const aDate = a.dueAt ?? a.updatedAt;
-    const bDate = b.dueAt ?? b.updatedAt;
-    const aFutureDistance = Math.abs(aDate.getTime() - now.getTime());
-    const bFutureDistance = Math.abs(bDate.getTime() - now.getTime());
-    return aFutureDistance - bFutureDistance;
+    const priorityDifference = this.priorityRank(a.priority) - this.priorityRank(b.priority);
+    if (priorityDifference !== 0) return priorityDifference;
+
+    const aDate = a.dueAt ?? a.startAt ?? a.updatedAt;
+    const bDate = b.dueAt ?? b.startAt ?? b.updatedAt;
+    const dateDifference = aDate.getTime() - bDate.getTime();
+    if (dateDifference !== 0) return dateDifference;
+
+    if (a.isOverdue !== b.isOverdue) return a.isOverdue ? -1 : 1;
+    return a.title.localeCompare(b.title);
+  }
+
+  private priorityRank(priority: string) {
+    const ranks: Record<string, number> = {
+      URGENT: 1,
+      HIGH: 2,
+      NORMAL: 3,
+      LOW: 4
+    };
+
+    return ranks[priority] ?? 99;
   }
 
   private isCompletedTaskStatus(status: TaskStatus | string) {
@@ -320,8 +335,16 @@ export class DashboardService {
   }
 
   private isTicketPossiblyStale(status: TicketStatus, updatedAt: Date, now: Date) {
-    if (status === TicketStatus.RESOLVED || status === TicketStatus.CLOSED) return false;
+    if (this.isTerminalStatus(status)) return false;
     return updatedAt < this.addDays(now, -3);
+  }
+
+  private isTerminalStatus(status: string) {
+    return status === TaskStatus.COMPLETED
+      || status === TaskStatus.CANCELLED
+      || status === TicketStatus.RESOLVED
+      || status === TicketStatus.CLOSED
+      || status === TicketStatus.CANCELLED;
   }
 
   private isSameDay(a: Date, b: Date) {

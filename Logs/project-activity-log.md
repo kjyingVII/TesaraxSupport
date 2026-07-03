@@ -1575,3 +1575,5 @@ This file records meaningful project updates, decisions, and implementation step
 - Added task visibility support with Team and Private modes, backend access filtering, public portal hiding for private tasks, private-task notification suppression, and frontend controls/badges for task list, detail, create, edit, and dashboard views.
 - Made new task user notifications optional behind a Notify User checkbox, hid notification fields for private tasks, and made task creation skip WhatsApp notification logs unless notification is explicitly requested or legacy recipient data is supplied.
 - Renamed Machine Down priority to High priority across Prisma, shared types, request/task forms, ticket filters, dashboard priority sorting, and daily task reminder ordering so high-priority pending tasks are reminded before normal/low tasks.
+- Tightened dashboard active, due today, and overdue counts/filters to exclude completed, cancelled, resolved, and closed work items while keeping completed-this-week separate.
+- Updated dashboard default task/ticket list ordering to sort by priority first and due date second, while keeping manual column sorting available.
