@@ -273,7 +273,7 @@ export class DashboardService {
           select: {
             name: true;
           };
-        } | null;
+        };
       };
     }>>,
     ticketStatusEvents: Array<Prisma.TicketStatusHistoryGetPayload<{
@@ -282,7 +282,7 @@ export class DashboardService {
           select: {
             name: true;
           };
-        } | null;
+        };
         ticket: {
           include: {
             machine: {

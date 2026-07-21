@@ -1582,3 +1582,4 @@ This file records meaningful project updates, decisions, and implementation step
 - Added admin-only task and ticket deletion with in-app confirmation dialogs, audit logging, dependent record cleanup, and attachment file cleanup for deleted ticket records.
 - Added configurable weekday skip days for daily WhatsApp task reminders, including admin Settings checkboxes and skipped notification log entries when the reminder is due on a skipped day.
 - Added a Latest Activity feed to the technician dashboard showing recent machine logs and ticket status events with actor, machine, customer, timestamp, and links to the related record.
+- Fixed dashboard activity Prisma payload typing so the API dev/watch startup compiler succeeds in Docker production deployments.
