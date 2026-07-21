@@ -37,6 +37,20 @@ type DashboardItem = {
   updatedAt: string;
 };
 
+type DashboardActivityItem = {
+  id: string;
+  activityType: "MACHINE_LOG" | "TICKET_STATUS";
+  title: string;
+  description: string;
+  customerName: string;
+  machineName: string;
+  machineSerialNumber: string;
+  actorName: string | null;
+  occurredAt: string;
+  href: string;
+  status: string | null;
+};
+
 type DashboardResponse = {
   data: {
     scope: DashboardScope;
@@ -49,6 +63,7 @@ type DashboardResponse = {
       completedThisWeek: number;
     };
     items: DashboardItem[];
+    activity: DashboardActivityItem[];
   };
 };
 
@@ -224,6 +239,22 @@ export function TeamDashboardPage() {
 
         {error ? <div className="field-alert-error mt-5">{error}</div> : null}
 
+        <section className="field-panel mt-5">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h2 className="field-section-title">Latest Activity</h2>
+              <p className="field-muted mt-1 text-sm">Recent machine logs and ticket status events for quick team handover.</p>
+            </div>
+            <span className="field-muted text-sm">{dashboard?.activity.length ?? 0} updates</span>
+          </div>
+
+          <div className="mt-4 grid gap-3 lg:grid-cols-2">
+            {loading ? <p className="field-muted">Loading activity...</p> : null}
+            {!loading && dashboard?.activity.length === 0 ? <p className="field-muted">No recent activity found.</p> : null}
+            {!loading ? dashboard?.activity.map((item) => <ActivityCard key={`${item.activityType}-${item.id}`} item={item} />) : null}
+          </div>
+        </section>
+
         <section className="field-panel mt-5 overflow-x-auto p-0">
           <table className="min-w-[1100px] w-full border-collapse text-sm">
             <thead>
@@ -361,6 +392,33 @@ function DashboardRow({ item }: { item: DashboardItem }) {
   );
 }
 
+function ActivityCard({ item }: { item: DashboardActivityItem }) {
+  return (
+    <Link
+      className="rounded-lg border border-[#d9dee3] p-4 transition hover:border-[#155e75] hover:bg-[#f8fbfc] dark:border-[#2f3742] dark:hover:border-[#22d3ee] dark:hover:bg-[#151c24]"
+      href={item.href}
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className={`status-badge ${item.activityType === "MACHINE_LOG" ? "status-cyan" : "status-blue"}`}>
+              {item.activityType === "MACHINE_LOG" ? "Machine Log" : "Ticket Status"}
+            </span>
+            {item.status ? <span className={`status-badge ${statusTone(item.status)}`}>{item.status.replaceAll("_", " ")}</span> : null}
+          </div>
+          <p className="mt-3 font-semibold text-[#155e75] dark:text-[#67e8f9]">{item.title}</p>
+          <p className="mt-2 line-clamp-2 text-sm leading-6 text-neutral-700 dark:text-neutral-200">{item.description}</p>
+        </div>
+        <span className="shrink-0 text-xs text-[#5f6368] dark:text-[#a8b0ba]">{formatRelativeTime(item.occurredAt)}</span>
+      </div>
+      <div className="mt-4 grid gap-1 text-xs text-[#5f6368] dark:text-[#a8b0ba]">
+        <p>{item.customerName} / {item.machineName} / {item.machineSerialNumber}</p>
+        <p>{item.actorName ? `By ${item.actorName}` : "Actor not recorded"} / {formatDateTime(item.occurredAt)}</p>
+      </div>
+    </Link>
+  );
+}
+
 function Metric({ label, value, tone }: { label: string; value: number; tone?: "warning" }) {
   return (
     <div className="field-panel">
@@ -466,4 +524,15 @@ function formatDateTime(value: string) {
     hour: "2-digit",
     minute: "2-digit"
   }).format(new Date(value));
+}
+
+function formatRelativeTime(value: string) {
+  const diffMs = Date.now() - new Date(value).getTime();
+  const diffMinutes = Math.max(0, Math.floor(diffMs / 60000));
+  if (diffMinutes < 1) return "Just now";
+  if (diffMinutes < 60) return `${diffMinutes}m ago`;
+  const diffHours = Math.floor(diffMinutes / 60);
+  if (diffHours < 24) return `${diffHours}h ago`;
+  const diffDays = Math.floor(diffHours / 24);
+  return `${diffDays}d ago`;
 }

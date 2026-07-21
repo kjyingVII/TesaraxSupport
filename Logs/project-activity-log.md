@@ -1580,3 +1580,5 @@ This file records meaningful project updates, decisions, and implementation step
 - Updated machine log acknowledgement links to include an acknowledgement intent, preserve the intended log URL through machine access login, and auto-open the acknowledgement form after successful machine access.
 - Hid submitted user signatures from the public Machine Activity machine log detail page and added an explicit View Signature toggle on the admin/technician machine log detail panel.
 - Added admin-only task and ticket deletion with in-app confirmation dialogs, audit logging, dependent record cleanup, and attachment file cleanup for deleted ticket records.
+- Added configurable weekday skip days for daily WhatsApp task reminders, including admin Settings checkboxes and skipped notification log entries when the reminder is due on a skipped day.
+- Added a Latest Activity feed to the technician dashboard showing recent machine logs and ticket status events with actor, machine, customer, timestamp, and links to the related record.

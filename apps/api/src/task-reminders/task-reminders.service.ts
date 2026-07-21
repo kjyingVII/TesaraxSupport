@@ -13,6 +13,7 @@ const OPEN_TASK_STATUSES = [
   TaskStatus.WAITING_COMPONENT,
   TaskStatus.WAITING_CUSTOMER
 ];
+const weekDayLabels = ["SUNDAY", "MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY"] as const;
 
 type ReminderTask = {
   id: string;
@@ -68,6 +69,13 @@ export class TaskRemindersService implements OnModuleInit, OnModuleDestroy {
         await this.logDisabledReminderSkip(dateKey, settings.whatsappTaskDailyReminderTime);
         await this.markRun(dateKey);
         this.logger.log(`Daily task reminder skipped for ${dateKey}; reminder is disabled in system settings.`);
+        return;
+      }
+
+      if (settings.whatsappTaskDailyReminderSkipDays.includes(local.weekday)) {
+        await this.logSkipDayReminderSkip(dateKey, settings.whatsappTaskDailyReminderTime, local.weekday);
+        await this.markRun(dateKey);
+        this.logger.log(`Daily task reminder skipped for ${dateKey}; ${local.weekday} is configured as a skip day.`);
         return;
       }
 
@@ -226,6 +234,20 @@ export class TaskRemindersService implements OnModuleInit, OnModuleDestroy {
     });
   }
 
+  private async logSkipDayReminderSkip(dateKey: string, reminderTime: string, weekday: string) {
+    await this.prisma.notificationLog.create({
+      data: {
+        relatedType: "TaskDailyReminder",
+        relatedId: dateKey,
+        channel: NotificationChannel.WHATSAPP,
+        subject: `Daily task reminder skipped: ${dateKey}`,
+        messageSummary: `Daily task reminder was scheduled for ${reminderTime}, but ${this.formatWeekday(weekday)} is configured as a skip day.`,
+        status: NotificationStatus.SKIPPED,
+        errorMessage: `${this.formatWeekday(weekday)} is configured as a daily task reminder skip day.`
+      }
+    });
+  }
+
   private compareTasks(a: ReminderTask, b: ReminderTask) {
     const priorityDifference = this.priorityRank(a.priority) - this.priorityRank(b.priority);
     if (priorityDifference !== 0) return priorityDifference;
@@ -298,10 +320,15 @@ export class TaskRemindersService implements OnModuleInit, OnModuleDestroy {
       hour12: false
     }).formatToParts(value);
 
+    const weekday = new Intl.DateTimeFormat("en-US", {
+      timeZone,
+      weekday: "long"
+    }).format(value).toUpperCase();
     const get = (type: string) => parts.find((part) => part.type === type)?.value ?? "00";
     return {
       dateKey: `${get("year")}-${get("month")}-${get("day")}`,
-      time: `${get("hour")}:${get("minute")}`
+      time: `${get("hour")}:${get("minute")}`,
+      weekday: weekDayLabels.includes(weekday as typeof weekDayLabels[number]) ? weekday as typeof weekDayLabels[number] : "SUNDAY"
     };
   }
 
@@ -316,6 +343,10 @@ export class TaskRemindersService implements OnModuleInit, OnModuleDestroy {
 
   private getTimeZone() {
     return process.env.APP_TIME_ZONE?.trim() || "Asia/Singapore";
+  }
+
+  private formatWeekday(value: string) {
+    return value.toLowerCase().replace(/^\w/, (first) => first.toUpperCase());
   }
 
   private buildDashboardUrl() {

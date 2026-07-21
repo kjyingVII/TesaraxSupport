@@ -17,4 +17,5 @@ export type UpdateSystemSettingsDto = {
   whatsappTaskRescheduledEnabled?: boolean;
   whatsappTaskDailyReminderEnabled?: boolean;
   whatsappTaskDailyReminderTime?: string;
+  whatsappTaskDailyReminderSkipDays?: string[];
 };

@@ -26,6 +26,7 @@ type SystemSettings = {
   whatsappTaskRescheduledEnabled: boolean;
   whatsappTaskDailyReminderEnabled: boolean;
   whatsappTaskDailyReminderTime: string;
+  whatsappTaskDailyReminderSkipDays: string[];
 };
 
 type SettingsResponse = {
@@ -50,8 +51,19 @@ const emptyForm = {
   whatsappTaskCreatedEnabled: true,
   whatsappTaskRescheduledEnabled: true,
   whatsappTaskDailyReminderEnabled: false,
-  whatsappTaskDailyReminderTime: "09:00"
+  whatsappTaskDailyReminderTime: "09:00",
+  whatsappTaskDailyReminderSkipDays: []
 };
+
+const weekDayOptions = [
+  { label: "Sun", value: "SUNDAY" },
+  { label: "Mon", value: "MONDAY" },
+  { label: "Tue", value: "TUESDAY" },
+  { label: "Wed", value: "WEDNESDAY" },
+  { label: "Thu", value: "THURSDAY" },
+  { label: "Fri", value: "FRIDAY" },
+  { label: "Sat", value: "SATURDAY" }
+];
 
 export function SettingsPage() {
   const [form, setForm] = useState(emptyForm);
@@ -88,7 +100,8 @@ export function SettingsPage() {
         whatsappTaskCreatedEnabled: response.data.whatsappTaskCreatedEnabled,
         whatsappTaskRescheduledEnabled: response.data.whatsappTaskRescheduledEnabled,
         whatsappTaskDailyReminderEnabled: response.data.whatsappTaskDailyReminderEnabled,
-        whatsappTaskDailyReminderTime: response.data.whatsappTaskDailyReminderTime
+        whatsappTaskDailyReminderTime: response.data.whatsappTaskDailyReminderTime,
+        whatsappTaskDailyReminderSkipDays: response.data.whatsappTaskDailyReminderSkipDays
       });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unable to load settings.");
@@ -122,7 +135,8 @@ export function SettingsPage() {
         whatsappTaskCreatedEnabled: form.whatsappTaskCreatedEnabled,
         whatsappTaskRescheduledEnabled: form.whatsappTaskRescheduledEnabled,
         whatsappTaskDailyReminderEnabled: form.whatsappTaskDailyReminderEnabled,
-        whatsappTaskDailyReminderTime: form.whatsappTaskDailyReminderTime
+        whatsappTaskDailyReminderTime: form.whatsappTaskDailyReminderTime,
+        whatsappTaskDailyReminderSkipDays: form.whatsappTaskDailyReminderSkipDays
       };
 
       const response = await apiRequest<SettingsResponse>("/api/settings", {
@@ -148,7 +162,8 @@ export function SettingsPage() {
         whatsappTaskCreatedEnabled: response.data.whatsappTaskCreatedEnabled,
         whatsappTaskRescheduledEnabled: response.data.whatsappTaskRescheduledEnabled,
         whatsappTaskDailyReminderEnabled: response.data.whatsappTaskDailyReminderEnabled,
-        whatsappTaskDailyReminderTime: response.data.whatsappTaskDailyReminderTime
+        whatsappTaskDailyReminderTime: response.data.whatsappTaskDailyReminderTime,
+        whatsappTaskDailyReminderSkipDays: response.data.whatsappTaskDailyReminderSkipDays
       });
       setMessage("Settings saved.");
     } catch (err) {
@@ -158,8 +173,23 @@ export function SettingsPage() {
     }
   }
 
-  function updateField(field: keyof typeof form, value: string | boolean) {
+  function updateField(field: keyof typeof form, value: string | boolean | string[]) {
     setForm((current) => ({ ...current, [field]: value }));
+  }
+
+  function toggleSkipDay(day: string, checked: boolean) {
+    setForm((current) => {
+      const nextDays = checked
+        ? [...current.whatsappTaskDailyReminderSkipDays, day]
+        : current.whatsappTaskDailyReminderSkipDays.filter((currentDay) => currentDay !== day);
+
+      return {
+        ...current,
+        whatsappTaskDailyReminderSkipDays: weekDayOptions
+          .map((option) => option.value)
+          .filter((optionDay) => nextDays.includes(optionDay))
+      };
+    });
   }
 
   return (
@@ -263,6 +293,28 @@ export function SettingsPage() {
                     required
                     onChange={(value) => updateField("whatsappTaskDailyReminderTime", value)}
                   />
+                  <div className="rounded-md border border-[#d9dee5] bg-white/70 p-4 dark:border-[#29313a] dark:bg-[#121820] md:col-span-2">
+                    <p className="text-sm font-semibold text-[#202124] dark:text-[#f3f6f9]">Skip Daily Reminder On</p>
+                    <p className="mt-1 text-sm text-[#5f6368] dark:text-[#a8b0ba]">
+                      Selected days will not send the automatic daily task reminder. A skipped notification log will still be recorded.
+                    </p>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {weekDayOptions.map((day) => (
+                        <label
+                          key={day.value}
+                          className="inline-flex min-h-10 cursor-pointer items-center gap-2 rounded-md border border-[#d9dee5] px-3 text-sm font-medium dark:border-[#29313a]"
+                        >
+                          <input
+                            className="h-4 w-4 accent-[#1f6feb]"
+                            type="checkbox"
+                            checked={form.whatsappTaskDailyReminderSkipDays.includes(day.value)}
+                            onChange={(event) => toggleSkipDay(day.value, event.target.checked)}
+                          />
+                          {day.label}
+                        </label>
+                      ))}
+                    </div>
+                  </div>
                 </div>
               </section>
 

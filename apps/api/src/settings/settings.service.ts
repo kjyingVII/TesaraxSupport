@@ -7,6 +7,8 @@ import { PrismaService } from "../prisma/prisma.service";
 import { UpdateSystemSettingsDto } from "./dto/update-system-settings.dto";
 
 const SETTINGS_KEY = "system";
+const weekDays = ["SUNDAY", "MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY"] as const;
+type WeekDay = typeof weekDays[number];
 
 export type SystemSettings = {
   defaultServiceReminderIntervalDays: number;
@@ -27,6 +29,7 @@ export type SystemSettings = {
   whatsappTaskRescheduledEnabled: boolean;
   whatsappTaskDailyReminderEnabled: boolean;
   whatsappTaskDailyReminderTime: string;
+  whatsappTaskDailyReminderSkipDays: WeekDay[];
 };
 
 const defaultSettings: SystemSettings = {
@@ -47,7 +50,8 @@ const defaultSettings: SystemSettings = {
   whatsappTaskCreatedEnabled: true,
   whatsappTaskRescheduledEnabled: true,
   whatsappTaskDailyReminderEnabled: false,
-  whatsappTaskDailyReminderTime: "09:00"
+  whatsappTaskDailyReminderTime: "09:00",
+  whatsappTaskDailyReminderSkipDays: []
 };
 
 @Injectable()
@@ -133,6 +137,9 @@ export class SettingsService {
     }
     if (dto.whatsappTaskDailyReminderTime !== undefined) {
       next.whatsappTaskDailyReminderTime = this.parseTime(dto.whatsappTaskDailyReminderTime, "Task daily reminder time");
+    }
+    if (dto.whatsappTaskDailyReminderSkipDays !== undefined) {
+      next.whatsappTaskDailyReminderSkipDays = this.parseWeekDays(dto.whatsappTaskDailyReminderSkipDays, "Task daily reminder skip days");
     }
 
     if (next.requestAttachmentMaxFileMb > next.requestAttachmentMaxTotalMb) {
@@ -222,7 +229,11 @@ export class SettingsService {
         raw.whatsappTaskDailyReminderEnabled,
         defaultSettings.whatsappTaskDailyReminderEnabled
       ),
-      whatsappTaskDailyReminderTime: this.readTime(raw.whatsappTaskDailyReminderTime, defaultSettings.whatsappTaskDailyReminderTime)
+      whatsappTaskDailyReminderTime: this.readTime(raw.whatsappTaskDailyReminderTime, defaultSettings.whatsappTaskDailyReminderTime),
+      whatsappTaskDailyReminderSkipDays: this.readWeekDays(
+        raw.whatsappTaskDailyReminderSkipDays,
+        defaultSettings.whatsappTaskDailyReminderSkipDays
+      )
     };
   }
 
@@ -257,6 +268,28 @@ export class SettingsService {
       throw new BadRequestException(`${label} must use HH:mm format.`);
     }
     return value;
+  }
+
+  private parseWeekDays(value: string[], label: string) {
+    if (!Array.isArray(value)) {
+      throw new BadRequestException(`${label} must be an array.`);
+    }
+
+    const uniqueDays = Array.from(new Set(value.map((day) => String(day).trim().toUpperCase())));
+    const invalidDay = uniqueDays.find((day) => !weekDays.includes(day as WeekDay));
+    if (invalidDay) {
+      throw new BadRequestException(`${label} contains an invalid day.`);
+    }
+
+    return uniqueDays as WeekDay[];
+  }
+
+  private readWeekDays(value: unknown, fallback: WeekDay[]) {
+    if (!Array.isArray(value)) return fallback;
+    const normalized = value
+      .map((day) => String(day).trim().toUpperCase())
+      .filter((day): day is WeekDay => weekDays.includes(day as WeekDay));
+    return Array.from(new Set(normalized));
   }
 
   private readTime(value: unknown, fallback: string) {

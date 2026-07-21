@@ -29,6 +29,20 @@ type DashboardItem = {
   updatedAt: Date;
 };
 
+type DashboardActivityItem = {
+  id: string;
+  activityType: "MACHINE_LOG" | "TICKET_STATUS";
+  title: string;
+  description: string;
+  customerName: string;
+  machineName: string;
+  machineSerialNumber: string;
+  actorName: string | null;
+  occurredAt: Date;
+  href: string;
+  status: string | null;
+};
+
 @Injectable()
 export class DashboardService {
   constructor(private readonly prisma: PrismaService) {}
@@ -39,7 +53,7 @@ export class DashboardService {
     const now = new Date();
     const recentCutoff = this.addDays(now, -14);
 
-    const [tasks, tickets] = await this.prisma.$transaction([
+    const [tasks, tickets, machineLogs, ticketStatusEvents] = await this.prisma.$transaction([
       this.prisma.task.findMany({
         where: this.buildTaskWhere(scope, input.userId, search, recentCutoff),
         include: {
@@ -125,6 +139,57 @@ export class DashboardService {
           { createdAt: "desc" }
         ],
         take: 150
+      }),
+      this.prisma.machineLog.findMany({
+        where: this.buildMachineLogActivityWhere(scope, input.userId, search),
+        include: {
+          machine: {
+            include: {
+              customer: {
+                select: {
+                  name: true
+                }
+              }
+            }
+          },
+          loggedByUser: {
+            select: {
+              name: true
+            }
+          }
+        },
+        orderBy: [
+          { createdAt: "desc" },
+          { workDate: "desc" }
+        ],
+        take: 12
+      }),
+      this.prisma.ticketStatusHistory.findMany({
+        where: this.buildTicketStatusActivityWhere(scope, input.userId, search),
+        include: {
+          changedByUser: {
+            select: {
+              name: true
+            }
+          },
+          ticket: {
+            include: {
+              machine: {
+                include: {
+                  customer: {
+                    select: {
+                      name: true
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        orderBy: {
+          createdAt: "desc"
+        },
+        take: 12
       })
     ]);
 
@@ -186,9 +251,84 @@ export class DashboardService {
         scope,
         generatedAt: now,
         metrics: this.buildMetrics(items, now),
-        items
+        items,
+        activity: this.buildActivity(machineLogs, ticketStatusEvents)
       }
     };
+  }
+
+  private buildActivity(
+    machineLogs: Array<Prisma.MachineLogGetPayload<{
+      include: {
+        machine: {
+          include: {
+            customer: {
+              select: {
+                name: true;
+              };
+            };
+          };
+        };
+        loggedByUser: {
+          select: {
+            name: true;
+          };
+        } | null;
+      };
+    }>>,
+    ticketStatusEvents: Array<Prisma.TicketStatusHistoryGetPayload<{
+      include: {
+        changedByUser: {
+          select: {
+            name: true;
+          };
+        } | null;
+        ticket: {
+          include: {
+            machine: {
+              include: {
+                customer: {
+                  select: {
+                    name: true;
+                  };
+                };
+              };
+            };
+          };
+        };
+      };
+    }>>
+  ): DashboardActivityItem[] {
+    return [
+      ...machineLogs.map((log) => ({
+        id: log.id,
+        activityType: "MACHINE_LOG" as const,
+        title: log.title,
+        description: `${this.activityTypeLabel(log.activityType)} / ${this.truncate(log.workSummary, 140)}`,
+        customerName: log.machine.customer.name,
+        machineName: log.machine.machineName,
+        machineSerialNumber: log.machine.serialNumber,
+        actorName: log.loggedByRequesterName ?? log.loggedByUser?.name ?? log.requesterConfirmedName ?? null,
+        occurredAt: log.createdAt,
+        href: `/machines/${log.machineId}/logs`,
+        status: log.requesterAcknowledgementRequired ? "USER SIGNATURE REQUIRED" : null
+      })),
+      ...ticketStatusEvents.map((event) => ({
+        id: event.id,
+        activityType: "TICKET_STATUS" as const,
+        title: `${event.ticket.ticketNumber} status changed`,
+        description: `${event.fromStatus ?? "Created"} to ${event.toStatus}${event.comment ? ` / ${this.truncate(event.comment, 140)}` : ""}`,
+        customerName: event.ticket.machine.customer.name,
+        machineName: event.ticket.machine.machineName,
+        machineSerialNumber: event.ticket.machine.serialNumber,
+        actorName: event.changedByRequesterName ?? event.changedByUser?.name ?? null,
+        occurredAt: event.createdAt,
+        href: `/technician/tickets/${event.ticketId}`,
+        status: event.toStatus
+      }))
+    ]
+      .sort((a, b) => b.occurredAt.getTime() - a.occurredAt.getTime())
+      .slice(0, 12);
   }
 
   private buildTaskWhere(scope: "team" | "mine", userId: string, search: string | undefined, recentCutoff: Date) {
@@ -283,6 +423,105 @@ export class DashboardService {
     return where;
   }
 
+  private buildMachineLogActivityWhere(scope: "team" | "mine", userId: string, search: string | undefined) {
+    const where: Prisma.MachineLogWhereInput = {};
+    const andConditions: Prisma.MachineLogWhereInput[] = [];
+
+    if (scope === "mine") {
+      andConditions.push({
+        OR: [
+          { loggedByUserId: userId },
+          {
+            ticket: {
+              OR: [
+                { assignedTechnicianId: userId },
+                {
+                  assignments: {
+                    some: {
+                      assignedToUserId: userId,
+                      isActive: true
+                    }
+                  }
+                }
+              ]
+            }
+          },
+          {
+            machine: {
+              tasks: {
+                some: {
+                  assignments: {
+                    some: {
+                      technicianId: userId
+                    }
+                  }
+                }
+              }
+            }
+          }
+        ]
+      });
+    }
+
+    if (search) {
+      andConditions.push({
+        OR: [
+          { title: { contains: search, mode: "insensitive" } },
+          { workSummary: { contains: search, mode: "insensitive" } },
+          { machine: { machineName: { contains: search, mode: "insensitive" } } },
+          { machine: { serialNumber: { contains: search, mode: "insensitive" } } },
+          { machine: { customer: { name: { contains: search, mode: "insensitive" } } } },
+          { ticket: { ticketNumber: { contains: search, mode: "insensitive" } } }
+        ]
+      });
+    }
+
+    if (andConditions.length) where.AND = andConditions;
+    return where;
+  }
+
+  private buildTicketStatusActivityWhere(scope: "team" | "mine", userId: string, search: string | undefined) {
+    const where: Prisma.TicketStatusHistoryWhereInput = {};
+    const andConditions: Prisma.TicketStatusHistoryWhereInput[] = [];
+
+    if (scope === "mine") {
+      andConditions.push({
+        ticket: {
+          OR: [
+            { assignedTechnicianId: userId },
+            {
+              assignments: {
+                some: {
+                  assignedToUserId: userId,
+                  isActive: true
+                }
+              }
+            }
+          ]
+        }
+      });
+    }
+
+    if (search) {
+      andConditions.push({
+        ticket: {
+          OR: [
+            { ticketNumber: { contains: search, mode: "insensitive" } },
+            { issueTitle: { contains: search, mode: "insensitive" } },
+            { issueDescription: { contains: search, mode: "insensitive" } },
+            { requesterName: { contains: search, mode: "insensitive" } },
+            { machine: { machineName: { contains: search, mode: "insensitive" } } },
+            { machine: { serialNumber: { contains: search, mode: "insensitive" } } },
+            { machine: { customer: { name: { contains: search, mode: "insensitive" } } } }
+          ]
+        }
+      });
+    }
+
+    if (andConditions.length) where.AND = andConditions;
+    return where;
+  }
+
   private buildMetrics(items: DashboardItem[], now: Date) {
     const activeStatuses = new Set(["PENDING", "SCHEDULED", "IN_PROGRESS", "WAITING_COMPONENT", "WAITING_CUSTOMER", "NEW", "ASSIGNED", "WAITING_FOR_REQUESTER", "WAITING_FOR_PARTS", "PENDING_ACKNOWLEDGEMENT", "FOLLOW_UP_REQUIRED"]);
     const openItems = items.filter((item) => !this.isTerminalStatus(item.status));
@@ -355,6 +594,14 @@ export class DashboardService {
     const next = new Date(value);
     next.setDate(next.getDate() + days);
     return next;
+  }
+
+  private activityTypeLabel(value: string) {
+    return value.replaceAll("_", " ");
+  }
+
+  private truncate(value: string, maxLength: number) {
+    return value.length > maxLength ? `${value.slice(0, maxLength - 1)}...` : value;
   }
 
   private uniqueAssignees(users: Array<{ id: string; name: string; role: string } | null>) {
