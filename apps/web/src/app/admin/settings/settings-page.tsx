@@ -33,7 +33,29 @@ type SettingsResponse = {
   data: SystemSettings;
 };
 
-const emptyForm = {
+type SettingsForm = {
+  defaultServiceReminderIntervalDays: string;
+  reminderWindowDays: string;
+  companyName: string;
+  supportEmail: string;
+  supportPhone: string;
+  acknowledgementRequiredBeforeClosing: string;
+  requestAttachmentMaxFileMb: string;
+  requestAttachmentMaxTotalMb: string;
+  serviceReportAttachmentMaxFileMb: string;
+  serviceReportAttachmentMaxTotalMb: string;
+  whatsappTicketCreatedEnabled: boolean;
+  whatsappTicketStatusChangedEnabled: boolean;
+  whatsappServiceReportSubmittedEnabled: boolean;
+  whatsappMachineLogCreatedEnabled: boolean;
+  whatsappTaskCreatedEnabled: boolean;
+  whatsappTaskRescheduledEnabled: boolean;
+  whatsappTaskDailyReminderEnabled: boolean;
+  whatsappTaskDailyReminderTime: string;
+  whatsappTaskDailyReminderSkipDays: string[];
+};
+
+const emptyForm: SettingsForm = {
   defaultServiceReminderIntervalDays: "90",
   reminderWindowDays: "30",
   companyName: "",
